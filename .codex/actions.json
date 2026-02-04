@@ -1,0 +1,20 @@
+{
+  "actions": [
+    {
+      "name": "Boot Simulator",
+      "command": "./scripts/boot_simulator.sh"
+    },
+    {
+      "name": "Build",
+      "command": "./scripts/build.sh"
+    },
+    {
+      "name": "Run",
+      "command": "./scripts/run.sh"
+    },
+    {
+      "name": "Run Tests",
+      "command": "./scripts/test.sh"
+    }
+  ]
+}
