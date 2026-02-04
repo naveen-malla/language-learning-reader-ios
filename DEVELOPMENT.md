@@ -3,6 +3,7 @@
 ## Requirements
 - Xcode latest stable
 - iOS Simulator
+- xcodegen (`brew install xcodegen`) for regenerating the project when files change
 
 ## Run
 1. Open `LanguageReader.xcodeproj` in Xcode.
@@ -14,6 +15,9 @@
 - Boot simulator: `open -a Simulator`
 - Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
 - Run tests: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test`
+
+## Project Generation
+- If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.
 
 ## Simulator Notes
 - Use Simulator for all testing.
