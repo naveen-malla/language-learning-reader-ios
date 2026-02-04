@@ -1,8 +1,11 @@
 import Foundation
 
+/// Dictionary provider that uses an in-memory dictionary.
 struct SampleDictionaryProvider: DictionaryProvider {
     private let entries: [String: String]
 
+    /// Creates a sample dictionary provider.
+    /// - Parameter entries: The dictionary entries. Defaults to bundled sample data.
     init(entries: [String: String] = SampleDictionary.data) {
         self.entries = entries
     }
@@ -16,6 +19,7 @@ struct SampleDictionaryProvider: DictionaryProvider {
     }
 }
 
+/// Contains sample Kannada-English dictionary entries for testing and development.
 enum SampleDictionary {
     static let data: [String: String] = [
         "ನಮಸ್ಕಾರ": "hello",

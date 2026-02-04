@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Settings view for dictionary and translation configuration.
 struct SettingsView: View {
     private let dictionaryManager = DictionaryManager.shared
 
@@ -25,6 +26,7 @@ struct SettingsView: View {
                         SectionCard("Translation API") {
                             Text("Optional API key support will appear here.")
                                 .foregroundStyle(.secondary)
+                                .font(.subheadline)
                         }
                     }
                     .padding()
@@ -34,4 +36,8 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.large)
         }
     }
+}
+
+#Preview {
+    SettingsView()
 }

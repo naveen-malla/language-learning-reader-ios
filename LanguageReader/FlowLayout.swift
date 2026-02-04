@@ -1,7 +1,12 @@
 import SwiftUI
 
+/// A custom flow layout that arranges subviews in a horizontal flow,
+/// wrapping to new lines as needed. Ideal for tokenized text display.
 struct FlowLayout: Layout {
+    /// Horizontal spacing between items on the same line.
     var itemSpacing: CGFloat = 0
+    
+    /// Vertical spacing between lines.
     var lineSpacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -16,6 +21,7 @@ struct FlowLayout: Layout {
             let nextWidth = currentLineWidth == 0 ? size.width : currentLineWidth + itemSpacing + size.width
 
             if nextWidth > maxWidth, currentLineWidth > 0 {
+                // Start new line
                 maxLineWidth = max(maxLineWidth, currentLineWidth)
                 totalHeight += currentLineHeight + lineSpacing
                 currentLineWidth = size.width
@@ -42,6 +48,7 @@ struct FlowLayout: Layout {
             let nextX = x == bounds.minX ? x + size.width : x + itemSpacing + size.width
 
             if nextX > bounds.maxX, x > bounds.minX {
+                // Move to next line
                 x = bounds.minX
                 y += lineHeight + lineSpacing
                 lineHeight = 0

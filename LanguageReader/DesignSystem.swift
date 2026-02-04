@@ -1,11 +1,22 @@
 import SwiftUI
 
+/// Central theme and styling configuration for the app.
 enum Theme {
+    /// Primary accent color used throughout the app.
     static let accent = Color.blue
+    
+    /// Background color for card elements.
     static let cardBackground = Color(.systemBackground)
+    
+    /// Background color for the main canvas.
     static let canvas = Color(.systemGroupedBackground)
+    
+    /// Shadow color for elevated elements.
     static let shadow = Color.black.opacity(0.08)
 
+    /// Returns the color associated with a vocabulary status.
+    /// - Parameter status: The vocabulary status.
+    /// - Returns: The corresponding color.
     static func statusColor(_ status: VocabStatus) -> Color {
         switch status {
         case .new:
@@ -18,6 +29,7 @@ enum Theme {
     }
 }
 
+/// Background view with a subtle gradient effect.
 struct AppBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -33,6 +45,7 @@ struct AppBackground: View {
     }
 }
 
+/// A card view with a title and custom content.
 struct SectionCard<Content: View>: View {
     let title: String
     let content: Content
@@ -55,7 +68,9 @@ struct SectionCard<Content: View>: View {
     }
 }
 
+/// View modifier that applies card styling to any view.
 extension View {
+    /// Applies standard card styling with padding, background, and shadow.
     func cardStyle() -> some View {
         self
             .padding(16)

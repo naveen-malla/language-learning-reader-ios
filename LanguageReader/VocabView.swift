@@ -1,10 +1,12 @@
 import SwiftUI
 import SwiftData
 
+/// Displays and manages the user's vocabulary list with search functionality.
 struct VocabView: View {
     @Query(sort: \VocabEntry.createdAt, order: .reverse) private var entries: [VocabEntry]
     @State private var searchText = ""
 
+    /// Filters entries based on search text.
     private var filteredEntries: [VocabEntry] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return entries }
@@ -25,7 +27,7 @@ struct VocabView: View {
                             ContentUnavailableView {
                                 Label("No vocabulary yet", systemImage: "text.book.closed")
                             } description: {
-                                Text("Save words from the Reader to see them here.")
+                                Text(searchText.isEmpty ? "Save words from the Reader to see them here." : "No matching words found.")
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 24)
@@ -47,6 +49,7 @@ struct VocabView: View {
     }
 }
 
+/// Displays a single vocabulary entry with word, meaning, and status.
 private struct VocabRow: View {
     @Bindable var entry: VocabEntry
 
@@ -55,6 +58,7 @@ private struct VocabRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.word)
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
                 if !entry.meaning.isEmpty {
                     Text(entry.meaning)
@@ -64,6 +68,7 @@ private struct VocabRow: View {
                     Text("Meaning not set yet")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .italic()
                 }
             }
 
@@ -81,7 +86,7 @@ private struct VocabRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Status \(entry.status.displayName)")
-            .accessibilityHint("Tap to change status")
+            .accessibilityHint("Tap to cycle through learning statuses")
         }
         .cardStyle()
     }

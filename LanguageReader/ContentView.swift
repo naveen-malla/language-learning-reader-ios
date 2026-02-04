@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Root content view containing the main tab navigation.
 struct ContentView: View {
     var body: some View {
         TabView {
@@ -29,4 +30,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .modelContainer(for: [Document.self, VocabEntry.self], inMemory: true)
 }

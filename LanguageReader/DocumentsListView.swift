@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 
+/// Displays a list of saved documents with navigation to the reader.
 struct DocumentsListView: View {
     @Query(sort: \Document.createdAt, order: .reverse) private var documents: [Document]
 
@@ -20,11 +21,13 @@ struct DocumentsListView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(document.title)
                                 .font(.headline)
+                                .accessibilityAddTraits(.isHeader)
                             Text(document.createdAt, style: .date)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .accessibilityLabel("Document: \(document.title), created \(document.createdAt, style: .date)")
                 }
             }
         }

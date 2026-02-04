@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Displays text broken into tappable word tokens with color-coded vocabulary status.
 struct TokenizedTextView: View {
     let text: String
     let onWordTap: (String) -> Void
@@ -7,6 +8,11 @@ struct TokenizedTextView: View {
 
     private let tokenizer = Tokenizer()
 
+    /// Creates a tokenized text view.
+    /// - Parameters:
+    ///   - text: The text to tokenize and display.
+    ///   - onWordTap: Callback invoked when a word is tapped.
+    ///   - statusProvider: Optional provider to get vocabulary status for words.
     init(
         text: String,
         onWordTap: @escaping (String) -> Void,
