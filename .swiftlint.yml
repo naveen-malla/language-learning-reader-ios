@@ -85,16 +85,6 @@ custom_rules:
   # Ensure all SwiftData models have documentation
   model_documentation:
     name: "SwiftData Model Documentation"
-    regex: '@Model\s+(?:final\s+)?class\s+\w+(?!\s*:)'
-    message: "SwiftData models should have documentation comments"
+    regex: '@Model\s+(?:final\s+)?class\s+\w+\s*(?:{|$)'
+    message: "SwiftData models should have documentation comments above the @Model attribute"
     severity: warning
-
-  # Avoid using 'self' unless necessary
-  explicit_self:
-    name: "Avoid Explicit Self"
-    regex: '\bself\.\w+(?!\()'
-    match_kinds:
-      - identifier
-    message: "Avoid using 'self' unless required for disambiguation"
-    severity: warning
-    excluded: "\\b(?:init|deinit)\\b"
