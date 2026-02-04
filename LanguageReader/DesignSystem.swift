@@ -5,7 +5,6 @@ enum Theme {
     static let cardBackground = Color(.systemBackground)
     static let canvas = Color(.systemGroupedBackground)
     static let shadow = Color.black.opacity(0.08)
-    static let tabBarClearance: CGFloat = 88
 
     static func statusColor(_ status: VocabStatus) -> Color {
         switch status {
@@ -62,11 +61,5 @@ extension View {
             .padding(16)
             .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 16))
             .shadow(color: Theme.shadow, radius: 8, y: 4)
-    }
-
-    func tabBarSafeArea() -> some View {
-        safeAreaInset(edge: .bottom, spacing: 0) {
-            Color.clear.frame(height: Theme.tabBarClearance)
-        }
     }
 }

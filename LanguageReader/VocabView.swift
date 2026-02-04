@@ -39,7 +39,6 @@ struct VocabView: View {
                     }
                     .padding()
                 }
-                .tabBarSafeArea()
             }
             .searchable(text: $searchText, prompt: "Search words or meanings")
             .navigationTitle("Vocab")

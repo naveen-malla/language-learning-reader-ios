@@ -29,7 +29,6 @@ struct SettingsView: View {
                     }
                     .padding()
                 }
-                .tabBarSafeArea()
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)

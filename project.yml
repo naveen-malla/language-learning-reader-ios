@@ -20,6 +20,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.local.LanguageReader
         INFOPLIST_KEY_CFBundleDisplayName: LanguageReader
+        INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
     dependencies:
       - sdk: libsqlite3.tbd
 

@@ -18,6 +18,7 @@
 		1DB504FA3214E1640288FFA5 /* DictionaryPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */; };
 		44D72F4C2656F66B7F927C4D /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83574C6CA00EEE79873A7D88 /* Document.swift */; };
 		4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */; };
+		55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */; };
 		5D41AF565DCA3C97F01BF119 /* TransliteratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */; };
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
@@ -53,6 +54,7 @@
 		122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigator.swift; sourceTree = "<group>"; };
 		127DDEEE2440414892719D87 /* VocabStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabStatusTests.swift; sourceTree = "<group>"; };
 		1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryTests.swift; sourceTree = "<group>"; };
+		1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
@@ -160,6 +162,7 @@
 				AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */,
 				507F0DECE74E7B240451E31D /* FlowLayout.swift */,
 				CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */,
+				1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */,
 				58101E386AAAD669B0E71F82 /* ReaderView.swift */,
 				1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */,
 				5D361AD9762B749101E84012 /* TextNormalizer.swift */,
@@ -182,6 +185,7 @@
 			buildConfigurationList = BEBA93B9444ABC47C8A19AEC /* Build configuration list for PBXNativeTarget "LanguageReader" */;
 			buildPhases = (
 				7B2C44453CF75BE7398A493B /* Sources */,
+				C2B9D0E397BE11EE211F81A6 /* Resources */,
 				A85BDADBD5C13D4C007B8830 /* Frameworks */,
 			);
 			buildRules = (
@@ -241,6 +245,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C2B9D0E397BE11EE211F81A6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7B2C44453CF75BE7398A493B /* Sources */ = {
@@ -304,6 +319,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -396,6 +412,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

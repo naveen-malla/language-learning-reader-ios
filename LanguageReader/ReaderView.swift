@@ -41,7 +41,6 @@ struct ReaderView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
-                .tabBarSafeArea()
             }
             .navigationTitle("Reader")
             .navigationBarTitleDisplayMode(.large)

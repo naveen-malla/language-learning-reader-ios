@@ -79,7 +79,6 @@ struct FlashcardsView: View {
                     Spacer()
                 }
                 .padding()
-                .tabBarSafeArea()
             }
             .navigationTitle("Flashcards")
             .navigationBarTitleDisplayMode(.large)
