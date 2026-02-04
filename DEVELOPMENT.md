@@ -10,6 +10,17 @@
 2. Select an iPhone Simulator (prefer iPhone 14 Pro; otherwise use the newest available).
 3. Build and run.
 
+## Install On iPhone (Keep Using Without Cable)
+1. Connect your iPhone via USB (or enable wireless debugging).
+2. On iPhone: Settings -> Privacy & Security -> Developer Mode -> On, then restart.
+3. In Xcode, set your Team and a unique bundle ID under Signing & Capabilities.
+4. Select your iPhone as the run destination and press Run.
+5. After the app appears on your Home Screen, you can disconnect.
+
+Notes:
+- Free Apple ID signing expires in ~7 days; reconnect and Run again to renew.
+- Apple Developer Program signing lasts up to 1 year and avoids frequent re-signing.
+
 ## CLI (after project creation)
 - List simulators: `xcrun simctl list`
 - Boot simulator: `open -a Simulator`

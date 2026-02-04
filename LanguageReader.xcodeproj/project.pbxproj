@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -23,6 +23,7 @@
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
 		9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */; };
+		9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63D640A38A99377FD7B8064C /* Assets.xcassets */; };
 		A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25B5E93FBC962853030C5C /* Tokenizer.swift */; };
 		A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A941E9D128F013645480702D /* LanguageReaderTests.swift */; };
 		A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */; };
@@ -66,6 +67,7 @@
 		5D361AD9762B749101E84012 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 		61C1D8AC10E692481F04C1E3 /* Transliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transliterator.swift; sourceTree = "<group>"; };
 		621F56B9FCC4C4EBD9FBE93E /* DocumentsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsListView.swift; sourceTree = "<group>"; };
+		63D640A38A99377FD7B8064C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerTests.swift; sourceTree = "<group>"; };
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
 		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
@@ -74,7 +76,7 @@
 		97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigatorTests.swift; sourceTree = "<group>"; };
 		A941E9D128F013645480702D /* LanguageReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderTests.swift; sourceTree = "<group>"; };
 		ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanguageReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardsView.swift; sourceTree = "<group>"; };
 		AF234D6E88AEDA883D53A53C /* DictionaryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryManager.swift; sourceTree = "<group>"; };
 		B026E76EF7A9A2E85A5F08FE /* DictionaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryProvider.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 		CCD9412BC3099440602BCE7A /* LanguageReader */ = {
 			isa = PBXGroup;
 			children = (
+				63D640A38A99377FD7B8064C /* Assets.xcassets */,
 				4836238FC51DEDA6B4723DFD /* ContentView.swift */,
 				5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */,
 				83574C6CA00EEE79873A7D88 /* Document.swift */,
@@ -236,7 +239,6 @@
 			);
 			mainGroup = 0D42A0CC0299F3160484B6AC;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -251,6 +253,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */,
 				55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -317,6 +320,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -410,6 +414,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
