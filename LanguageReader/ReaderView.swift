@@ -14,68 +14,67 @@ struct ReaderView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            TextField("Title (optional)", text: $titleText)
-                                .textInputAutocapitalization(.sentences)
+            List {
+                Section("New Document") {
+                    TextField("Title (optional)", text: $titleText)
+                        .textInputAutocapitalization(.sentences)
 
-                            TextEditor(text: $bodyText)
-                                .frame(minHeight: 160)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(.quaternary, lineWidth: 1)
-                                )
-
-                            Button {
-                                saveDocument()
-                            } label: {
-                                Text("Save Document")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(!canSave)
+                    ZStack(alignment: .topLeading) {
+                        if bodyText.isEmpty {
+                            Text("Paste or type your text here")
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                                .padding(.leading, 4)
+                                .accessibilityHidden(true)
                         }
-                    } label: {
-                        Text("New Document")
-                    }
 
+                        TextEditor(text: $bodyText)
+                            .frame(minHeight: 160)
+                            .textInputAutocapitalization(.none)
+                            .autocorrectionDisabled(true)
+                            .accessibilityLabel("Document text")
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(.quaternary, lineWidth: 1)
+                    )
+
+                    Button {
+                        saveDocument()
+                    } label: {
+                        Text("Save Document")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canSave)
+                    .accessibilityLabel("Save document")
+                    .accessibilityHint("Saves the pasted text as a new document")
+                }
+
+                Section("Documents") {
                     if documents.isEmpty {
                         Text("No saved documents yet.")
                             .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.top, 8)
                     } else {
-                        Text("Documents")
-                            .font(.headline)
-
-                        VStack(spacing: 8) {
-                            ForEach(documents) { document in
-                                NavigationLink {
-                                    DocumentReaderView(document: document)
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(document.title)
-                                            .font(.headline)
-                                            .foregroundStyle(.primary)
-                                        Text(document.createdAt, style: .date)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.vertical, 6)
+                        ForEach(documents) { document in
+                            NavigationLink {
+                                DocumentReaderView(document: document)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(document.title)
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Text(document.createdAt, style: .date)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.plain)
-
-                                Divider()
+                                .padding(.vertical, 6)
                             }
                         }
-                        .padding(.top, 4)
                     }
                 }
-                .padding()
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Reader")
         }
     }

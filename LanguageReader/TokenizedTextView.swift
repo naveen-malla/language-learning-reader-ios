@@ -14,6 +14,7 @@ struct TokenizedTextView: View {
                 if line.isEmpty {
                     Text(" ")
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityHidden(true)
                 } else {
                     FlowLayout(itemSpacing: 0, lineSpacing: 6) {
                         ForEach(tokenizer.tokenize(String(line))) { token in
@@ -25,6 +26,9 @@ struct TokenizedTextView: View {
                                         .foregroundStyle(.primary)
                                 }
                                 .buttonStyle(.plain)
+                                .contentShape(Rectangle())
+                                .accessibilityLabel("Word \(token.text)")
+                                .accessibilityHint("Show meaning and add to vocabulary")
                             } else {
                                 Text(token.text)
                                     .foregroundStyle(.primary)

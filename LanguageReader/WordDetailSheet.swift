@@ -18,6 +18,7 @@ struct WordDetailSheet: View {
 
                 Text(meaning?.isEmpty == false ? meaning! : "No meaning yet.")
                     .font(.body)
+                    .foregroundStyle(meaning?.isEmpty == false ? .primary : .secondary)
             }
 
             Button {
@@ -27,6 +28,8 @@ struct WordDetailSheet: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Add to vocabulary")
+            .accessibilityHint("Saves this word to your vocabulary list")
 
             Spacer()
         }
