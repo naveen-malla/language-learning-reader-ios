@@ -36,6 +36,7 @@ struct DocumentReaderView: View {
                 }
                 .padding()
             }
+            .tabBarSafeArea()
         }
         .navigationTitle("Document")
         .navigationBarTitleDisplayMode(.inline)

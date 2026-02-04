@@ -10,9 +10,6 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Settings")
-                            .font(.largeTitle.bold())
-
                         SectionCard("Dictionary") {
                             LabeledContent("Source", value: dictionaryManager.sourceDescription)
 
@@ -32,9 +29,10 @@ struct SettingsView: View {
                     }
                     .padding()
                 }
+                .tabBarSafeArea()
             }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 }

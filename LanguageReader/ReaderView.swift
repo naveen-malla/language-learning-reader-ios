@@ -3,7 +3,6 @@ import SwiftData
 
 struct ReaderView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Document.createdAt, order: .reverse) private var documents: [Document]
 
     @State private var titleText = ""
     @State private var bodyText = ""
@@ -17,78 +16,48 @@ struct ReaderView: View {
             ZStack {
                 AppBackground()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Reader")
-                            .font(.largeTitle.bold())
+                Form {
+                    Section("New Document") {
+                        TextField("Title (optional)", text: $titleText)
+                            .textInputAutocapitalization(.sentences)
 
-                        SectionCard("New Document") {
-                            TextField("Title (optional)", text: $titleText)
-                                .textInputAutocapitalization(.sentences)
-
-                            ZStack(alignment: .topLeading) {
-                                if bodyText.isEmpty {
-                                    Text("Paste or type your text here")
-                                        .foregroundStyle(.secondary)
-                                        .padding(.top, 8)
-                                        .padding(.leading, 4)
-                                        .accessibilityHidden(true)
-                                }
-
-                                TextEditor(text: $bodyText)
-                                    .frame(minHeight: 180)
-                                    .textInputAutocapitalization(.none)
-                                    .autocorrectionDisabled(true)
-                                    .accessibilityLabel("Document text")
-                            }
-                            .padding(8)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                            Button {
-                                saveDocument()
-                            } label: {
-                                Text("Save Document")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(!canSave)
-                            .accessibilityLabel("Save document")
-                            .accessibilityHint("Saves the pasted text as a new document")
-                        }
-
-                        SectionCard("Documents") {
-                            if documents.isEmpty {
-                                Text("No saved documents yet.")
+                        ZStack(alignment: .topLeading) {
+                            if bodyText.isEmpty {
+                                Text("Paste or type your text here")
                                     .foregroundStyle(.secondary)
-                            } else {
-                                VStack(spacing: 10) {
-                                    ForEach(documents) { document in
-                                        NavigationLink {
-                                            DocumentReaderView(document: document)
-                                        } label: {
-                                            HStack {
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text(document.title)
-                                                        .font(.headline)
-                                                        .foregroundStyle(.primary)
-                                                    Text(document.createdAt, style: .date)
-                                                        .font(.caption)
-                                                        .foregroundStyle(.secondary)
-                                                }
-                                                Spacer()
-                                                Image(systemName: "chevron.right")
-                                                    .foregroundStyle(.tertiary)
-                                            }
-                                            .padding(12)
-                                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
+                                    .padding(.top, 8)
+                                    .padding(.leading, 4)
+                                    .accessibilityHidden(true)
                             }
+
+                            TextEditor(text: $bodyText)
+                                .frame(height: 80)
+                                .textInputAutocapitalization(.none)
+                                .autocorrectionDisabled(true)
+                                .accessibilityLabel("Document text")
                         }
                     }
-                    .padding()
+
+                }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+                .tabBarSafeArea()
+            }
+            .navigationTitle("Reader")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink("Documents") {
+                        DocumentsListView()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        saveDocument()
+                    }
+                    .disabled(!canSave)
+                    .accessibilityLabel("Save document")
+                    .accessibilityHint("Saves the pasted text as a new document")
                 }
             }
         }
@@ -114,6 +83,7 @@ struct ReaderView: View {
         formatter.timeStyle = .short
         return formatter.string(from: Date())
     }
+
 }
 
 #Preview {

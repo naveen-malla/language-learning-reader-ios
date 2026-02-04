@@ -21,9 +21,6 @@ struct VocabView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Vocab")
-                            .font(.largeTitle.bold())
-
                         if filteredEntries.isEmpty {
                             ContentUnavailableView {
                                 Label("No vocabulary yet", systemImage: "text.book.closed")
@@ -42,10 +39,11 @@ struct VocabView: View {
                     }
                     .padding()
                 }
+                .tabBarSafeArea()
             }
             .searchable(text: $searchText, prompt: "Search words or meanings")
             .navigationTitle("Vocab")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 }

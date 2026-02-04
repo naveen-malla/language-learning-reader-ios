@@ -23,10 +23,6 @@ struct FlashcardsView: View {
                 AppBackground()
 
                 VStack(spacing: 24) {
-                    Text("Flashcards")
-                        .font(.largeTitle.bold())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
                     if let entry = currentEntry {
                         VStack(spacing: 16) {
                             Text(entry.word)
@@ -83,9 +79,10 @@ struct FlashcardsView: View {
                     Spacer()
                 }
                 .padding()
+                .tabBarSafeArea()
             }
             .navigationTitle("Flashcards")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 

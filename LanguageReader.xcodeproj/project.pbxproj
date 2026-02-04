@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00E7CB44195D7B8C7CDD429A /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D361AD9762B749101E84012 /* TextNormalizer.swift */; };
+		061F82287CA0521371B181D8 /* DocumentsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621F56B9FCC4C4EBD9FBE93E /* DocumentsListView.swift */; };
 		071D76206684040A448366EE /* WordDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */; };
 		0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507F0DECE74E7B240451E31D /* FlowLayout.swift */; };
 		15297A951657A50100BF44C1 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */; };
@@ -62,6 +63,7 @@
 		5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryPaths.swift; sourceTree = "<group>"; };
 		5D361AD9762B749101E84012 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 		61C1D8AC10E692481F04C1E3 /* Transliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transliterator.swift; sourceTree = "<group>"; };
+		621F56B9FCC4C4EBD9FBE93E /* DocumentsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsListView.swift; sourceTree = "<group>"; };
 		6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerTests.swift; sourceTree = "<group>"; };
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
 		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 				5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */,
 				83574C6CA00EEE79873A7D88 /* Document.swift */,
 				E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */,
+				621F56B9FCC4C4EBD9FBE93E /* DocumentsListView.swift */,
 				122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */,
 				AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */,
 				507F0DECE74E7B240451E31D /* FlowLayout.swift */,
@@ -251,6 +254,7 @@
 				ECD021E3E3A36853A3BCCA1F /* DictionaryProvider.swift in Sources */,
 				44D72F4C2656F66B7F927C4D /* Document.swift in Sources */,
 				7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */,
+				061F82287CA0521371B181D8 /* DocumentsListView.swift in Sources */,
 				FD9DF269CC226D8B5BED61DC /* FlashcardNavigator.swift in Sources */,
 				9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */,
 				0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */,
