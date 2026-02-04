@@ -7,13 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		071D76206684040A448366EE /* WordDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */; };
+		0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507F0DECE74E7B240451E31D /* FlowLayout.swift */; };
 		17177483B9A8E38DD7D384FF /* LanguageReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */; };
+		1D68C289805ED116DF2A0BC2 /* TokenizedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */; };
 		44D72F4C2656F66B7F927C4D /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83574C6CA00EEE79873A7D88 /* Document.swift */; };
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
 		9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */; };
+		A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25B5E93FBC962853030C5C /* Tokenizer.swift */; };
 		A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A941E9D128F013645480702D /* LanguageReaderTests.swift */; };
 		A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */; };
+		E4D0923A2FC4ACB5DF9ED0D1 /* VocabEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */; };
 		E92CE745ADAA648AB60497AE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4836238FC51DEDA6B4723DFD /* ContentView.swift */; };
 		F08370466FE321BD07ECF5F4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
@@ -30,16 +35,21 @@
 
 /* Begin PBXFileReference section */
 		1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		507F0DECE74E7B240451E31D /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		58101E386AAAD669B0E71F82 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
+		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
 		9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabView.swift; sourceTree = "<group>"; };
 		A941E9D128F013645480702D /* LanguageReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderTests.swift; sourceTree = "<group>"; };
 		ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanguageReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardsView.swift; sourceTree = "<group>"; };
+		B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabEntry.swift; sourceTree = "<group>"; };
 		CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderApp.swift; sourceTree = "<group>"; };
 		E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentReaderView.swift; sourceTree = "<group>"; };
+		FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordDetailSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -76,10 +86,15 @@
 				83574C6CA00EEE79873A7D88 /* Document.swift */,
 				E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */,
 				AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */,
+				507F0DECE74E7B240451E31D /* FlowLayout.swift */,
 				CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */,
 				58101E386AAAD669B0E71F82 /* ReaderView.swift */,
 				1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */,
+				8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */,
+				3F25B5E93FBC962853030C5C /* Tokenizer.swift */,
+				B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */,
 				9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */,
+				FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */,
 			);
 			path = LanguageReader;
 			sourceTree = "<group>";
@@ -160,10 +175,15 @@
 				44D72F4C2656F66B7F927C4D /* Document.swift in Sources */,
 				7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */,
 				9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */,
+				0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */,
 				17177483B9A8E38DD7D384FF /* LanguageReaderApp.swift in Sources */,
 				79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */,
 				F08370466FE321BD07ECF5F4 /* SettingsView.swift in Sources */,
+				1D68C289805ED116DF2A0BC2 /* TokenizedTextView.swift in Sources */,
+				A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */,
+				E4D0923A2FC4ACB5DF9ED0D1 /* VocabEntry.swift in Sources */,
 				A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */,
+				071D76206684040A448366EE /* WordDetailSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
