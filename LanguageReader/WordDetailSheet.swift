@@ -26,9 +26,15 @@ struct WordDetailSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Text(meaning?.isEmpty == false ? meaning! : "No meaning yet.")
-                    .font(.body)
-                    .foregroundStyle(meaning?.isEmpty == false ? .primary : .secondary)
+                if let meaning = meaning, !meaning.isEmpty {
+                    Text(meaning)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                } else {
+                    Text("No meaning yet.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Button {
