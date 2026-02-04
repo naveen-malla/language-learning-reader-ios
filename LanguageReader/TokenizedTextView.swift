@@ -31,7 +31,7 @@ struct TokenizedTextView: View {
                         ForEach(tokenizer.tokenize(String(line))) { token in
                             if token.isWord {
                                 let status = statusProvider?(token.text) ?? .new
-                                let color = statusColor(for: status)
+                                let color = Theme.statusColor(status)
 
                                 Button {
                                     onWordTap(token.text)
@@ -58,19 +58,12 @@ struct TokenizedTextView: View {
         }
     }
 
-    private func statusColor(for status: VocabStatus) -> Color {
-        switch status {
-        case .new:
-            return .blue
-        case .learning:
-            return .yellow
-        case .known:
-            return .gray
-        }
-    }
 }
 
 #Preview {
-    TokenizedTextView(text: "ನಮಸ್ಕಾರ, ಇದು ಪರೀಕ್ಷಾ ಪಠ್ಯ.") { _ in }
-        .padding()
+    ZStack {
+        AppBackground()
+        TokenizedTextView(text: "ನಮಸ್ಕಾರ, ಇದು ಪರೀಕ್ಷಾ ಪಠ್ಯ.") { _ in }
+            .padding()
+    }
 }

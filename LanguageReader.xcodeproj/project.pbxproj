@@ -16,6 +16,7 @@
 		1D68C289805ED116DF2A0BC2 /* TokenizedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */; };
 		1DB504FA3214E1640288FFA5 /* DictionaryPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */; };
 		44D72F4C2656F66B7F927C4D /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83574C6CA00EEE79873A7D88 /* Document.swift */; };
+		4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */; };
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
 		9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */; };
@@ -24,6 +25,7 @@
 		A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */; };
 		ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */; };
 		B4A9B22F943460F842D69304 /* VocabStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127DDEEE2440414892719D87 /* VocabStatusTests.swift */; };
+		B5FFC2935E7E803602244390 /* Transliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C1D8AC10E692481F04C1E3 /* Transliterator.swift */; };
 		C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */; };
 		DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */; };
 		E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C924FAB0A3E47FED5C27A16A /* SampleDictionaryProvider.swift */; };
@@ -55,8 +57,10 @@
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		507F0DECE74E7B240451E31D /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		58101E386AAAD669B0E71F82 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
+		5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryPaths.swift; sourceTree = "<group>"; };
 		5D361AD9762B749101E84012 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
+		61C1D8AC10E692481F04C1E3 /* Transliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transliterator.swift; sourceTree = "<group>"; };
 		6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerTests.swift; sourceTree = "<group>"; };
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
 		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
@@ -143,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				4836238FC51DEDA6B4723DFD /* ContentView.swift */,
+				5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */,
 				83574C6CA00EEE79873A7D88 /* Document.swift */,
 				E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */,
 				122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */,
@@ -154,6 +159,7 @@
 				5D361AD9762B749101E84012 /* TextNormalizer.swift */,
 				8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */,
 				3F25B5E93FBC962853030C5C /* Tokenizer.swift */,
+				61C1D8AC10E692481F04C1E3 /* Transliterator.swift */,
 				B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */,
 				9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */,
 				FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */,
@@ -236,6 +242,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E92CE745ADAA648AB60497AE /* ContentView.swift in Sources */,
+				4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */,
 				1AF6A0771822A832DC2A121A /* DictionaryManager.swift in Sources */,
 				1DB504FA3214E1640288FFA5 /* DictionaryPaths.swift in Sources */,
 				ECD021E3E3A36853A3BCCA1F /* DictionaryProvider.swift in Sources */,
@@ -252,6 +259,7 @@
 				00E7CB44195D7B8C7CDD429A /* TextNormalizer.swift in Sources */,
 				1D68C289805ED116DF2A0BC2 /* TokenizedTextView.swift in Sources */,
 				A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */,
+				B5FFC2935E7E803602244390 /* Transliterator.swift in Sources */,
 				E4D0923A2FC4ACB5DF9ED0D1 /* VocabEntry.swift in Sources */,
 				A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */,
 				071D76206684040A448366EE /* WordDetailSheet.swift in Sources */,

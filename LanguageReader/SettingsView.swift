@@ -5,25 +5,36 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Dictionary") {
-                    LabeledContent("Source", value: dictionaryManager.sourceDescription)
+            ZStack {
+                AppBackground()
 
-                    Text("Alar Kannada–English dictionary (ODbL)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Settings")
+                            .font(.largeTitle.bold())
 
-                    Text("Install a full dictionary file to improve coverage. The app will use a local SQLite file if present.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+                        SectionCard("Dictionary") {
+                            LabeledContent("Source", value: dictionaryManager.sourceDescription)
 
-                Section("Translation API") {
-                    Text("Optional API key support will appear here.")
-                        .foregroundStyle(.secondary)
+                            Text("Alar Kannada–English dictionary (ODbL)")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            Text("Install a full dictionary file to improve coverage. The app will use a local SQLite file if present.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        SectionCard("Translation API") {
+                            Text("Optional API key support will appear here.")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding()
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

@@ -19,63 +19,73 @@ struct FlashcardsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                if let entry = currentEntry {
-                    VStack(spacing: 16) {
-                        Text(entry.word)
-                            .font(.largeTitle)
-                            .bold()
-                            .multilineTextAlignment(.center)
+            ZStack {
+                AppBackground()
 
-                        if isRevealed {
-                            Text(entry.meaning.isEmpty ? "No meaning yet." : entry.meaning)
-                                .font(.title3)
-                                .foregroundStyle(entry.meaning.isEmpty ? .secondary : .primary)
+                VStack(spacing: 24) {
+                    Text("Flashcards")
+                        .font(.largeTitle.bold())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let entry = currentEntry {
+                        VStack(spacing: 16) {
+                            Text(entry.word)
+                                .font(.largeTitle)
+                                .bold()
                                 .multilineTextAlignment(.center)
-                        } else {
-                            Text("Tap to reveal")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 240)
-                    .padding()
-                    .background(.background, in: RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        isRevealed.toggle()
-                    }
-                    .accessibilityLabel("Flashcard")
-                    .accessibilityHint("Tap to reveal meaning")
 
-                    HStack(spacing: 16) {
-                        Button {
-                            mark(entry: entry, status: .learning)
-                        } label: {
-                            Text("Still Learning")
-                                .frame(maxWidth: .infinity)
+                            if isRevealed {
+                                Text(entry.meaning.isEmpty ? "No meaning yet." : entry.meaning)
+                                    .font(.title3)
+                                    .foregroundStyle(entry.meaning.isEmpty ? .secondary : .primary)
+                                    .multilineTextAlignment(.center)
+                            } else {
+                                Text("Tap to reveal")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity, minHeight: 260)
+                        .cardStyle()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isRevealed.toggle()
+                        }
+                        .accessibilityLabel("Flashcard")
+                        .accessibilityHint("Tap to reveal meaning")
 
-                        Button {
-                            mark(entry: entry, status: .known)
-                        } label: {
-                            Text("Mark Known")
-                                .frame(maxWidth: .infinity)
+                        HStack(spacing: 16) {
+                            Button {
+                                mark(entry: entry, status: .learning)
+                            } label: {
+                                Text("Still Learning")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                mark(entry: entry, status: .known)
+                            } label: {
+                                Text("Mark Known")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
-                        .buttonStyle(.borderedProminent)
+                    } else {
+                        ContentUnavailableView {
+                            Label("No flashcards yet", systemImage: "rectangle.stack")
+                        } description: {
+                            Text("Add words in the Reader to start practicing.")
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                } else {
-                    ContentUnavailableView {
-                        Label("No flashcards yet", systemImage: "rectangle.stack")
-                    } description: {
-                        Text("Add words in the Reader to start practicing.")
-                    }
+
+                    Spacer()
                 }
+                .padding()
             }
-            .padding()
             .navigationTitle("Flashcards")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 

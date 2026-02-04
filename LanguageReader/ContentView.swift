@@ -23,6 +23,7 @@ struct ContentView: View {
                     Label("Settings", systemImage: "gearshape")
                 }
         }
+        .tint(Theme.accent)
     }
 }
 

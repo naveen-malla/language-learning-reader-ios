@@ -4,12 +4,22 @@ struct WordDetailSheet: View {
     let word: String
     let meaning: String?
     let onAdd: () -> Void
+    private let transliterator = Transliterator()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(word)
                 .font(.largeTitle)
                 .bold()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Pronunciation")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(transliterator.pronounce(word))
+                    .font(.body)
+            }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Meaning")

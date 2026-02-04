@@ -14,25 +14,28 @@ struct DocumentReaderView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(document.title)
-                    .font(.title2)
-                    .bold()
+        ZStack {
+            AppBackground()
 
-                Text(document.createdAt, style: .date)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(document.title)
+                        .font(.title2.bold())
 
-                Divider()
+                    Text(document.createdAt, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
-                TokenizedTextView(text: document.body, onWordTap: { word in
-                    selection = WordSelection(text: word)
-                }, statusProvider: { word in
-                    statusByKey[normalizer.normalize(word)]
-                })
+                    TokenizedTextView(text: document.body, onWordTap: { word in
+                        selection = WordSelection(text: word)
+                    }, statusProvider: { word in
+                        statusByKey[normalizer.normalize(word)]
+                    })
+                    .cardStyle()
+                    .accessibilityLabel("Document text")
+                }
+                .padding()
             }
-            .padding()
         }
         .navigationTitle("Document")
         .navigationBarTitleDisplayMode(.inline)

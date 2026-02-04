@@ -16,22 +16,36 @@ struct VocabView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if filteredEntries.isEmpty {
-                    ContentUnavailableView {
-                        Label("No vocabulary yet", systemImage: "text.book.closed")
-                    } description: {
-                        Text("Save words from the Reader to see them here.")
+            ZStack {
+                AppBackground()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Vocab")
+                            .font(.largeTitle.bold())
+
+                        if filteredEntries.isEmpty {
+                            ContentUnavailableView {
+                                Label("No vocabulary yet", systemImage: "text.book.closed")
+                            } description: {
+                                Text("Save words from the Reader to see them here.")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 24)
+                        } else {
+                            VStack(spacing: 12) {
+                                ForEach(filteredEntries) { entry in
+                                    VocabRow(entry: entry)
+                                }
+                            }
+                        }
                     }
-                } else {
-                    ForEach(filteredEntries) { entry in
-                        VocabRow(entry: entry)
-                    }
+                    .padding()
                 }
             }
-            .listStyle(.insetGrouped)
             .searchable(text: $searchText, prompt: "Search words or meanings")
             .navigationTitle("Vocab")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
@@ -65,25 +79,14 @@ private struct VocabRow: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .foregroundStyle(statusColor(for: entry.status))
-                    .background(statusColor(for: entry.status).opacity(0.15), in: Capsule())
+                    .foregroundStyle(Theme.statusColor(entry.status))
+                    .background(Theme.statusColor(entry.status).opacity(0.15), in: Capsule())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Status \(entry.status.displayName)")
             .accessibilityHint("Tap to change status")
         }
-        .padding(.vertical, 4)
-    }
-
-    private func statusColor(for status: VocabStatus) -> Color {
-        switch status {
-        case .new:
-            return .blue
-        case .learning:
-            return .yellow
-        case .known:
-            return .gray
-        }
+        .cardStyle()
     }
 }
 
