@@ -19,6 +19,39 @@ final class VocabStatusTests: XCTestCase {
         XCTAssertEqual(VocabStatus.learning.next, .known)
         XCTAssertEqual(VocabStatus.known.next, .new)
     }
+    
+    func testStatusCycleCompleteness() {
+        // Test that cycling through all statuses returns to start
+        let start = VocabStatus.new
+        let afterOne = start.next
+        let afterTwo = afterOne.next
+        let afterThree = afterTwo.next
+        XCTAssertEqual(afterThree, start)
+    }
+    
+    func testAllCasesContainsAllStatuses() {
+        XCTAssertEqual(VocabStatus.allCases.count, 3)
+        XCTAssertTrue(VocabStatus.allCases.contains(.new))
+        XCTAssertTrue(VocabStatus.allCases.contains(.learning))
+        XCTAssertTrue(VocabStatus.allCases.contains(.known))
+    }
+    
+    func testStatusRawValues() {
+        XCTAssertEqual(VocabStatus.new.rawValue, "new")
+        XCTAssertEqual(VocabStatus.learning.rawValue, "learning")
+        XCTAssertEqual(VocabStatus.known.rawValue, "known")
+    }
+    
+    func testStatusCodable() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        
+        for status in VocabStatus.allCases {
+            let encoded = try encoder.encode(status)
+            let decoded = try decoder.decode(VocabStatus.self, from: encoded)
+            XCTAssertEqual(decoded, status)
+        }
+    }
 
     func testNormalizer() {
         let normalizer = TextNormalizer()
