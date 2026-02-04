@@ -27,7 +27,14 @@ CLI (once project exists):
 - Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
 
 ## Dictionary Data
-The app uses an offline dictionary for the initial language. If the full dataset is too large for git, it will be downloaded locally and indexed into a fast lookup DB (ignored from git).
+The app uses an offline dictionary for the initial language. A small sample is bundled. To use a full dictionary locally:
+
+```bash
+./scripts/build_dictionary.py
+./scripts/install_dictionary.sh
+```
+
+This downloads the Alar dataset, builds `data/alar.sqlite`, and installs it into the simulator app container.
 
 ## Known Limitations
 - Dictionary coverage depends on the bundled subset or locally downloaded dataset.

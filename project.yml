@@ -20,6 +20,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.local.LanguageReader
         INFOPLIST_KEY_CFBundleDisplayName: LanguageReader
+    dependencies:
+      - sdk: libsqlite3.tbd
 
   LanguageReaderTests:
     type: bundle.unit-test

@@ -19,6 +19,14 @@
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.
 
+## Dictionary (Local Full Dataset)
+1. Build the SQLite dictionary:
+   `./scripts/build_dictionary.py`
+2. Install it into the simulator container:
+   `./scripts/install_dictionary.sh`
+
+The app will automatically use the local SQLite file if present.
+
 ## Simulator Notes
 - Use Simulator for all testing.
 - If iPhone 14 Pro is unavailable, select the closest recent iPhone runtime.

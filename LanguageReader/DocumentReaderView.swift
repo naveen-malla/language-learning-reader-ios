@@ -40,7 +40,7 @@ struct DocumentReaderView: View {
     }
 
     private func lookupMeaning(for word: String) -> String? {
-        return nil
+        DictionaryManager.shared.lookup(word)
     }
 
     private func addToVocab(word: String, meaning: String?) {

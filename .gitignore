@@ -22,3 +22,6 @@ Package.resolved
 
 # Local env
 .env
+
+# Dictionary build artifacts
+data/
