@@ -14,6 +14,12 @@ final class VocabStatusTests: XCTestCase {
         XCTAssertEqual(VocabStatus.known.colorName, "gray")
     }
 
+    func testStatusCycle() {
+        XCTAssertEqual(VocabStatus.new.next, .learning)
+        XCTAssertEqual(VocabStatus.learning.next, .known)
+        XCTAssertEqual(VocabStatus.known.next, .new)
+    }
+
     func testNormalizer() {
         let normalizer = TextNormalizer()
         XCTAssertEqual(normalizer.normalize("  HELLO "), "hello")

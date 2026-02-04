@@ -3,8 +3,19 @@ import SwiftUI
 struct TokenizedTextView: View {
     let text: String
     let onWordTap: (String) -> Void
+    let statusProvider: ((String) -> VocabStatus?)?
 
     private let tokenizer = Tokenizer()
+
+    init(
+        text: String,
+        onWordTap: @escaping (String) -> Void,
+        statusProvider: ((String) -> VocabStatus?)? = nil
+    ) {
+        self.text = text
+        self.onWordTap = onWordTap
+        self.statusProvider = statusProvider
+    }
 
     var body: some View {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
@@ -19,25 +30,42 @@ struct TokenizedTextView: View {
                     FlowLayout(itemSpacing: 0, lineSpacing: 6) {
                         ForEach(tokenizer.tokenize(String(line))) { token in
                             if token.isWord {
+                                let status = statusProvider?(token.text) ?? .new
+                                let color = statusColor(for: status)
+
                                 Button {
                                     onWordTap(token.text)
                                 } label: {
                                     Text(token.text)
-                                        .foregroundStyle(.primary)
+                                        .font(.body)
+                                        .foregroundStyle(color)
                                 }
                                 .buttonStyle(.plain)
                                 .contentShape(Rectangle())
-                                .accessibilityLabel("Word \(token.text)")
+                                .accessibilityLabel("Word \(token.text), status \(status.displayName)")
                                 .accessibilityHint("Show meaning and add to vocabulary")
                             } else {
                                 Text(token.text)
+                                    .font(.body)
                                     .foregroundStyle(.primary)
+                                    .accessibilityHidden(true)
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+        }
+    }
+
+    private func statusColor(for status: VocabStatus) -> Color {
+        switch status {
+        case .new:
+            return .blue
+        case .learning:
+            return .yellow
+        case .known:
+            return .gray
         }
     }
 }

@@ -3,11 +3,15 @@ import SwiftData
 
 struct DocumentReaderView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \VocabEntry.createdAt, order: .reverse) private var vocabEntries: [VocabEntry]
     let document: Document
 
     @State private var selection: WordSelection?
 
     private let normalizer = TextNormalizer()
+    private var statusByKey: [String: VocabStatus] {
+        Dictionary(uniqueKeysWithValues: vocabEntries.map { ($0.normalizedKey, $0.status) })
+    }
 
     var body: some View {
         ScrollView {
@@ -22,9 +26,11 @@ struct DocumentReaderView: View {
 
                 Divider()
 
-                TokenizedTextView(text: document.body) { word in
+                TokenizedTextView(text: document.body, onWordTap: { word in
                     selection = WordSelection(text: word)
-                }
+                }, statusProvider: { word in
+                    statusByKey[normalizer.normalize(word)]
+                })
             }
             .padding()
         }

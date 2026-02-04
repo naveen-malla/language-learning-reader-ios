@@ -27,6 +27,17 @@ enum VocabStatus: String, Codable, CaseIterable {
             return "gray"
         }
     }
+
+    var next: VocabStatus {
+        switch self {
+        case .new:
+            return .learning
+        case .learning:
+            return .known
+        case .known:
+            return .new
+        }
+    }
 }
 
 @Model
