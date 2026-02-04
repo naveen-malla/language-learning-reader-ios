@@ -7,6 +7,8 @@ struct DocumentReaderView: View {
 
     @State private var selection: WordSelection?
 
+    private let normalizer = TextNormalizer()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -42,7 +44,7 @@ struct DocumentReaderView: View {
     }
 
     private func addToVocab(word: String, meaning: String?) {
-        let normalized = normalize(word)
+        let normalized = normalizer.normalize(word)
         let descriptor = FetchDescriptor<VocabEntry>(predicate: #Predicate { entry in
             entry.normalizedKey == normalized
         })
@@ -63,9 +65,6 @@ struct DocumentReaderView: View {
         }
     }
 
-    private func normalize(_ word: String) -> String {
-        word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
 }
 
 private struct WordSelection: Identifiable {

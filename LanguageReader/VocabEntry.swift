@@ -5,6 +5,28 @@ enum VocabStatus: String, Codable, CaseIterable {
     case new
     case learning
     case known
+
+    var displayName: String {
+        switch self {
+        case .new:
+            return "New"
+        case .learning:
+            return "Learning"
+        case .known:
+            return "Known"
+        }
+    }
+
+    var colorName: String {
+        switch self {
+        case .new:
+            return "blue"
+        case .learning:
+            return "yellow"
+        case .known:
+            return "gray"
+        }
+    }
 }
 
 @Model
