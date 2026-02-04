@@ -22,6 +22,7 @@
 		A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25B5E93FBC962853030C5C /* Tokenizer.swift */; };
 		A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A941E9D128F013645480702D /* LanguageReaderTests.swift */; };
 		A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */; };
+		ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */; };
 		B4A9B22F943460F842D69304 /* VocabStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127DDEEE2440414892719D87 /* VocabStatusTests.swift */; };
 		C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */; };
 		DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */; };
@@ -31,6 +32,7 @@
 		ECD021E3E3A36853A3BCCA1F /* DictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B026E76EF7A9A2E85A5F08FE /* DictionaryProvider.swift */; };
 		F08370466FE321BD07ECF5F4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */; };
 		FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */; };
+		FD9DF269CC226D8B5BED61DC /* FlashcardNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +46,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigator.swift; sourceTree = "<group>"; };
 		127DDEEE2440414892719D87 /* VocabStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabStatusTests.swift; sourceTree = "<group>"; };
 		1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryTests.swift; sourceTree = "<group>"; };
 		1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -58,6 +61,7 @@
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
 		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
 		9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabView.swift; sourceTree = "<group>"; };
+		97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigatorTests.swift; sourceTree = "<group>"; };
 		A941E9D128F013645480702D /* LanguageReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderTests.swift; sourceTree = "<group>"; };
 		ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanguageReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -106,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */,
+				97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */,
 				A941E9D128F013645480702D /* LanguageReaderTests.swift */,
 				6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */,
 				127DDEEE2440414892719D87 /* VocabStatusTests.swift */,
@@ -140,6 +145,7 @@
 				4836238FC51DEDA6B4723DFD /* ContentView.swift */,
 				83574C6CA00EEE79873A7D88 /* Document.swift */,
 				E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */,
+				122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */,
 				AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */,
 				507F0DECE74E7B240451E31D /* FlowLayout.swift */,
 				CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */,
@@ -235,6 +241,7 @@
 				ECD021E3E3A36853A3BCCA1F /* DictionaryProvider.swift in Sources */,
 				44D72F4C2656F66B7F927C4D /* Document.swift in Sources */,
 				7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */,
+				FD9DF269CC226D8B5BED61DC /* FlashcardNavigator.swift in Sources */,
 				9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */,
 				0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */,
 				17177483B9A8E38DD7D384FF /* LanguageReaderApp.swift in Sources */,
@@ -256,6 +263,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */,
+				ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */,
 				A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */,
 				DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */,
 				B4A9B22F943460F842D69304 /* VocabStatusTests.swift in Sources */,
