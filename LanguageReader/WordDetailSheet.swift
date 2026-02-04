@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Displays detailed information about a word and allows adding it to vocabulary.
 struct WordDetailSheet: View {
     let word: String
     let meaning: String?
@@ -11,6 +12,7 @@ struct WordDetailSheet: View {
             Text(word)
                 .font(.largeTitle)
                 .bold()
+                .accessibilityAddTraits(.isHeader)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Pronunciation")
@@ -19,6 +21,7 @@ struct WordDetailSheet: View {
 
                 Text(transliterator.pronounce(word))
                     .font(.body)
+                    .accessibilityLabel("Pronunciation: \(transliterator.pronounce(word))")
             }
 
             VStack(alignment: .leading, spacing: 6) {

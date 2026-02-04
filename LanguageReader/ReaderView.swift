@@ -1,12 +1,14 @@
 import SwiftUI
 import SwiftData
 
+/// Main view for creating new reading documents.
 struct ReaderView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var titleText = ""
     @State private var bodyText = ""
 
+    /// Determines if the save button should be enabled.
     private var canSave: Bool {
         !bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -20,6 +22,7 @@ struct ReaderView: View {
                     Section("New Document") {
                         TextField("Title (optional)", text: $titleText)
                             .textInputAutocapitalization(.sentences)
+                            .accessibilityLabel("Document title")
 
                         ZStack(alignment: .topLeading) {
                             if bodyText.isEmpty {
@@ -49,6 +52,7 @@ struct ReaderView: View {
                     NavigationLink("Documents") {
                         DocumentsListView()
                     }
+                    .accessibilityLabel("View documents list")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -62,6 +66,8 @@ struct ReaderView: View {
         }
     }
 
+    /// Saves the document to the model context.
+    /// Clears the form after successful save.
     private func saveDocument() {
         let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedBody.isEmpty else { return }
@@ -72,10 +78,13 @@ struct ReaderView: View {
         let document = Document(title: finalTitle, body: trimmedBody)
         modelContext.insert(document)
 
+        // Clear form after save
         titleText = ""
         bodyText = ""
     }
 
+    /// Generates a default title using the current date and time.
+    /// - Returns: Formatted date string suitable for a document title.
     private func defaultTitle() -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium

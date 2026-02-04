@@ -1,0 +1,100 @@
+# SwiftLint Configuration for LanguageReader
+# https://github.com/realm/SwiftLint
+
+# Paths to exclude from linting
+excluded:
+  - .build
+  - DerivedData
+  - build
+  - data
+
+# Rules to enable
+opt_in_rules:
+  - explicit_init
+  - explicit_type_interface
+  - fatal_error_message
+  - file_header
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - overridden_super_call
+  - sorted_imports
+  - unneeded_parentheses_in_closure_argument
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+
+# Disabled rules
+disabled_rules:
+  - todo # Allow TODO comments during development
+
+# Rule configurations
+line_length:
+  warning: 120
+  error: 150
+  ignores_comments: true
+  ignores_urls: true
+
+file_length:
+  warning: 500
+  error: 1000
+
+type_body_length:
+  warning: 300
+  error: 500
+
+function_body_length:
+  warning: 50
+  error: 100
+
+cyclomatic_complexity:
+  warning: 10
+  error: 20
+
+# Naming conventions
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  max_length:
+    warning: 50
+    error: 60
+  excluded:
+    - id
+    - db
+    - x
+    - y
+
+type_name:
+  min_length: 3
+  max_length: 50
+
+# Force unwrapping - error since we're avoiding it
+force_unwrapping:
+  severity: error
+
+# Force cast - warning
+force_cast:
+  severity: warning
+
+# Unused optional binding
+unused_optional_binding:
+  ignore_optional_try: true
+
+# Custom rules
+custom_rules:
+  # Ensure all SwiftData models have documentation
+  model_documentation:
+    name: "SwiftData Model Documentation"
+    regex: '@Model\s+(?:final\s+)?class\s+\w+(?!\s*:)'
+    message: "SwiftData models should have documentation comments"
+    severity: warning
+
+  # Avoid using 'self' unless necessary
+  explicit_self:
+    name: "Avoid Explicit Self"
+    regex: '\bself\.\w+(?!\()'
+    match_kinds:
+      - identifier
+    message: "Avoid using 'self' unless required for disambiguation"
+    severity: warning
+    excluded: "\\b(?:init|deinit)\\b"
