@@ -6,8 +6,8 @@ import tempfile
 import urllib.request
 
 URL = "https://raw.githubusercontent.com/alar-dict/data/master/alar.yml"
-OUTPUT_DIR = os.path.join(os.getcwd(), "data")
-OUTPUT_DB = os.path.join(OUTPUT_DIR, "alar.sqlite")
+OUTPUT_DIR = os.path.join(os.getcwd(), "LanguageReader", "Resources")
+OUTPUT_DB = os.path.join(OUTPUT_DIR, "dictionary.sqlite")
 
 try:
     import yaml  # type: ignore

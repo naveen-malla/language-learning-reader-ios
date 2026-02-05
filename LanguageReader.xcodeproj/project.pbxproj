@@ -3,13 +3,14 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		00E7CB44195D7B8C7CDD429A /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D361AD9762B749101E84012 /* TextNormalizer.swift */; };
 		061F82287CA0521371B181D8 /* DocumentsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621F56B9FCC4C4EBD9FBE93E /* DocumentsListView.swift */; };
 		071D76206684040A448366EE /* WordDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */; };
+		0B1232093177257140447957 /* TokenizerEdgeCasesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */; };
 		0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507F0DECE74E7B240451E31D /* FlowLayout.swift */; };
 		15297A951657A50100BF44C1 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */; };
 		17177483B9A8E38DD7D384FF /* LanguageReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */; };
@@ -20,8 +21,10 @@
 		4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */; };
 		55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */; };
 		5D41AF565DCA3C97F01BF119 /* TransliteratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */; };
+		7412827BD938D5A0880F5AC1 /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE021185D006A04450A65CE /* TextNormalizerTests.swift */; };
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
+		954207AF9CAB12581ECA0A60 /* dictionary.sqlite in Resources */ = {isa = PBXBuildFile; fileRef = 0BF21C18FC77B36CEB2B8259 /* dictionary.sqlite */; };
 		9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */; };
 		9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63D640A38A99377FD7B8064C /* Assets.xcassets */; };
 		A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25B5E93FBC962853030C5C /* Tokenizer.swift */; };
@@ -30,6 +33,7 @@
 		ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */; };
 		B4A9B22F943460F842D69304 /* VocabStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127DDEEE2440414892719D87 /* VocabStatusTests.swift */; };
 		B5FFC2935E7E803602244390 /* Transliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C1D8AC10E692481F04C1E3 /* Transliterator.swift */; };
+		B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */; };
 		C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */; };
 		DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */; };
 		E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C924FAB0A3E47FED5C27A16A /* SampleDictionaryProvider.swift */; };
@@ -52,6 +56,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0BF21C18FC77B36CEB2B8259 /* dictionary.sqlite */ = {isa = PBXFileReference; lastKnownFileType = file; path = dictionary.sqlite; sourceTree = "<group>"; };
 		122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigator.swift; sourceTree = "<group>"; };
 		127DDEEE2440414892719D87 /* VocabStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabStatusTests.swift; sourceTree = "<group>"; };
 		1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryTests.swift; sourceTree = "<group>"; };
@@ -60,10 +65,12 @@
 		2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4DE021185D006A04450A65CE /* TextNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizerTests.swift; sourceTree = "<group>"; };
 		507F0DECE74E7B240451E31D /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		58101E386AAAD669B0E71F82 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
 		5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryPaths.swift; sourceTree = "<group>"; };
+		5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryManagerTests.swift; sourceTree = "<group>"; };
 		5D361AD9762B749101E84012 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 		61C1D8AC10E692481F04C1E3 /* Transliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transliterator.swift; sourceTree = "<group>"; };
 		621F56B9FCC4C4EBD9FBE93E /* DocumentsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsListView.swift; sourceTree = "<group>"; };
@@ -74,9 +81,10 @@
 		94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransliteratorTests.swift; sourceTree = "<group>"; };
 		9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabView.swift; sourceTree = "<group>"; };
 		97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigatorTests.swift; sourceTree = "<group>"; };
+		A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerEdgeCasesTests.swift; sourceTree = "<group>"; };
 		A941E9D128F013645480702D /* LanguageReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderTests.swift; sourceTree = "<group>"; };
 		ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanguageReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardsView.swift; sourceTree = "<group>"; };
 		AF234D6E88AEDA883D53A53C /* DictionaryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryManager.swift; sourceTree = "<group>"; };
 		B026E76EF7A9A2E85A5F08FE /* DictionaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryProvider.swift; sourceTree = "<group>"; };
@@ -121,9 +129,12 @@
 		3CA56DAFA4F43118E274C908 /* LanguageReaderTests */ = {
 			isa = PBXGroup;
 			children = (
+				5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */,
 				1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */,
 				97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */,
 				A941E9D128F013645480702D /* LanguageReaderTests.swift */,
+				4DE021185D006A04450A65CE /* TextNormalizerTests.swift */,
+				A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */,
 				6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */,
 				94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */,
 				127DDEEE2440414892719D87 /* VocabStatusTests.swift */,
@@ -138,6 +149,14 @@
 				ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8AD115E7BC9AAC49539EAE28 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0BF21C18FC77B36CEB2B8259 /* dictionary.sqlite */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		B2DE3DAA07B250949A3FA36A /* Dictionary */ = {
@@ -176,6 +195,7 @@
 				9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */,
 				FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */,
 				B2DE3DAA07B250949A3FA36A /* Dictionary */,
+				8AD115E7BC9AAC49539EAE28 /* Resources */,
 			);
 			path = LanguageReader;
 			sourceTree = "<group>";
@@ -239,6 +259,7 @@
 			);
 			mainGroup = 0D42A0CC0299F3160484B6AC;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -255,6 +276,7 @@
 			files = (
 				9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */,
 				55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */,
+				954207AF9CAB12581ECA0A60 /* dictionary.sqlite in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -295,9 +317,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */,
 				FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */,
 				ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */,
 				A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */,
+				7412827BD938D5A0880F5AC1 /* TextNormalizerTests.swift in Sources */,
+				0B1232093177257140447957 /* TokenizerEdgeCasesTests.swift in Sources */,
 				DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */,
 				5D41AF565DCA3C97F01BF119 /* TransliteratorTests.swift in Sources */,
 				B4A9B22F943460F842D69304 /* VocabStatusTests.swift in Sources */,
@@ -320,7 +345,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -414,7 +438,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;

@@ -24,19 +24,19 @@ Notes:
 ## CLI (after project creation)
 - List simulators: `xcrun simctl list`
 - Boot simulator: `open -a Simulator`
-- Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
-- Run tests: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test`
+- Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
+- Run tests: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
 
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.
 
 ## Dictionary (Local Full Dataset)
-1. Build the SQLite dictionary:
+1. Build the bundled SQLite dictionary:
    `./scripts/build_dictionary.py`
-2. Install it into the simulator container:
+2. (Optional) Install into the simulator Documents directory to override:
    `./scripts/install_dictionary.sh`
 
-The app will automatically use the local SQLite file if present.
+The app will automatically use the Documents SQLite file if present. Otherwise it uses the bundled `LanguageReader/Resources/dictionary.sqlite`.
 
 ## Simulator Notes
 - Use Simulator for all testing.

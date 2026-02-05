@@ -17,7 +17,7 @@ struct SettingsView: View {
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
 
-                            Text("Install a full dictionary file to improve coverage. The app will use a local SQLite file if present.")
+                            Text("The app prefers a local SQLite file in Documents. If none is present, it uses the bundled dictionary.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }

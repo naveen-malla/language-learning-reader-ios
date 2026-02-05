@@ -30,6 +30,12 @@ final class DictionaryManager {
             return sqliteProvider
         }
 
+        if let url = DictionaryPaths.bundledDictionaryURL(),
+           FileManager.default.fileExists(atPath: url.path),
+           let sqliteProvider = SQLiteDictionaryProvider(fileURL: url, sourceDescription: "Bundled dictionary file") {
+            return sqliteProvider
+        }
+
         return SampleDictionaryProvider()
     }
 }

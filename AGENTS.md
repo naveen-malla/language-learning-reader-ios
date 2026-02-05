@@ -34,3 +34,10 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Reading-first layout.
 - Tappable tokens must feel responsive.
 - Color coding for vocab status should be consistent and unobtrusive.
+
+## Documentation Discipline
+- Always update relevant docs after any change or decision without waiting for a prompt.
+- Update `README.md` for scope, run steps, known limits, and user-facing behavior changes.
+- Update `DEVELOPMENT.md` for workflow, scripts, build/test steps, and environment requirements.
+- Update `DESIGN.md` for UX flows, UI behavior, and interaction changes.
+- Update `DECISIONS.md` for architectural choices, data/storage changes, and tradeoffs.
