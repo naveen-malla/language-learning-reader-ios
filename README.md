@@ -38,3 +38,5 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 ## Known Limitations
 - Dictionary coverage depends on the bundled subset or locally downloaded dataset.
 - Translation API is optional and not required for the MVP.
+- Inflected Kannada forms use a small heuristic suffix strip; it won’t cover all morphology.
+- Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.

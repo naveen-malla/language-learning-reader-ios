@@ -48,4 +48,18 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertEqual(manager.lookup("ನಮಸ್ಕಾರ"), "hello")
         XCTAssertEqual(manager.lookup("  ನಮಸ್ಕಾರ  "), "hello")
     }
+
+    func testLookupWithSuffixFallback() {
+        let provider = SampleDictionaryProvider()
+        let manager = DictionaryManager(provider: provider)
+
+        XCTAssertEqual(manager.lookup("ಮನೆಯಲ್ಲಿ"), "house")
+    }
+
+    func testMeaningCleanup() {
+        let provider = SampleDictionaryProvider(entries: ["ತುಂಬಾ": "= ತುಂಬ2.", "ತುಂಬ": "very"])
+        let manager = DictionaryManager(provider: provider)
+
+        XCTAssertEqual(manager.lookup("ತುಂಬಾ"), "very")
+    }
 }

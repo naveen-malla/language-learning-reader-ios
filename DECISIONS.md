@@ -12,6 +12,8 @@
 - If full dataset is too large for git, download locally and build index DB.
 - For V1 (Kannada), bundle the full SQLite dictionary in the app so device updates don’t require re-downloads.
 - For future languages, plan to separate dictionaries from the app bundle and provide download links/install flow.
+- Use light heuristic suffix stripping for Kannada inflections; not a full morphological analyzer.
+- Resolve single-hop dictionary redirects that use `=` prefix; strip trailing digits in redirect targets.
 
 ## Translation APIs
 - Optional only; no runtime dependency in MVP.
