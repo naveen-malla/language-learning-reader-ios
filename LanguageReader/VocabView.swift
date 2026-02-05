@@ -25,7 +25,7 @@ struct VocabView: View {
                             ContentUnavailableView {
                                 Label("No vocabulary yet", systemImage: "text.book.closed")
                             } description: {
-                                Text("Save words from the Reader to see them here.")
+                                Text(searchText.isEmpty ? "Save words from the Reader to see them here." : "No matching words found.")
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 24)
