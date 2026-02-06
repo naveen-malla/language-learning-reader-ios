@@ -6,6 +6,7 @@ struct TokenizedTextView: View {
     let statusProvider: ((String) -> VocabStatus?)?
 
     private let tokenizer = Tokenizer()
+    private let sentenceTokenizer = SentenceTokenizer()
 
     init(
         text: String,
@@ -18,17 +19,17 @@ struct TokenizedTextView: View {
     }
 
     var body: some View {
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        let blocks = sentenceBlocks(from: text)
 
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                if line.isEmpty {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(blocks) { block in
+                if block.isEmpty {
                     Text(" ")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityHidden(true)
                 } else {
-                    FlowLayout(itemSpacing: 0, lineSpacing: 6) {
-                        ForEach(tokenizer.tokenize(String(line))) { token in
+                    FlowLayout(itemSpacing: 0, lineSpacing: 8) {
+                        ForEach(tokenizer.tokenize(block.text)) { token in
                             if token.isWord {
                                 let status = statusProvider?(token.text) ?? .new
                                 let color = Theme.statusColor(status)
@@ -58,6 +59,34 @@ struct TokenizedTextView: View {
         }
     }
 
+    private func sentenceBlocks(from text: String) -> [SentenceBlock] {
+        let paragraphs = text.split(separator: "\n", omittingEmptySubsequences: false)
+        var blocks: [SentenceBlock] = []
+
+        for paragraph in paragraphs {
+            let value = String(paragraph)
+            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                blocks.append(SentenceBlock(text: "", isEmpty: true))
+                continue
+            }
+
+            let sentences = sentenceTokenizer.sentences(in: value)
+            if sentences.isEmpty {
+                blocks.append(SentenceBlock(text: value, isEmpty: false))
+            } else {
+                blocks.append(contentsOf: sentences.map { SentenceBlock(text: $0, isEmpty: false) })
+            }
+        }
+
+        return blocks
+    }
+
+}
+
+private struct SentenceBlock: Identifiable {
+    let id = UUID()
+    let text: String
+    let isEmpty: Bool
 }
 
 #Preview {

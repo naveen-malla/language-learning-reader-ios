@@ -12,8 +12,15 @@
 3. Tap a word to see meaning and add to vocab.
 4. Review/upgrade vocab via Vocab tab or Flashcards.
 
+## Reader UI
+- Full-bleed reading view (no card container).
+- Top overlay: close button + read-only progress slider.
+- No bottom controls in MVP.
+- Follows system appearance (light/dark).
+
 ## Tokenization
-- Use NaturalLanguage tokenization when available.
+- Use NaturalLanguage sentence tokenization for layout spacing.
+- Use NaturalLanguage word tokenization when available.
 - Fallback: split on whitespace and punctuation.
 
 ## Dictionary Normalization

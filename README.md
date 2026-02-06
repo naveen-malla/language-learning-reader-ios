@@ -4,7 +4,8 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 
 ## MVP Scope
 - Paste text into the app and save as a document (initial scope: Kannada).
-- Read the document with tappable word tokens.
+- Read the document in a full-bleed reader with a progress slider.
+- Word tokens are grouped by sentence for more readable spacing.
 - Add words to vocabulary with basic status tracking (new/learning/known).
 - Color-code words by status in the reader.
 - Vocab list with search and status updates.
@@ -24,7 +25,7 @@ Steps:
 CLI (once project exists):
 - List simulators: `xcrun simctl list`
 - Boot simulator: `open -a Simulator`
-- Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
+- Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
 
 ## Dictionary Data
 The app uses an offline dictionary for the initial language. A full dictionary is bundled in the app for Kannada so device updates do not require re-downloading.
@@ -40,3 +41,4 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 - Translation API is optional and not required for the MVP.
 - Inflected Kannada forms use a small heuristic suffix strip; it won’t cover all morphology.
 - Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
+- Sentence detection uses a lightweight tokenizer; complex punctuation may still need refinement.
