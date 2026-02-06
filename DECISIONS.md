@@ -20,3 +20,7 @@
 - Optional only; no runtime dependency in MVP.
 - API key stored in Keychain.
 - V1 uses an offline dictionary-based sentence gloss when the user taps translate (rough translation, not full grammar).
+
+## Testing Strategy
+- Prioritize regression and edge-case tests from the beginning, not only smoke tests.
+- Every user-reported bug should add a corresponding automated test before closure.

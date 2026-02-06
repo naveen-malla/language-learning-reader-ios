@@ -2,8 +2,9 @@ import XCTest
 @testable import LanguageReader
 
 final class TokenizerTests: XCTestCase {
+    private let tokenizer = Tokenizer()
+
     func testTokenizesWordsAndPunctuation() {
-        let tokenizer = Tokenizer()
         let tokens = tokenizer.tokenize("hello, world!")
         let simplified = tokens.map { ($0.text, $0.isWord) }
 
@@ -19,7 +20,6 @@ final class TokenizerTests: XCTestCase {
     }
 
     func testTokenizesKannadaText() {
-        let tokenizer = Tokenizer()
         let tokens = tokenizer.tokenize("ನಮಸ್ಕಾರ, ಇದು ಪರೀಕ್ಷೆ.")
         let words = tokens.filter { $0.isWord }.map { $0.text }
 
@@ -29,8 +29,22 @@ final class TokenizerTests: XCTestCase {
     }
 
     func testTokenizesEmptyText() {
-        let tokenizer = Tokenizer()
         let tokens = tokenizer.tokenize("")
         XCTAssertTrue(tokens.isEmpty)
+    }
+
+    func testRoundTripPreservesOriginalTextForMixedContent() {
+        let input = "VC #011, ಇದು ಪರೀಕ್ಷೆ! \"hello\" world."
+        let tokens = tokenizer.tokenize(input)
+        let reconstructed = tokens.map(\.text).joined()
+
+        XCTAssertEqual(reconstructed, input)
+    }
+
+    func testTokenIdsAreUniquePerToken() {
+        let tokens = tokenizer.tokenize("one two three")
+        let ids = Set(tokens.map(\.id))
+
+        XCTAssertEqual(ids.count, tokens.count)
     }
 }

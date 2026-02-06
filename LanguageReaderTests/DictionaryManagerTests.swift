@@ -2,108 +2,150 @@ import XCTest
 @testable import LanguageReader
 
 final class DictionaryManagerTests: XCTestCase {
-    private func makeManager(provider: DictionaryProvider) -> DictionaryManager {
-        DictionaryManager(
-            provider: provider,
-            overrideStore: DictionaryOverrideStore(fileURL: nil, missingURL: nil)
-        )
+    private var cleanupURLs: [URL] = []
+
+    override func tearDown() {
+        let fileManager = FileManager.default
+        for url in cleanupURLs {
+            try? fileManager.removeItem(at: url)
+        }
+        cleanupURLs.removeAll()
+        super.tearDown()
     }
 
-    func testLookupWithWhitespace() {
-        let provider = SampleDictionaryProvider(entries: ["hello": "hi"])
-        let manager = makeManager(provider: provider)
+    private func makeManager(
+        entries: [String: String],
+        overrides: [String: String] = [:],
+        missingURL: URL? = nil
+    ) -> DictionaryManager {
+        let provider = SampleDictionaryProvider(entries: entries)
+        let overrideStore = DictionaryOverrideStore(
+            fileURL: nil,
+            missingURL: missingURL,
+            overrides: overrides
+        )
+        return DictionaryManager(provider: provider, overrideStore: overrideStore)
+    }
 
+    private func makeTemporaryURL(fileName: String) -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        cleanupURLs.append(directory)
+        return directory.appendingPathComponent(fileName)
+    }
+
+    func testLookupWithWhitespaceAndCaseNormalization() {
+        let manager = makeManager(entries: ["hello": "hi"])
+
+        XCTAssertEqual(manager.lookup("HELLO"), "hi")
+        XCTAssertEqual(manager.lookup("HeLLo"), "hi")
         XCTAssertEqual(manager.lookup("  hello  "), "hi")
         XCTAssertEqual(manager.lookup("\nhello\t"), "hi")
     }
 
-    func testLookupWithMixedCase() {
-        let provider = SampleDictionaryProvider(entries: ["hello": "hi"])
-        let manager = makeManager(provider: provider)
+    func testLookupDetailedDirectPath() {
+        let manager = makeManager(entries: ["ಮನೆ": "house"])
+        let result = manager.lookupDetailed("ಮನೆ")
 
-        XCTAssertEqual(manager.lookup("HELLO"), "hi")
-        XCTAssertEqual(manager.lookup("HeLLo"), "hi")
+        XCTAssertEqual(result.path, .direct)
+        XCTAssertEqual(result.matchedKey, "ಮನೆ")
+        XCTAssertEqual(result.meaning, "house")
     }
 
-    func testLookupMissingWord() {
-        let provider = SampleDictionaryProvider(entries: ["hello": "hi"])
-        let manager = makeManager(provider: provider)
+    func testLookupDetailedSuffixPathForInflectedKannadaForm() {
+        let manager = makeManager(entries: ["ಮನೆ": "house"])
+        let result = manager.lookupDetailed("ಮನೆಯಲಿ")
+
+        XCTAssertEqual(result.path, .suffix)
+        XCTAssertEqual(result.matchedKey, "ಮನೆ")
+        XCTAssertEqual(result.meaning, "house")
+    }
+
+    func testLookupTrimsEdgePunctuation() {
+        let manager = makeManager(entries: ["hello": "hi"])
+        let result = manager.lookupDetailed("\"hello\"")
+
+        XCTAssertEqual(result.matchedKey, "hello")
+        XCTAssertEqual(result.meaning, "hi")
+        XCTAssertEqual(result.path, .suffix)
+    }
+
+    func testSourceDescription() {
+        let manager = makeManager(entries: [:])
+        XCTAssertEqual(manager.sourceDescription, "Bundled sample dictionary")
+    }
+
+    func testLookupMissingAndEmptyWord() {
+        let manager = makeManager(entries: ["hello": "hi"])
 
         XCTAssertNil(manager.lookup("missing"))
-        XCTAssertNil(manager.lookup(""))
-    }
-
-    func testLookupEmptyString() {
-        let provider = SampleDictionaryProvider(entries: ["hello": "hi"])
-        let manager = makeManager(provider: provider)
-
         XCTAssertNil(manager.lookup(""))
         XCTAssertNil(manager.lookup("   "))
     }
 
-    func testSourceDescription() {
-        let provider = SampleDictionaryProvider()
-        let manager = makeManager(provider: provider)
+    func testRedirectResolvesAndMarksPath() {
+        let manager = makeManager(entries: ["ತುಂಬಾ": "= ತುಂಬ2.", "ತುಂಬ": "very"])
+        let result = manager.lookupDetailed("ತುಂಬಾ")
 
-        XCTAssertEqual(manager.sourceDescription, "Bundled sample dictionary")
+        XCTAssertEqual(result.path, .redirect)
+        XCTAssertEqual(result.matchedKey, "ತುಂಬಾ")
+        XCTAssertEqual(result.meaning, "very")
     }
 
-    func testLookupKannadaWords() {
-        let provider = SampleDictionaryProvider()
-        let manager = makeManager(provider: provider)
+    func testSelfRedirectReturnsNoMeaning() {
+        let manager = makeManager(entries: ["ಪದ": "= ಪದ1."])
+        let result = manager.lookupDetailed("ಪದ")
 
-        XCTAssertEqual(manager.lookup("ನಮಸ್ಕಾರ"), "hello")
-        XCTAssertEqual(manager.lookup("  ನಮಸ್ಕಾರ  "), "hello")
+        XCTAssertEqual(result.path, .none)
+        XCTAssertNil(result.meaning)
     }
 
-    func testLookupWithSuffixFallback() {
-        let provider = SampleDictionaryProvider()
-        let manager = makeManager(provider: provider)
+    func testIdentityMeaningIsDiscarded() {
+        let manager = makeManager(entries: ["ಪದ": "ಪದ."])
+        let result = manager.lookupDetailed("ಪದ")
 
-        XCTAssertEqual(manager.lookup("ಮನೆಯಲ್ಲಿ"), "house")
-    }
-
-    func testMeaningCleanup() {
-        let provider = SampleDictionaryProvider(entries: ["ತುಂಬಾ": "= ತುಂಬ2.", "ತುಂಬ": "very"])
-        let manager = makeManager(provider: provider)
-
-        XCTAssertEqual(manager.lookup("ತುಂಬಾ"), "very")
+        XCTAssertEqual(result.path, .none)
+        XCTAssertNil(result.meaning)
     }
 
     func testOverrideTakesPrecedence() {
-        let provider = SampleDictionaryProvider(entries: ["hello": "hi"])
-        let overrides = DictionaryOverrideStore(
-            fileURL: nil,
-            missingURL: nil,
-            overrides: ["hello": "override"]
-        )
-        let manager = DictionaryManager(provider: provider, overrideStore: overrides)
+        let manager = makeManager(entries: ["hello": "hi"], overrides: ["hello": "override"])
+        let result = manager.lookupDetailed("hello")
 
-        XCTAssertEqual(manager.lookup("hello"), "override")
+        XCTAssertEqual(result.path, .override)
+        XCTAssertEqual(result.meaning, "override")
+    }
+
+    func testReportMissingAppendsWithoutOverwriting() throws {
+        let missingURL = makeTemporaryURL(fileName: "missing.tsv")
+        let manager = makeManager(entries: [:], missingURL: missingURL)
+
+        manager.reportMissing(word: "ಮನೆಯಲಿ")
+        manager.reportMissing(word: "ಹೊಸದು")
+
+        let contents = try String(contentsOf: missingURL, encoding: .utf8)
+        let lines = contents.split(separator: "\n")
+
+        XCTAssertEqual(lines.count, 2)
+        XCTAssertTrue(lines[0].hasPrefix("ಮನೆಯಲಿ\t"))
+        XCTAssertTrue(lines[1].hasPrefix("ಹೊಸದು\t"))
     }
 
     func testSentenceGlossTranslation() {
-        let provider = SampleDictionaryProvider(entries: [
-            "ನಮಸ್ಕಾರ": "hello",
-            "ಇದು": "this",
-            "ಪಠ್ಯ": "text"
-        ])
-        let manager = makeManager(provider: provider)
+        let manager = makeManager(entries: ["ನಮಸ್ಕಾರ": "hello", "ಇದು": "this", "ಮನೆ": "house"])
         let translator = SentenceGlossTranslator(dictionaryManager: manager)
 
-        let result = translator.gloss("ನಮಸ್ಕಾರ, ಇದು ಪಠ್ಯ.")
+        let result = translator.gloss("ನಮಸ್ಕಾರ, ಮನೆಯಲಿ ಇದು.")
 
-        XCTAssertEqual(result.text, "hello, this text.")
+        XCTAssertEqual(result.text, "hello, house this.")
         XCTAssertEqual(result.wordCount, 3)
         XCTAssertEqual(result.glossedWordCount, 3)
         XCTAssertEqual(result.coverage, 1, accuracy: 0.001)
     }
 
     func testSentenceGlossKeepsUnknownWords() {
-        let provider = SampleDictionaryProvider(entries: [
-            "ಇದು": "this"
-        ])
-        let manager = makeManager(provider: provider)
+        let manager = makeManager(entries: ["ಇದು": "this"])
         let translator = SentenceGlossTranslator(dictionaryManager: manager)
 
         let result = translator.gloss("ಅಜ್ಞಾತ ಇದು.")

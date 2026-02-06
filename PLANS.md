@@ -87,7 +87,8 @@ Goals:
 - Stable daily-use build.
 
 Tasks:
-- Add edge-case tests for tokenizer and dictionary fallback.
+- Add edge-case and failure-path tests for tokenizer, dictionary fallback, and flashcard flow.
+- Add regression tests for every user-reported bug before closing it.
 - Run end-to-end simulator checks on iPhone 14 Pro.
 - Update docs for final MVP handoff.
 
@@ -117,4 +118,3 @@ Acceptance criteria:
   1. run tests
   2. run simulator build
   3. update docs (`README.md`, `DEVELOPMENT.md`, `DESIGN.md`, `DECISIONS.md`) as needed
-

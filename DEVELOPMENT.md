@@ -31,6 +31,11 @@ Notes:
 - Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
 - Run tests: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
 
+## Testing Standard
+- Treat tests as strict quality gates, not smoke checks.
+- Every feature should have failure-path and edge-case coverage.
+- When a production issue is observed, add a regression test in the same change.
+
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.
 

@@ -62,9 +62,26 @@ final class TokenizerEdgeCasesTests: XCTestCase {
         XCTAssertEqual(words, ["line1", "line2"])
     }
 
+    func testHandlesEmojiWithoutBreakingRoundTrip() {
+        let text = "hello 👋 ನಮಸ್ಕಾರ 🌍"
+        let tokens = tokenizer.tokenize(text)
+
+        XCTAssertEqual(tokens.map(\.text).joined(), text)
+        XCTAssertTrue(tokens.contains(where: { $0.text.contains("👋") }))
+    }
+
     func testPreservesTokenOrder() {
         let tokens = tokenizer.tokenize("word1, word2, word3")
         let allText = tokens.map { $0.text }.joined()
         XCTAssertEqual(allText, "word1, word2, word3")
+    }
+
+    func testPreservesQuotedKannadaWord() {
+        let text = "\"ಮನೆ\"."
+        let tokens = tokenizer.tokenize(text)
+        let words = tokens.filter(\.isWord).map(\.text)
+
+        XCTAssertEqual(words, ["ಮನೆ"])
+        XCTAssertEqual(tokens.map(\.text).joined(), text)
     }
 }

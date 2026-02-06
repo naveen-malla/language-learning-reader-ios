@@ -21,4 +21,23 @@ final class LanguageReaderTests: XCTestCase {
         XCTAssertEqual(entry.status, .new)
         XCTAssertEqual(entry.encounterCount, 1)
     }
+
+    func testVocabEntryCustomInitialization() {
+        let createdAt = Date(timeIntervalSince1970: 100)
+        let lastSeenAt = Date(timeIntervalSince1970: 200)
+        let entry = VocabEntry(
+            word: "ಮನೆ",
+            normalizedKey: "ಮನೆ",
+            meaning: "house",
+            status: .learning,
+            createdAt: createdAt,
+            lastSeenAt: lastSeenAt,
+            encounterCount: 7
+        )
+
+        XCTAssertEqual(entry.status, .learning)
+        XCTAssertEqual(entry.createdAt, createdAt)
+        XCTAssertEqual(entry.lastSeenAt, lastSeenAt)
+        XCTAssertEqual(entry.encounterCount, 7)
+    }
 }

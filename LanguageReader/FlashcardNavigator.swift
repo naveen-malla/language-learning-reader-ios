@@ -8,6 +8,7 @@ struct FlashcardNavigator {
 
     static func nextIndex(current: Int, count: Int) -> Int {
         guard count > 0 else { return 0 }
-        return (current + 1) % count
+        let safeCurrent = clampedIndex(current, count: count)
+        return (safeCurrent + 1) % count
     }
 }

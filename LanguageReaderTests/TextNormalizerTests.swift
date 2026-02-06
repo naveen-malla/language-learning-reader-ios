@@ -37,4 +37,15 @@ final class TextNormalizerTests: XCTestCase {
         XCTAssertEqual(normalizer.normalize("Café"), "café")
         XCTAssertEqual(normalizer.normalize("日本語"), "日本語")
     }
+
+    func testNormalizationIsIdempotent() {
+        let input = "  HeLLo ನಮಸ್ಕಾರ  "
+        let normalized = normalizer.normalize(input)
+
+        XCTAssertEqual(normalized, normalizer.normalize(normalized))
+    }
+
+    func testPreservesInternalSpacingAndPunctuation() {
+        XCTAssertEqual(normalizer.normalize("  hello   world!  "), "hello   world!")
+    }
 }

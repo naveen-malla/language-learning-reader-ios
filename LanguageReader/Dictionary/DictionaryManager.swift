@@ -104,7 +104,7 @@ final class DictionaryManager {
 
         appendIfNew(stripEdgePunctuation(normalized))
 
-        if let stripped = stripCommonKannadaSuffix(from: normalized) {
+        for stripped in stripCommonKannadaSuffixes(from: normalized) {
             appendIfNew(stripped)
         }
 
@@ -115,9 +115,10 @@ final class DictionaryManager {
         text.trimmingCharacters(in: CharacterSet.punctuationCharacters)
     }
 
-    private func stripCommonKannadaSuffix(from text: String) -> String? {
+    private func stripCommonKannadaSuffixes(from text: String) -> [String] {
         let suffixes = [
             "ಗಳಲ್ಲಿ",
+            "ಯಲಿ",
             "ಯಲ್ಲಿ",
             "ದಲ್ಲಿ",
             "ನಲ್ಲಿ",
@@ -134,15 +135,24 @@ final class DictionaryManager {
             "ಲ್ಲಿ"
         ]
 
+        var results: [String] = []
+        func appendIfValid(_ value: String) {
+            guard value.count >= 2, !results.contains(value) else { return }
+            results.append(value)
+        }
+
         for suffix in suffixes {
             guard text.hasSuffix(suffix) else { continue }
             let base = String(text.dropLast(suffix.count))
-            if base.count >= 2 {
-                return base
+            appendIfValid(base)
+
+            // Some inflected forms retain a linking "ಯ" (e.g. ಮನೆಯಲಿ -> ಮನೆ).
+            if base.hasSuffix("ಯ") {
+                appendIfValid(String(base.dropLast()))
             }
         }
 
-        return nil
+        return results
     }
 
     private func resolveMeaning(_ meaning: String, for key: String) -> (meaning: String, isRedirect: Bool)? {

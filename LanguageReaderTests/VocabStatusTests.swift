@@ -41,6 +41,14 @@ final class VocabStatusTests: XCTestCase {
         XCTAssertEqual(VocabStatus.known.rawValue, "known")
     }
 
+    func testDisplayAndColorMappingsAreUniquePerStatus() {
+        let displayNames = Set(VocabStatus.allCases.map(\.displayName))
+        let colorNames = Set(VocabStatus.allCases.map(\.colorName))
+
+        XCTAssertEqual(displayNames.count, VocabStatus.allCases.count)
+        XCTAssertEqual(colorNames.count, VocabStatus.allCases.count)
+    }
+
     func testStatusCodable() throws {
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()

@@ -39,6 +39,7 @@
 		B5FFC2935E7E803602244390 /* Transliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C1D8AC10E692481F04C1E3 /* Transliterator.swift */; };
 		B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */; };
 		C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */; };
+		C959E9CB79FCD5EA1CD568B1 /* DictionaryOverrideStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */; };
 		DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */; };
 		E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C924FAB0A3E47FED5C27A16A /* SampleDictionaryProvider.swift */; };
 		E4D0923A2FC4ACB5DF9ED0D1 /* VocabEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */; };
@@ -62,6 +63,7 @@
 
 /* Begin PBXFileReference section */
 		0BF21C18FC77B36CEB2B8259 /* dictionary.sqlite */ = {isa = PBXFileReference; lastKnownFileType = file; path = dictionary.sqlite; sourceTree = "<group>"; };
+		0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryOverrideStoreTests.swift; sourceTree = "<group>"; };
 		122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardNavigator.swift; sourceTree = "<group>"; };
 		127DDEEE2440414892719D87 /* VocabStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabStatusTests.swift; sourceTree = "<group>"; };
 		1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryTests.swift; sourceTree = "<group>"; };
@@ -140,6 +142,7 @@
 			isa = PBXGroup;
 			children = (
 				5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */,
+				0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */,
 				1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */,
 				97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */,
 				A941E9D128F013645480702D /* LanguageReaderTests.swift */,
@@ -337,6 +340,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */,
+				C959E9CB79FCD5EA1CD568B1 /* DictionaryOverrideStoreTests.swift in Sources */,
 				FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */,
 				ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */,
 				A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */,

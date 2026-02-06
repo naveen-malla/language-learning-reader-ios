@@ -19,6 +19,8 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Deterministic behavior where possible.
 - Clean separation of UI, data, and domain logic.
 - Add tests for tokenization and vocab status logic.
+- Test quality is a priority from the start: cover edge cases, failure paths, and regressions, not just happy paths.
+- When a bug is found, add a failing test first (or in the same change) before shipping the fix.
 
 ## Testing
 - Use iOS Simulator for all runs.
