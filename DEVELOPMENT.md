@@ -5,6 +5,10 @@
 - iOS Simulator
 - xcodegen (`brew install xcodegen`) for regenerating the project when files change
 
+## Planning Source
+- `PLANS.md` is the execution roadmap and current status file.
+- Read `PLANS.md` first when starting work in a new chat.
+
 ## Run
 1. Open `LanguageReader.xcodeproj` in Xcode.
 2. Select an iPhone Simulator (prefer iPhone 14 Pro; otherwise use the newest available).
