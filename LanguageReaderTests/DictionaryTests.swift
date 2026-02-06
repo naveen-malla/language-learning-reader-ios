@@ -10,7 +10,10 @@ final class DictionaryTests: XCTestCase {
 
     func testManagerUsesNormalizer() {
         let provider = SampleDictionaryProvider(entries: ["hello": "hi"])
-        let manager = DictionaryManager(provider: provider)
+        let manager = DictionaryManager(
+            provider: provider,
+            overrideStore: DictionaryOverrideStore(fileURL: nil, missingURL: nil)
+        )
         XCTAssertEqual(manager.lookup("  HELLO "), "hi")
     }
 }

@@ -5,29 +5,76 @@ final class DictionaryManager {
 
     private let provider: DictionaryProvider
     private let normalizer = TextNormalizer()
+    private let overrideStore: DictionaryOverrideStore
 
-    init(provider: DictionaryProvider? = nil) {
+    init(provider: DictionaryProvider? = nil, overrideStore: DictionaryOverrideStore? = nil) {
         if let provider {
             self.provider = provider
         } else {
             self.provider = DictionaryManager.makeProvider()
         }
+        self.overrideStore = overrideStore ?? DictionaryOverrideStore(
+            fileURL: DictionaryPaths.documentsOverridesURL(),
+            missingURL: DictionaryPaths.documentsMissingURL()
+        )
     }
 
     func lookup(_ word: String) -> String? {
+        lookupDetailed(word).meaning
+    }
+
+    func lookupDetailed(_ word: String) -> DictionaryLookupResult {
+        let normalized = normalizer.normalize(word)
+        if let overrideMeaning = overrideStore.lookup(normalizedKey: normalized) {
+            return DictionaryLookupResult(
+                word: word,
+                normalizedKey: normalized,
+                matchedKey: normalized,
+                meaning: overrideMeaning,
+                path: .override
+            )
+        }
+
         let candidates = candidateKeys(for: word)
         for key in candidates {
             if let raw = provider.lookup(normalizedKey: key) {
                 if let resolved = resolveMeaning(raw, for: key) {
-                    return resolved
+                    let basePath: DictionaryLookupResult.Path = (key == normalized) ? .direct : .suffix
+                    let path = resolved.isRedirect ? .redirect : basePath
+                    return DictionaryLookupResult(
+                        word: word,
+                        normalizedKey: normalized,
+                        matchedKey: key,
+                        meaning: resolved.meaning,
+                        path: path
+                    )
                 }
             }
         }
-        return nil
+
+        return DictionaryLookupResult(
+            word: word,
+            normalizedKey: normalized,
+            matchedKey: nil,
+            meaning: nil,
+            path: .none
+        )
     }
 
     var sourceDescription: String {
         provider.sourceDescription
+    }
+
+    func ensureOverridesFile() {
+        overrideStore.ensureOverridesFile()
+    }
+
+    func setOverride(word: String, meaning: String) {
+        overrideStore.setOverride(word: word, meaning: meaning)
+    }
+
+    func reportMissing(word: String) {
+        overrideStore.appendMissing(word: word)
     }
 
     static func makeProvider() -> DictionaryProvider {
@@ -98,13 +145,19 @@ final class DictionaryManager {
         return nil
     }
 
-    private func resolveMeaning(_ meaning: String, for key: String) -> String? {
+    private func resolveMeaning(_ meaning: String, for key: String) -> (meaning: String, isRedirect: Bool)? {
         let trimmed = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("=") {
-            return resolveRedirect(trimmed, for: key)
+            if let redirected = resolveRedirect(trimmed, for: key) {
+                return (redirected, true)
+            }
+            return nil
         }
 
-        return cleanMeaning(trimmed, for: key)
+        if let cleaned = cleanMeaning(trimmed, for: key) {
+            return (cleaned, false)
+        }
+        return nil
     }
 
     private func resolveRedirect(_ meaning: String, for key: String) -> String? {
@@ -148,5 +201,82 @@ final class DictionaryManager {
             result.removeLast()
         }
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+struct SentenceGlossToken: Identifiable {
+    let id = UUID()
+    let source: String
+    let gloss: String?
+    let isWord: Bool
+
+    var rendered: String {
+        gloss ?? source
+    }
+
+    var isGlossed: Bool {
+        gloss != nil
+    }
+}
+
+struct SentenceGlossResult {
+    let source: String
+    let tokens: [SentenceGlossToken]
+    let wordCount: Int
+    let glossedWordCount: Int
+
+    var text: String {
+        tokens.map(\.rendered).joined()
+    }
+
+    var coverage: Double {
+        guard wordCount > 0 else { return 0 }
+        return Double(glossedWordCount) / Double(wordCount)
+    }
+}
+
+struct SentenceGlossTranslator {
+    private let dictionaryManager: DictionaryManager
+    private let tokenizer: Tokenizer
+
+    init(dictionaryManager: DictionaryManager = .shared, tokenizer: Tokenizer = Tokenizer()) {
+        self.dictionaryManager = dictionaryManager
+        self.tokenizer = tokenizer
+    }
+
+    func gloss(_ sentence: String) -> SentenceGlossResult {
+        let tokens = tokenizer.tokenize(sentence)
+        var glossTokens: [SentenceGlossToken] = []
+        glossTokens.reserveCapacity(tokens.count)
+
+        var wordCount = 0
+        var glossedWordCount = 0
+
+        for token in tokens {
+            if token.isWord {
+                wordCount += 1
+                if let meaning = dictionaryManager.lookup(token.text), !meaning.isEmpty {
+                    glossedWordCount += 1
+                    glossTokens.append(
+                        SentenceGlossToken(source: token.text, gloss: meaning, isWord: true)
+                    )
+                } else {
+                    glossTokens.append(
+                        SentenceGlossToken(source: token.text, gloss: nil, isWord: true)
+                    )
+                }
+            } else {
+                glossTokens.append(
+                    SentenceGlossToken(source: token.text, gloss: nil, isWord: false)
+                )
+            }
+        }
+
+        return SentenceGlossResult(
+            source: sentence,
+            tokens: glossTokens,
+            wordCount: wordCount,
+            glossedWordCount: glossedWordCount
+        )
     }
 }

@@ -38,6 +38,11 @@ Notes:
 
 The app will automatically use the Documents SQLite file if present. Otherwise it uses the bundled `LanguageReader/Resources/dictionary.sqlite`.
 
+## Dictionary Overrides
+- Overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).
+- Missing list: `Documents/dictionary_missing.tsv`.
+- Use Settings -> Dictionary Quality to create the overrides file if needed.
+
 ## Simulator Notes
 - Use Simulator for all testing.
 - If iPhone 14 Pro is unavailable, select the closest recent iPhone runtime.

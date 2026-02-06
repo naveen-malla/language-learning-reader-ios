@@ -8,6 +8,7 @@ struct DocumentReaderView: View {
     let document: Document
 
     @State private var selection: WordSelection?
+    @State private var readerMode: ReaderMode = .word
     @State private var scrollOffset: CGFloat = 0
     @State private var contentHeight: CGFloat = 1
     @State private var viewportHeight: CGFloat = 1
@@ -29,12 +30,20 @@ struct DocumentReaderView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
+                        Group {
+                            if readerMode == .word {
                         TokenizedTextView(text: document.body, onWordTap: { word in
-                            selection = WordSelection(text: word)
+                            let lookup = DictionaryManager.shared.lookupDetailed(word)
+                            selection = WordSelection(text: word, lookup: lookup)
                         }, statusProvider: { word in
                             statusByKey[normalizer.normalize(word)]
                         })
                         .accessibilityLabel("Document text")
+                            } else {
+                                SentenceTextView(text: document.body)
+                                    .accessibilityLabel("Document sentences")
+                            }
+                        }
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 80)
@@ -57,24 +66,41 @@ struct DocumentReaderView: View {
                     viewportHeight = newValue
                 }
 
-                ReaderTopBar(progress: progress, safeTop: proxy.safeAreaInsets.top) {
-                    dismiss()
-                }
+                ReaderTopBar(
+                    progress: progress,
+                    safeTop: proxy.safeAreaInsets.top,
+                    mode: readerMode,
+                    onClose: {
+                        dismiss()
+                    },
+                    onToggleMode: {
+                        readerMode = readerMode == .word ? .sentence : .word
+                    }
+                )
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .sheet(item: $selection) { selected in
-            let meaning = lookupMeaning(for: selected.text)
-            WordDetailSheet(word: selected.text, meaning: meaning) {
-                addToVocab(word: selected.text, meaning: meaning)
-                selection = nil
-            }
+            WordDetailSheet(
+                word: selected.text,
+                meaning: selected.lookup.meaning,
+                diagnostics: selected.lookup,
+                onAdd: {
+                    addToVocab(word: selected.text, meaning: selected.lookup.meaning)
+                    selection = nil
+                },
+                onReportMissing: {
+                    DictionaryManager.shared.reportMissing(word: selected.text)
+                },
+                onSaveOverride: { overrideMeaning in
+                    DictionaryManager.shared.setOverride(word: selected.text, meaning: overrideMeaning)
+                    let refreshed = DictionaryManager.shared.lookupDetailed(selected.text)
+                    selection = WordSelection(text: selected.text, lookup: refreshed)
+                }
+            )
         }
-    }
-
-    private func lookupMeaning(for word: String) -> String? {
-        DictionaryManager.shared.lookup(word)
     }
 
     private func addToVocab(word: String, meaning: String?) {
@@ -101,15 +127,23 @@ struct DocumentReaderView: View {
 
 }
 
+private enum ReaderMode {
+    case word
+    case sentence
+}
+
 private struct WordSelection: Identifiable {
     let id = UUID()
     let text: String
+    let lookup: DictionaryLookupResult
 }
 
 private struct ReaderTopBar: View {
     let progress: Double
     let safeTop: CGFloat
+    let mode: ReaderMode
     let onClose: () -> Void
+    let onToggleMode: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -127,6 +161,18 @@ private struct ReaderTopBar: View {
                     .tint(.green)
                     .disabled(true)
                     .accessibilityHidden(true)
+
+                Button(action: onToggleMode) {
+                    Label(mode == .word ? "Sentences" : "Words",
+                          systemImage: mode == .word ? "text.justify" : "textformat")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+                .accessibilityLabel(mode == .word ? "Switch to sentence view" : "Switch to word view")
+                .accessibilityHint("Changes how the document is displayed")
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)

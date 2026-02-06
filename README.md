@@ -5,6 +5,7 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 ## MVP Scope
 - Paste text into the app and save as a document (initial scope: Kannada).
 - Read the document in a full-bleed reader with a progress slider.
+- Toggle between word-level and sentence-level reading.
 - Word tokens are grouped by sentence for more readable spacing.
 - Add words to vocabulary with basic status tracking (new/learning/known).
 - Color-code words by status in the reader.
@@ -35,6 +36,11 @@ The app uses an offline dictionary for the initial language. A full dictionary i
 ```
 
 This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.sqlite` (bundled in the app). The app prefers a local `Documents/dictionary.sqlite` if one exists, so you can still override by installing a custom dictionary into the app container.
+
+## Dictionary Overrides
+- Enable “Show diagnostics” in Settings to see lookup paths.
+- Local overrides live in `Documents/dictionary_overrides.tsv` (TSV: normalized_key<TAB>meaning).
+- Missing meanings are logged to `Documents/dictionary_missing.tsv`.
 
 ## Known Limitations
 - Dictionary coverage depends on the bundled subset or locally downloaded dataset.

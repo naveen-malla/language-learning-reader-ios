@@ -14,8 +14,8 @@
 
 ## Reader UI
 - Full-bleed reading view (no card container).
-- Top overlay: close button + read-only progress slider.
-- No bottom controls in MVP.
+- Top overlay: close button, read-only progress slider, sentence view toggle.
+- Hide the tab bar while reading to keep focus.
 - Follows system appearance (light/dark).
 
 ## Tokenization
@@ -23,10 +23,16 @@
 - Use NaturalLanguage word tokenization when available.
 - Fallback: split on whitespace and punctuation.
 
+## Sentence Translation (Gloss)
+- Triggered explicitly by user action (no auto-translate).
+- Offline dictionary-based gloss; replaces known words with meanings and preserves punctuation.
+- Label as rough translation; not fully grammatical.
+
 ## Dictionary Normalization
 - Normalize by trimming and lowercasing.
 - If direct lookup fails, try a small set of common Kannada suffix strips (heuristic, not full morphology).
 - Clean dictionary meanings that are redirect-like (values starting with `=`) by resolving a single redirect hop when possible.
+- Optional diagnostics mode shows lookup path (direct/suffix/redirect/override).
 
 ## Color Coding
 - New: blue.
