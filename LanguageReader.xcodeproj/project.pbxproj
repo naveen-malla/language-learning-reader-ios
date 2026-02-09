@@ -22,6 +22,7 @@
 		203405BD555E15738F57C50C /* SentenceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */; };
 		223E545AE32DFF1032F17357 /* SentenceTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */; };
 		2AD2DEAA52F03E217C61D286 /* SentenceInsightsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0BFD3741B04326AA8BE3A6 /* SentenceInsightsBuilder.swift */; };
+		430357B20E9A42393820F59D /* SampleDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CEA19E87BDCA7B44E079C07 /* SampleDocuments.swift */; };
 		44D72F4C2656F66B7F927C4D /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83574C6CA00EEE79873A7D88 /* Document.swift */; };
 		4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */; };
 		55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */; };
@@ -73,6 +74,7 @@
 		1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
+		2CEA19E87BDCA7B44E079C07 /* SampleDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDocuments.swift; sourceTree = "<group>"; };
 		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4DE021185D006A04450A65CE /* TextNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizerTests.swift; sourceTree = "<group>"; };
@@ -210,6 +212,7 @@
 				CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */,
 				1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */,
 				58101E386AAAD669B0E71F82 /* ReaderView.swift */,
+				2CEA19E87BDCA7B44E079C07 /* SampleDocuments.swift */,
 				5D0BFD3741B04326AA8BE3A6 /* SentenceInsightsBuilder.swift */,
 				F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */,
 				E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */,
@@ -331,6 +334,7 @@
 				79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */,
 				C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */,
 				E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */,
+				430357B20E9A42393820F59D /* SampleDocuments.swift in Sources */,
 				2AD2DEAA52F03E217C61D286 /* SentenceInsightsBuilder.swift in Sources */,
 				223E545AE32DFF1032F17357 /* SentenceTextView.swift in Sources */,
 				203405BD555E15738F57C50C /* SentenceTokenizer.swift in Sources */,

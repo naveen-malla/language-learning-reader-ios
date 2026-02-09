@@ -14,6 +14,10 @@
 2. Select an iPhone Simulator (prefer iPhone 14 Pro; otherwise use the newest available).
 3. Build and run.
 
+## Reader Input Notes
+- If simulator keyboard paste is unreliable, use `Paste from Clipboard` in Reader.
+- Two large sample documents are seeded on first launch; open them via Reader -> Documents.
+
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
 2. On iPhone: Settings -> Privacy & Security -> Developer Mode -> On, then restart.

@@ -4,6 +4,7 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 
 ## MVP Scope
 - Paste text into the app and save as a document (initial scope: Kannada).
+- Reader has a direct `Paste from Clipboard` action for simulator/device reliability.
 - Read the document in a full-bleed reader with a progress slider.
 - Toggle between word-level and sentence-level reading using a bottom-center mode button.
 - Word tokens are grouped by sentence for more readable spacing.
@@ -16,6 +17,7 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 - Vocab list with search and status updates.
 - Simple flashcards (Kannada prompt, English meaning reveal).
 - Settings for optional translation API key and dictionary source/licensing info.
+- App seeds two larger Kannada sample documents on first launch for quick testing.
 
 ## Run Instructions
 Prerequisites:

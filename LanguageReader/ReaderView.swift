@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct ReaderView: View {
     @Environment(\.modelContext) private var modelContext
@@ -35,6 +36,24 @@ struct ReaderView: View {
                                 .textInputAutocapitalization(.none)
                                 .autocorrectionDisabled(true)
                                 .accessibilityLabel("Document text")
+                        }
+
+                        HStack(spacing: 12) {
+                            Button {
+                                pasteFromClipboard()
+                            } label: {
+                                Label("Paste from Clipboard", systemImage: "doc.on.clipboard")
+                                    .font(.subheadline)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                loadSampleText()
+                            } label: {
+                                Label("Load Sample", systemImage: "text.badge.plus")
+                                    .font(.subheadline)
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
 
@@ -81,6 +100,22 @@ struct ReaderView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: Date())
+    }
+
+    private func pasteFromClipboard() {
+        guard let pasted = UIPasteboard.general.string?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !pasted.isEmpty else {
+            return
+        }
+
+        bodyText = pasted
+    }
+
+    private func loadSampleText() {
+        guard let sample = SampleDocuments.initial.first else { return }
+        titleText = sample.title
+        bodyText = sample.body
     }
 
 }

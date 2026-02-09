@@ -7,10 +7,13 @@
 - Settings: optional API key, dictionary info/license.
 
 ## Core Flow
-1. Paste text into Reader and save a document.
+1. Paste text into Reader (or use `Paste from Clipboard`) and save a document.
 2. Read with tappable word tokens.
 3. Tap a word to see meaning and add to vocab.
 4. Review/upgrade vocab via Vocab tab or Flashcards.
+
+## Bootstrap Data
+- On first launch, seed two large Kannada sample documents so reader behavior can be tested immediately.
 
 ## Reader UI
 - Full-bleed reading view with a dark, reading-first canvas.
