@@ -17,6 +17,7 @@
 ## Reader Input Notes
 - If simulator keyboard paste is unreliable, use `Paste from Clipboard` in Reader.
 - Two large sample documents are seeded on first launch; open them via Reader -> Documents.
+- In sentence mode, swipe horizontally to move one sentence at a time.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -39,6 +40,8 @@ Notes:
 - Treat tests as strict quality gates, not smoke checks.
 - Every feature should have failure-path and edge-case coverage.
 - When a production issue is observed, add a regression test in the same change.
+- For reader performance issues, confirm sentence/token preprocessing does not rerun on pure scroll updates.
+- Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known-word filtering).
 
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.

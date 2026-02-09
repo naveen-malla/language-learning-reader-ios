@@ -37,4 +37,21 @@ final class SentenceInsightsBuilderTests: XCTestCase {
         XCTAssertEqual(result.words.count, 1)
         XCTAssertEqual(result.words[0].pronunciation, "kannada")
     }
+
+    func testBuildReturnsNoWordsForPunctuationOnlySentence() {
+        let builder = makeBuilder(entries: [:])
+
+        let result = builder.build(for: "..., !!!")
+
+        XCTAssertTrue(result.words.isEmpty)
+    }
+
+    func testBuildDeduplicatesByNormalizedKey() {
+        let builder = makeBuilder(entries: ["home": "home"])
+
+        let result = builder.build(for: "Home home HOME")
+
+        XCTAssertEqual(result.words.count, 1)
+        XCTAssertEqual(result.words[0].normalizedKey, "home")
+    }
 }

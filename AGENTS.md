@@ -21,6 +21,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Add tests for tokenization and vocab status logic.
 - Test quality is a priority from the start: cover edge cases, failure paths, and regressions, not just happy paths.
 - When a bug is found, add a failing test first (or in the same change) before shipping the fix.
+- Prefer behavior-level tests with realistic text fixtures over trivial property assertions.
 
 ## Testing
 - Use iOS Simulator for all runs.

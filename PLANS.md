@@ -13,14 +13,15 @@ Use this file as the first read in a new chat, then read:
 3. `DESIGN.md`
 4. `DECISIONS.md`
 
-## Status Snapshot (2026-02-06)
+## Status Snapshot (2026-02-09)
 Completed:
 - iOS SwiftUI app scaffold with SwiftData models.
 - Tabs: Reader, Vocab, Flashcards, Settings.
 - Document create/save/open flow.
 - Full-screen reader with close action and progress slider.
 - Reader mode toggle in bottom center (Word <-> Sentence).
-- Sentence mode with selectable sentence, translation action, and per-word meaning/pronunciation panel.
+- Sentence mode with horizontal one-sentence paging, translation action, and per-word meaning/pronunciation panel.
+- Sentence panel now hides `known` words to focus on unresolved vocabulary.
 - Word tap sheet with meaning + add to vocab.
 - Sentence mode and word mode in reader.
 - Offline SQLite dictionary integration.
@@ -63,6 +64,7 @@ Goals:
 Tasks:
 - Keep reader full-screen with a minimal top control bar only.
 - Ensure library -> document -> reader transition is smooth.
+- Keep sentence mode as one sentence per horizontal page (stable pager behavior).
 - Improve typography, vertical rhythm, and token spacing.
 - Validate light/dark mode readability.
 

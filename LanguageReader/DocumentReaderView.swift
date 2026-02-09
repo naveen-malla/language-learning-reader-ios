@@ -9,31 +9,32 @@ struct DocumentReaderView: View {
 
     @State private var selection: WordSelection?
     @State private var readerMode: ReaderMode = .word
-    @State private var selectedSentenceID: Int?
+    @State private var sentenceIndex = 0
     @State private var sentenceInsights: SentenceInsights?
     @State private var translatedSentence: String?
     @State private var scrollOffset: CGFloat = 0
     @State private var contentHeight: CGFloat = 1
     @State private var viewportHeight: CGFloat = 1
+    @State private var statusByKey: [String: VocabStatus] = [:]
+    @State private var cachedSentenceBlocks: [SentenceBlock] = []
 
     private let normalizer = TextNormalizer()
     private let sentenceInsightsBuilder = SentenceInsightsBuilder()
     private let sentenceTranslator = SentenceGlossTranslator()
 
-    private var sentenceBlocks: [SentenceBlock] {
-        SentenceTextView.blocks(from: document.body)
+    private var sentenceReaderModel: SentenceReaderModel {
+        SentenceReaderModel(blocks: cachedSentenceBlocks)
     }
 
     private var selectedSentenceBlock: SentenceBlock? {
-        guard let selectedSentenceID else { return nil }
-        return sentenceBlocks.first(where: { $0.id == selectedSentenceID })
-    }
-
-    private var statusByKey: [String: VocabStatus] {
-        Dictionary(uniqueKeysWithValues: vocabEntries.map { ($0.normalizedKey, $0.status) })
+        sentenceReaderModel.sentence(at: sentenceIndex)
     }
 
     private var progress: Double {
+        if readerMode == .sentence {
+            return sentenceReaderModel.progress(for: sentenceIndex)
+        }
+
         let maxOffset = max(contentHeight - viewportHeight, 1)
         let value = Double(-scrollOffset / maxOffset)
         return min(max(value, 0), 1)
@@ -48,61 +49,21 @@ struct DocumentReaderView: View {
             ZStack(alignment: .top) {
                 ReaderBackground()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if readerMode == .word {
-                            TokenizedTextView(
-                                text: document.body,
-                                onWordTap: { word in
-                                    openWordSheet(for: word)
-                                },
-                                statusProvider: { word in
-                                    statusByKey[normalizer.normalize(word)]
-                                }
-                            )
-                            .accessibilityLabel("Document words")
-                        } else {
-                            SentenceTextView(
-                                blocks: sentenceBlocks,
-                                selectedSentenceID: selectedSentenceID,
-                                onSentenceTap: { block in
-                                    selectSentence(block)
-                                }
-                            )
-                            .accessibilityLabel("Document sentences")
-                        }
+                Group {
+                    if readerMode == .word {
+                        wordModeContent(for: proxy)
+                    } else {
+                        sentenceModeContent(for: proxy)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 102)
-                    .padding(.bottom, scrollBottomPadding)
-                    .background(
-                        GeometryReader { contentProxy in
-                            Color.clear
-                                .preference(
-                                    key: ReaderScrollOffsetKey.self,
-                                    value: contentProxy.frame(in: .named("readerScroll")).minY
-                                )
-                                .preference(
-                                    key: ReaderContentHeightKey.self,
-                                    value: contentProxy.size.height
-                                )
-                        }
-                    )
                 }
-                .coordinateSpace(name: "readerScroll")
-                .onPreferenceChange(ReaderScrollOffsetKey.self) { scrollOffset = $0 }
-                .onPreferenceChange(ReaderContentHeightKey.self) { contentHeight = $0 }
-                .onAppear {
-                    viewportHeight = proxy.size.height
-                }
-                .onChange(of: proxy.size.height) { _, newValue in
-                    viewportHeight = newValue
-                }
+                .transition(.slide.combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.22), value: readerMode)
 
                 ReaderTopBar(
                     progress: progress,
                     safeTop: proxy.safeAreaInsets.top,
-                    onClose: { dismiss() }
+                    onClose: { dismiss() },
+                    onSeek: readerMode == .sentence ? { seekSentence(to: $0) } : nil
                 )
             }
             .overlay(alignment: .bottom) {
@@ -111,7 +72,7 @@ struct DocumentReaderView: View {
                         SentenceInsightsPanel(
                             sentence: sentenceInsights.sentence,
                             translatedSentence: translatedSentence,
-                            words: sentenceInsights.words,
+                            words: visibleSentenceWords(from: sentenceInsights),
                             statusForKey: { key in statusByKey[key] },
                             onTranslate: { translateCurrentSentence() },
                             onWordTap: { word in openWordSheet(for: word) }
@@ -132,9 +93,23 @@ struct DocumentReaderView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .onAppear {
+            refreshSentenceBlocks()
+            refreshStatusMap()
+        }
+        .onChange(of: document.body) { _, _ in
+            refreshSentenceBlocks()
+        }
         .onChange(of: readerMode) { _, newMode in
             guard newMode == .sentence else { return }
-            ensureSentenceSelectionIfNeeded()
+            refreshSentenceInsightsForCurrentSentence()
+        }
+        .onChange(of: sentenceIndex) { _, _ in
+            guard readerMode == .sentence else { return }
+            refreshSentenceInsightsForCurrentSentence()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+            refreshStatusMap()
         }
         .sheet(item: $selection) { selected in
             WordDetailSheet(
@@ -159,35 +134,76 @@ struct DocumentReaderView: View {
         }
     }
 
-    private func toggleReaderMode() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            if readerMode == .word {
-                readerMode = .sentence
-                ensureSentenceSelectionIfNeeded()
-            } else {
-                readerMode = .word
+    @ViewBuilder
+    private func wordModeContent(for proxy: GeometryProxy) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                TokenizedTextView(
+                    text: document.body,
+                    onWordTap: { word in
+                        openWordSheet(for: word)
+                    },
+                    statusProvider: { word in
+                        statusByKey[normalizer.normalize(word)]
+                    }
+                )
+                .accessibilityLabel("Document words")
             }
+            .padding(.horizontal, 24)
+            .padding(.top, 102)
+            .padding(.bottom, scrollBottomPadding)
+            .background(
+                GeometryReader { contentProxy in
+                    Color.clear
+                        .preference(
+                            key: ReaderScrollOffsetKey.self,
+                            value: contentProxy.frame(in: .named("readerScroll")).minY
+                        )
+                        .preference(
+                            key: ReaderContentHeightKey.self,
+                            value: contentProxy.size.height
+                        )
+                }
+            )
+        }
+        .coordinateSpace(name: "readerScroll")
+        .onPreferenceChange(ReaderScrollOffsetKey.self) { scrollOffset = $0 }
+        .onPreferenceChange(ReaderContentHeightKey.self) { contentHeight = $0 }
+        .onAppear {
+            viewportHeight = proxy.size.height
+        }
+        .onChange(of: proxy.size.height) { _, newValue in
+            viewportHeight = newValue
         }
     }
 
-    private func ensureSentenceSelectionIfNeeded() {
-        if let selectedSentenceBlock, !selectedSentenceBlock.isEmpty {
-            sentenceInsights = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
-            return
+    @ViewBuilder
+    private func sentenceModeContent(for proxy: GeometryProxy) -> some View {
+        SentencePagerView(
+            sentences: sentenceReaderModel.sentences,
+            sentenceIndex: $sentenceIndex,
+            statusProvider: { word in
+                statusByKey[normalizer.normalize(word)]
+            },
+            onWordTap: { word in
+                openWordSheet(for: word)
+            },
+            topInset: proxy.safeAreaInsets.top + 72,
+            bottomInset: max(proxy.safeAreaInsets.bottom, 12) + 332
+        )
+    }
+
+    private func toggleReaderMode() {
+        let nextMode: ReaderMode = (readerMode == .word) ? .sentence : .word
+        withAnimation(.easeInOut(duration: 0.22)) {
+            readerMode = nextMode
         }
-        guard let firstSentence = sentenceBlocks.first(where: { !$0.isEmpty }) else {
+        if nextMode == .sentence {
+            refreshSentenceInsightsForCurrentSentence()
+        } else {
             sentenceInsights = nil
             translatedSentence = nil
-            return
         }
-        selectSentence(firstSentence)
-    }
-
-    private func selectSentence(_ block: SentenceBlock) {
-        guard !block.isEmpty else { return }
-        selectedSentenceID = block.id
-        sentenceInsights = sentenceInsightsBuilder.build(for: block.text)
-        translatedSentence = nil
     }
 
     private func translateCurrentSentence() {
@@ -201,6 +217,32 @@ struct DocumentReaderView: View {
         if translatedSentence != nil {
             translatedSentence = sentenceTranslator.gloss(selectedSentenceBlock.text).text
         }
+    }
+
+    private func refreshSentenceInsightsForCurrentSentence() {
+        clampSentenceIndex()
+        guard let selectedSentenceBlock else {
+            sentenceInsights = nil
+            translatedSentence = nil
+            return
+        }
+
+        sentenceInsights = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
+        translatedSentence = nil
+    }
+
+    private func clampSentenceIndex() {
+        sentenceIndex = sentenceReaderModel.clampedIndex(sentenceIndex)
+    }
+
+    private func seekSentence(to progress: Double) {
+        let targetIndex = sentenceReaderModel.index(for: progress)
+        guard targetIndex != sentenceIndex else { return }
+        sentenceIndex = targetIndex
+    }
+
+    private func visibleSentenceWords(from insights: SentenceInsights) -> [SentenceWordInsight] {
+        SentencePanelWordFilter.visibleWords(from: insights.words, statusByKey: statusByKey)
     }
 
     private func openWordSheet(for word: String) {
@@ -228,6 +270,16 @@ struct DocumentReaderView: View {
             )
             modelContext.insert(entry)
         }
+
+        refreshStatusMap()
+    }
+
+    private func refreshSentenceBlocks() {
+        cachedSentenceBlocks = SentenceTextView.blocks(from: document.body)
+    }
+
+    private func refreshStatusMap() {
+        statusByKey = Dictionary(uniqueKeysWithValues: vocabEntries.map { ($0.normalizedKey, $0.status) })
     }
 }
 
@@ -257,10 +309,81 @@ private struct ReaderBackground: View {
     }
 }
 
+private struct SentencePagerView: View {
+    let sentences: [SentenceBlock]
+    @Binding var sentenceIndex: Int
+    let statusProvider: (String) -> VocabStatus?
+    let onWordTap: (String) -> Void
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+
+    var body: some View {
+        if sentences.isEmpty {
+            ContentUnavailableView {
+                Label("No sentences found", systemImage: "text.page")
+            } description: {
+                Text("Add punctuation so the reader can split sentence pages.")
+            }
+            .padding(.top, topInset)
+            .padding(.bottom, bottomInset)
+        } else {
+            TabView(selection: $sentenceIndex) {
+                ForEach(Array(sentences.enumerated()), id: \.element.id) { index, block in
+                    SentencePageText(
+                        sentence: block.text,
+                        statusProvider: statusProvider,
+                        onWordTap: onWordTap
+                    )
+                    .tag(index)
+                    .padding(.horizontal, 24)
+                    .padding(.top, topInset)
+                    .padding(.bottom, bottomInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+        }
+    }
+}
+
+private struct SentencePageText: View {
+    let sentence: String
+    let statusProvider: (String) -> VocabStatus?
+    let onWordTap: (String) -> Void
+
+    private let tokenizer = Tokenizer()
+
+    var body: some View {
+        FlowLayout(itemSpacing: 0, lineSpacing: 12) {
+            ForEach(tokenizer.tokenize(sentence)) { token in
+                if token.isWord {
+                    let status = statusProvider(token.text) ?? .new
+                    Button {
+                        onWordTap(token.text)
+                    } label: {
+                        Text(token.text)
+                            .font(.system(size: 24, weight: .regular, design: .rounded))
+                            .foregroundStyle(Theme.statusColor(status))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Word \(token.text), status \(status.displayName)")
+                    .accessibilityHint("Show meaning and add to vocabulary")
+                } else {
+                    Text(token.text)
+                        .font(.system(size: 24, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+    }
+}
+
 private struct ReaderTopBar: View {
     let progress: Double
     let safeTop: CGFloat
     let onClose: () -> Void
+    let onSeek: ((Double) -> Void)?
 
     var body: some View {
         VStack(spacing: 10) {
@@ -273,10 +396,21 @@ private struct ReaderTopBar: View {
                 }
                 .accessibilityLabel("Close reader")
 
-                Slider(value: .constant(progress), in: 0...1)
+                if let onSeek {
+                    Slider(
+                        value: Binding(
+                            get: { progress },
+                            set: { onSeek($0) }
+                        ),
+                        in: 0...1
+                    )
                     .tint(.green)
-                    .disabled(true)
-                    .accessibilityHidden(true)
+                } else {
+                    Slider(value: .constant(progress), in: 0...1)
+                        .tint(.green)
+                        .disabled(true)
+                        .accessibilityHidden(true)
+                }
 
                 Image(systemName: "ellipsis")
                     .font(.headline.weight(.semibold))
@@ -357,7 +491,7 @@ private struct SentenceInsightsPanel: View {
                 .overlay(Color.white.opacity(0.2))
 
             if words.isEmpty {
-                Text("No word meanings found for this sentence yet.")
+                Text("No new or learning words in this sentence.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {

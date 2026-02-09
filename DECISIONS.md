@@ -2,10 +2,18 @@
 
 ## Storage
 - SwiftData for local persistence (documents + vocabulary). Simple, native, and testable.
+- Reader maintains a cached normalized-key status map and refreshes it on lifecycle/save events instead of rebuilding per render.
 
 ## Tokenization
 - NaturalLanguage when available for better word boundaries.
 - Fallback tokenizer to keep behavior deterministic in simulator.
+- Reader precomputes sentence blocks and tokenized sentence blocks when source text changes.
+
+## Reader Interaction Model
+- Word mode remains full-document vertical reading.
+- Sentence mode uses a horizontal one-sentence pager for focused review.
+- Sentence panel omits `known` words to reduce noise and emphasize unresolved vocabulary.
+- Sentence paging/progress/filter logic lives in a small model (`SentenceReaderModel`) so it can be tested without UI harnesses.
 
 ## Dictionary
 - Offline dictionary with indexed lookup for fast taps.

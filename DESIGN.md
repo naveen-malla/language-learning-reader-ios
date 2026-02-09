@@ -22,18 +22,20 @@
 - Hide the app tab bar while reading to keep focus.
 
 ## Sentence Mode UX
-- Sentences are rendered as tappable blocks.
-- Selected sentence is highlighted.
+- Sentence mode is a horizontal pager with one sentence per page.
+- Swiping left/right advances sentence pages.
 - A bottom sentence panel shows:
-  - selected sentence
+  - current sentence
   - translate action (dictionary gloss)
-  - per-word meaning + pronunciation list
-- Tapping a word in the sentence panel opens the word detail sheet.
+  - per-word meaning + pronunciation list for `new`, `learning`, and unseen words
+- Known words are intentionally hidden in the sentence panel list.
+- Tapping a word in the page text or sentence panel opens the word detail sheet.
 
 ## Tokenization
-- Use NaturalLanguage sentence tokenization for layout spacing.
+- Use NaturalLanguage sentence tokenization for sentence-page boundaries and spacing.
 - Use NaturalLanguage word tokenization when available.
 - Fallback: split on whitespace and punctuation.
+- Cache sentence blocks and tokenized sentence blocks when document text changes.
 
 ## Sentence Translation (Gloss)
 - Triggered explicitly by user action (no auto-translate).

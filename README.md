@@ -6,18 +6,21 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 - Paste text into the app and save as a document (initial scope: Kannada).
 - Reader has a direct `Paste from Clipboard` action for simulator/device reliability.
 - Read the document in a full-bleed reader with a progress slider.
-- Toggle between word-level and sentence-level reading using a bottom-center mode button.
+- Toggle between word-level and sentence-level reading using a bottom-center mode button with horizontal transition.
 - Word tokens are grouped by sentence for more readable spacing.
-- In sentence mode, tap a sentence to open a sentence panel with:
-  - sentence text
+- In sentence mode, swipe horizontally through exactly one sentence per page.
+- Sentence panel in sentence mode shows:
+  - current sentence text
   - translate action (dictionary gloss)
-  - word meanings and pronunciation
+  - only `new`/`learning`/unseen words (known words are hidden)
+  - pronunciation + meaning for visible words
 - Add words to vocabulary with basic status tracking (new/learning/known).
 - Color-code words by status in the reader.
 - Vocab list with search and status updates.
 - Simple flashcards (Kannada prompt, English meaning reveal).
 - Settings for optional translation API key and dictionary source/licensing info.
 - App seeds two larger Kannada sample documents on first launch for quick testing.
+- Reader caches sentence splits and word tokenization per document text to keep scrolling responsive.
 
 ## Run Instructions
 Prerequisites:
@@ -54,4 +57,4 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 - Inflected Kannada forms use a small heuristic suffix strip; it won’t cover all morphology.
 - Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
 - Sentence translation is a dictionary gloss, not a full grammar-aware translation engine.
-- Sentence detection uses a lightweight tokenizer; complex punctuation may still need refinement.
+- Sentence detection uses NaturalLanguage sentence boundaries; long/irregular punctuation still needs refinement.

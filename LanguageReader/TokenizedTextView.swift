@@ -7,6 +7,7 @@ struct TokenizedTextView: View {
 
     private let tokenizer = Tokenizer()
     private let sentenceTokenizer = SentenceTokenizer()
+    @State private var cachedBlocks: [TokenizedSentenceBlock] = []
 
     init(
         text: String,
@@ -19,17 +20,15 @@ struct TokenizedTextView: View {
     }
 
     var body: some View {
-        let blocks = sentenceBlocks(from: text)
-
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(blocks) { block in
+            ForEach(cachedBlocks) { block in
                 if block.isEmpty {
                     Text(" ")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityHidden(true)
                 } else {
                     FlowLayout(itemSpacing: 0, lineSpacing: 8) {
-                        ForEach(tokenizer.tokenize(block.text)) { token in
+                        ForEach(block.tokens) { token in
                             if token.isWord {
                                 let status = statusProvider?(token.text) ?? .new
                                 let color = Theme.statusColor(status)
@@ -57,24 +56,47 @@ struct TokenizedTextView: View {
                 }
             }
         }
+        .onAppear {
+            refreshCachedBlocks()
+        }
+        .onChange(of: text) { _, _ in
+            refreshCachedBlocks()
+        }
+    }
+
+    private func refreshCachedBlocks() {
+        let blocks = sentenceBlocks(from: text)
+        cachedBlocks = blocks.map { block in
+            TokenizedSentenceBlock(
+                id: block.id,
+                isEmpty: block.isEmpty,
+                tokens: block.isEmpty ? [] : tokenizer.tokenize(block.text)
+            )
+        }
     }
 
     private func sentenceBlocks(from text: String) -> [TokenSentenceBlock] {
         let paragraphs = text.split(separator: "\n", omittingEmptySubsequences: false)
         var blocks: [TokenSentenceBlock] = []
+        var nextID = 0
 
         for paragraph in paragraphs {
             let value = String(paragraph)
             if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                blocks.append(TokenSentenceBlock(text: "", isEmpty: true))
+                blocks.append(TokenSentenceBlock(id: nextID, text: "", isEmpty: true))
+                nextID += 1
                 continue
             }
 
             let sentences = sentenceTokenizer.sentences(in: value)
             if sentences.isEmpty {
-                blocks.append(TokenSentenceBlock(text: value, isEmpty: false))
+                blocks.append(TokenSentenceBlock(id: nextID, text: value, isEmpty: false))
+                nextID += 1
             } else {
-                blocks.append(contentsOf: sentences.map { TokenSentenceBlock(text: $0, isEmpty: false) })
+                for sentence in sentences {
+                    blocks.append(TokenSentenceBlock(id: nextID, text: sentence, isEmpty: false))
+                    nextID += 1
+                }
             }
         }
 
@@ -84,9 +106,15 @@ struct TokenizedTextView: View {
 }
 
 private struct TokenSentenceBlock: Identifiable {
-    let id = UUID()
+    let id: Int
     let text: String
     let isEmpty: Bool
+}
+
+private struct TokenizedSentenceBlock: Identifiable {
+    let id: Int
+    let isEmpty: Bool
+    let tokens: [Token]
 }
 
 #Preview {
