@@ -5,8 +5,12 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 ## MVP Scope
 - Paste text into the app and save as a document (initial scope: Kannada).
 - Read the document in a full-bleed reader with a progress slider.
-- Toggle between word-level and sentence-level reading.
+- Toggle between word-level and sentence-level reading using a bottom-center mode button.
 - Word tokens are grouped by sentence for more readable spacing.
+- In sentence mode, tap a sentence to open a sentence panel with:
+  - sentence text
+  - translate action (dictionary gloss)
+  - word meanings and pronunciation
 - Add words to vocabulary with basic status tracking (new/learning/known).
 - Color-code words by status in the reader.
 - Vocab list with search and status updates.
@@ -47,4 +51,5 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 - Translation API is optional and not required for the MVP.
 - Inflected Kannada forms use a small heuristic suffix strip; it won’t cover all morphology.
 - Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
+- Sentence translation is a dictionary gloss, not a full grammar-aware translation engine.
 - Sentence detection uses a lightweight tokenizer; complex punctuation may still need refinement.

@@ -19,6 +19,8 @@ Completed:
 - Tabs: Reader, Vocab, Flashcards, Settings.
 - Document create/save/open flow.
 - Full-screen reader with close action and progress slider.
+- Reader mode toggle in bottom center (Word <-> Sentence).
+- Sentence mode with selectable sentence, translation action, and per-word meaning/pronunciation panel.
 - Word tap sheet with meaning + add to vocab.
 - Sentence mode and word mode in reader.
 - Offline SQLite dictionary integration.

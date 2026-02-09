@@ -1,45 +1,66 @@
 import SwiftUI
 
-struct SentenceTextView: View {
+struct SentenceBlock: Identifiable, Hashable {
+    let id: Int
     let text: String
+    let isEmpty: Bool
+}
 
-    private let sentenceTokenizer = SentenceTokenizer()
+struct SentenceTextView: View {
+    let blocks: [SentenceBlock]
+    let selectedSentenceID: Int?
+    let onSentenceTap: (SentenceBlock) -> Void
 
     var body: some View {
-        let blocks = sentenceBlocks(from: text)
-
         VStack(alignment: .leading, spacing: 12) {
             ForEach(blocks) { block in
                 if block.isEmpty {
-                    Text(" ")
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Color.clear
+                        .frame(height: 12)
                         .accessibilityHidden(true)
                 } else {
+                    let isSelected = block.id == selectedSentenceID
                     Text(block.text)
-                        .font(.body)
-                        .foregroundStyle(.primary)
+                        .font(.system(size: 18, weight: .regular, design: .rounded))
+                        .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.78))
+                        .lineSpacing(6)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, isSelected ? 12 : 8)
+                        .padding(.horizontal, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(isSelected ? Color.white.opacity(0.08) : Color.clear)
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .onTapGesture {
+                            onSentenceTap(block)
+                        }
+                        .accessibilityLabel("Sentence \(block.id + 1)")
+                        .accessibilityHint("Show sentence details and translation")
                 }
             }
         }
     }
 
-    private func sentenceBlocks(from text: String) -> [SentenceBlock] {
+    static func blocks(from text: String, tokenizer: SentenceTokenizer = SentenceTokenizer()) -> [SentenceBlock] {
         let paragraphs = text.split(separator: "\n", omittingEmptySubsequences: false)
         var blocks: [SentenceBlock] = []
+        blocks.reserveCapacity(paragraphs.count)
 
         for paragraph in paragraphs {
             let value = String(paragraph)
             if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                blocks.append(SentenceBlock(text: "", isEmpty: true))
+                blocks.append(SentenceBlock(id: blocks.count, text: "", isEmpty: true))
                 continue
             }
 
-            let sentences = sentenceTokenizer.sentences(in: value)
+            let sentences = tokenizer.sentences(in: value)
             if sentences.isEmpty {
-                blocks.append(SentenceBlock(text: value, isEmpty: false))
+                blocks.append(SentenceBlock(id: blocks.count, text: value, isEmpty: false))
             } else {
-                blocks.append(contentsOf: sentences.map { SentenceBlock(text: $0, isEmpty: false) })
+                for sentence in sentences {
+                    blocks.append(SentenceBlock(id: blocks.count, text: sentence, isEmpty: false))
+                }
             }
         }
 
@@ -47,16 +68,14 @@ struct SentenceTextView: View {
     }
 }
 
-private struct SentenceBlock: Identifiable {
-    let id = UUID()
-    let text: String
-    let isEmpty: Bool
-}
-
 #Preview {
     ZStack {
-        AppBackground()
-        SentenceTextView(text: "ನಮಸ್ಕಾರ, ಇದು ಪರೀಕ್ಷಾ ಪಠ್ಯ.\n\nಇದು ಎರಡನೇ ಪರಿಚ್ಛೇದ.")
-            .padding()
+        Color.black.ignoresSafeArea()
+        SentenceTextView(
+            blocks: SentenceTextView.blocks(from: "ನಮಸ್ಕಾರ. ಇದು ಪರೀಕ್ಷೆ.\n\nಮೂರನೇ ವಾಕ್ಯ."),
+            selectedSentenceID: 1,
+            onSentenceTap: { _ in }
+        )
+        .padding()
     }
 }

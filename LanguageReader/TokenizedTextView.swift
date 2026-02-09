@@ -59,22 +59,22 @@ struct TokenizedTextView: View {
         }
     }
 
-    private func sentenceBlocks(from text: String) -> [SentenceBlock] {
+    private func sentenceBlocks(from text: String) -> [TokenSentenceBlock] {
         let paragraphs = text.split(separator: "\n", omittingEmptySubsequences: false)
-        var blocks: [SentenceBlock] = []
+        var blocks: [TokenSentenceBlock] = []
 
         for paragraph in paragraphs {
             let value = String(paragraph)
             if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                blocks.append(SentenceBlock(text: "", isEmpty: true))
+                blocks.append(TokenSentenceBlock(text: "", isEmpty: true))
                 continue
             }
 
             let sentences = sentenceTokenizer.sentences(in: value)
             if sentences.isEmpty {
-                blocks.append(SentenceBlock(text: value, isEmpty: false))
+                blocks.append(TokenSentenceBlock(text: value, isEmpty: false))
             } else {
-                blocks.append(contentsOf: sentences.map { SentenceBlock(text: $0, isEmpty: false) })
+                blocks.append(contentsOf: sentences.map { TokenSentenceBlock(text: $0, isEmpty: false) })
             }
         }
 
@@ -83,7 +83,7 @@ struct TokenizedTextView: View {
 
 }
 
-private struct SentenceBlock: Identifiable {
+private struct TokenSentenceBlock: Identifiable {
     let id = UUID()
     let text: String
     let isEmpty: Bool

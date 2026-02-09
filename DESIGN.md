@@ -13,10 +13,19 @@
 4. Review/upgrade vocab via Vocab tab or Flashcards.
 
 ## Reader UI
-- Full-bleed reading view (no card container).
-- Top overlay: close button, read-only progress slider, sentence view toggle.
-- Hide the tab bar while reading to keep focus.
-- Follows system appearance (light/dark).
+- Full-bleed reading view with a dark, reading-first canvas.
+- Top overlay: close button + read-only progress slider.
+- Bottom-center mode button toggles between Word mode and Sentence mode.
+- Hide the app tab bar while reading to keep focus.
+
+## Sentence Mode UX
+- Sentences are rendered as tappable blocks.
+- Selected sentence is highlighted.
+- A bottom sentence panel shows:
+  - selected sentence
+  - translate action (dictionary gloss)
+  - per-word meaning + pronunciation list
+- Tapping a word in the sentence panel opens the word detail sheet.
 
 ## Tokenization
 - Use NaturalLanguage sentence tokenization for layout spacing.

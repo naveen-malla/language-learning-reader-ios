@@ -21,15 +21,18 @@
 		1DB504FA3214E1640288FFA5 /* DictionaryPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */; };
 		203405BD555E15738F57C50C /* SentenceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */; };
 		223E545AE32DFF1032F17357 /* SentenceTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */; };
+		2AD2DEAA52F03E217C61D286 /* SentenceInsightsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0BFD3741B04326AA8BE3A6 /* SentenceInsightsBuilder.swift */; };
 		44D72F4C2656F66B7F927C4D /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83574C6CA00EEE79873A7D88 /* Document.swift */; };
 		4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */; };
 		55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */; };
 		5D41AF565DCA3C97F01BF119 /* TransliteratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */; };
+		6FF9A26BDB13C219CD1C9785 /* SentenceInsightsBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6003B699E24F2AEBFD59B2 /* SentenceInsightsBuilderTests.swift */; };
 		7412827BD938D5A0880F5AC1 /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE021185D006A04450A65CE /* TextNormalizerTests.swift */; };
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
 		954207AF9CAB12581ECA0A60 /* dictionary.sqlite in Resources */ = {isa = PBXBuildFile; fileRef = 0BF21C18FC77B36CEB2B8259 /* dictionary.sqlite */; };
 		9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */; };
+		9AB0AD59D3D5E801C1852FDC /* SentenceTextViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8736E0ADBC10C12AD5381652 /* SentenceTextViewTests.swift */; };
 		9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63D640A38A99377FD7B8064C /* Assets.xcassets */; };
 		A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F25B5E93FBC962853030C5C /* Tokenizer.swift */; };
 		A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A941E9D128F013645480702D /* LanguageReaderTests.swift */; };
@@ -78,6 +81,7 @@
 		58101E386AAAD669B0E71F82 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
 		5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryPaths.swift; sourceTree = "<group>"; };
+		5D0BFD3741B04326AA8BE3A6 /* SentenceInsightsBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceInsightsBuilder.swift; sourceTree = "<group>"; };
 		5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryManagerTests.swift; sourceTree = "<group>"; };
 		5D361AD9762B749101E84012 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 		61C1D8AC10E692481F04C1E3 /* Transliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transliterator.swift; sourceTree = "<group>"; };
@@ -85,6 +89,7 @@
 		63D640A38A99377FD7B8064C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerTests.swift; sourceTree = "<group>"; };
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
+		8736E0ADBC10C12AD5381652 /* SentenceTextViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTextViewTests.swift; sourceTree = "<group>"; };
 		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
 		94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransliteratorTests.swift; sourceTree = "<group>"; };
 		9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabView.swift; sourceTree = "<group>"; };
@@ -106,6 +111,7 @@
 		F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteDictionaryProvider.swift; sourceTree = "<group>"; };
 		F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTextView.swift; sourceTree = "<group>"; };
 		FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordDetailSheet.swift; sourceTree = "<group>"; };
+		FF6003B699E24F2AEBFD59B2 /* SentenceInsightsBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceInsightsBuilderTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +152,8 @@
 				1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */,
 				97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */,
 				A941E9D128F013645480702D /* LanguageReaderTests.swift */,
+				FF6003B699E24F2AEBFD59B2 /* SentenceInsightsBuilderTests.swift */,
+				8736E0ADBC10C12AD5381652 /* SentenceTextViewTests.swift */,
 				ACE6AA91863EF9905618C4FF /* SentenceTokenizerTests.swift */,
 				4DE021185D006A04450A65CE /* TextNormalizerTests.swift */,
 				A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */,
@@ -202,6 +210,7 @@
 				CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */,
 				1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */,
 				58101E386AAAD669B0E71F82 /* ReaderView.swift */,
+				5D0BFD3741B04326AA8BE3A6 /* SentenceInsightsBuilder.swift */,
 				F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */,
 				E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */,
 				1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */,
@@ -322,6 +331,7 @@
 				79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */,
 				C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */,
 				E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */,
+				2AD2DEAA52F03E217C61D286 /* SentenceInsightsBuilder.swift in Sources */,
 				223E545AE32DFF1032F17357 /* SentenceTextView.swift in Sources */,
 				203405BD555E15738F57C50C /* SentenceTokenizer.swift in Sources */,
 				F08370466FE321BD07ECF5F4 /* SettingsView.swift in Sources */,
@@ -344,6 +354,8 @@
 				FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */,
 				ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */,
 				A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */,
+				6FF9A26BDB13C219CD1C9785 /* SentenceInsightsBuilderTests.swift in Sources */,
+				9AB0AD59D3D5E801C1852FDC /* SentenceTextViewTests.swift in Sources */,
 				E5D848B321EF2FA5FFE665B6 /* SentenceTokenizerTests.swift in Sources */,
 				7412827BD938D5A0880F5AC1 /* TextNormalizerTests.swift in Sources */,
 				0B1232093177257140447957 /* TokenizerEdgeCasesTests.swift in Sources */,
