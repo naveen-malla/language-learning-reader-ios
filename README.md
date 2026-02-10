@@ -36,6 +36,7 @@ CLI (once project exists):
 - List simulators: `xcrun simctl list`
 - Boot simulator: `open -a Simulator`
 - Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
+- Guard repository hygiene (main-only): `./scripts/guard_main.sh`
 
 ## Dictionary Data
 The app uses an offline dictionary for the initial language. A full dictionary is bundled in the app for Kannada so device updates do not require re-downloading.

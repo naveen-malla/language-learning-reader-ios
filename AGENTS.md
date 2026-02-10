@@ -34,6 +34,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Test: `./scripts/test.sh`
 - Build bundled dictionary: `./scripts/build_dictionary.py`
 - Install dictionary into simulator: `./scripts/install_dictionary.sh`
+- Repo hygiene guard (main-only check/cleanup): `./scripts/guard_main.sh`
 
 ## Project Generation
 - If source files are added or removed, run `xcodegen generate`.

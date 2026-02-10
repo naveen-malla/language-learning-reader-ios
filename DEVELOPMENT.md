@@ -36,6 +36,11 @@ Notes:
 - Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
 - Run tests: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
 
+## Repo Hygiene
+- Check main-only state (no extra branches/worktrees): `./scripts/guard_main.sh`
+- Enforce cleanup to main-only state: `./scripts/guard_main.sh --cleanup`
+- If you intentionally have local edits and still want cleanup: `./scripts/guard_main.sh --cleanup --allow-dirty`
+
 ## Testing Standard
 - Treat tests as strict quality gates, not smoke checks.
 - Every feature should have failure-path and edge-case coverage.
