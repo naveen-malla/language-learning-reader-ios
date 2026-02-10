@@ -18,6 +18,10 @@
 - If simulator keyboard paste is unreliable, use `Paste from Clipboard` in Reader.
 - Two large sample documents are seeded on first launch; open them via Reader -> Documents.
 - In sentence mode, swipe horizontally to move one sentence at a time.
+- Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
+- Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
+- Sentence header text is reduced to `30pt` and uses token-level highlight colors.
+- Translation text is wrapped inside a fixed-height scrollable area below the translate action.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -46,7 +50,16 @@ Notes:
 - Every feature should have failure-path and edge-case coverage.
 - When a production issue is observed, add a regression test in the same change.
 - For reader performance issues, confirm sentence/token preprocessing does not rerun on pure scroll updates.
-- Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known-word filtering).
+- Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known+ignored filtering).
+- Manual reader checks after sentence-mode changes:
+  - confirm sentence appears once per page (no duplicate overlay card)
+  - confirm translate action and unresolved word list are visible in the same page
+  - confirm tapping a listed word still opens the word detail sheet
+  - confirm the same word uses the same highlight state in text view and sentence view
+  - confirm new-word quick actions exist (`+`, `✓`, `delete`) and apply immediately
+  - confirm learning rows show `L1-L4` badges
+  - confirm vocab and flashcards expose direct one-tap controls (`1 2 3 4 Known`) with no dropdowns
+  - confirm flashcard review pool excludes `Known`
 
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.

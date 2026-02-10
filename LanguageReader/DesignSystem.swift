@@ -6,14 +6,21 @@ enum Theme {
     static let canvas = Color(.systemGroupedBackground)
     static let shadow = Color.black.opacity(0.08)
 
+    static let newHighlight = Color.blue
+    static let learningHighlight = Color.green
+
     static func statusColor(_ status: VocabStatus) -> Color {
-        switch status {
+        status.isKnown ? .gray : learningHighlight
+    }
+
+    static func wordHighlightColor(_ state: WordLearningVisualState) -> Color {
+        switch state {
         case .new:
-            return .blue
+            return newHighlight
         case .learning:
-            return .yellow
-        case .known:
-            return .gray
+            return learningHighlight
+        case .known, .ignored:
+            return .primary
         }
     }
 }

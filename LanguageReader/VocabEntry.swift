@@ -2,27 +2,55 @@ import Foundation
 import SwiftData
 
 enum VocabStatus: String, Codable, CaseIterable {
-    case new
-    case learning
+    case level1
+    case level2
+    case level3
+    case level4
     case known
 
     var displayName: String {
         switch self {
-        case .new:
-            return "New"
-        case .learning:
-            return "Learning"
+        case .level1:
+            return "Level 1"
+        case .level2:
+            return "Level 2"
+        case .level3:
+            return "Level 3"
+        case .level4:
+            return "Level 4"
         case .known:
             return "Known"
         }
     }
 
+    var shortLabel: String {
+        switch self {
+        case .level1:
+            return "1"
+        case .level2:
+            return "2"
+        case .level3:
+            return "3"
+        case .level4:
+            return "4"
+        case .known:
+            return "Known"
+        }
+    }
+
+    var levelBadgeLabel: String {
+        switch self {
+        case .known:
+            return "Known"
+        case .level1, .level2, .level3, .level4:
+            return "L\(shortLabel)"
+        }
+    }
+
     var colorName: String {
         switch self {
-        case .new:
-            return "blue"
-        case .learning:
-            return "yellow"
+        case .level1, .level2, .level3, .level4:
+            return "green"
         case .known:
             return "gray"
         }
@@ -30,13 +58,59 @@ enum VocabStatus: String, Codable, CaseIterable {
 
     var next: VocabStatus {
         switch self {
-        case .new:
-            return .learning
-        case .learning:
+        case .level1:
+            return .level2
+        case .level2:
+            return .level3
+        case .level3:
+            return .level4
+        case .level4:
             return .known
         case .known:
-            return .new
+            return .level1
         }
+    }
+
+    var isKnown: Bool {
+        self == .known
+    }
+
+    var isLearning: Bool {
+        self != .known
+    }
+
+    static let learningLevels: [VocabStatus] = [.level1, .level2, .level3, .level4]
+    static let progression: [VocabStatus] = [.level1, .level2, .level3, .level4, .known]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+
+        switch rawValue {
+        case "new":
+            self = .level1
+        case "learning":
+            self = .level2
+        case "known":
+            self = .known
+        case VocabStatus.level1.rawValue:
+            self = .level1
+        case VocabStatus.level2.rawValue:
+            self = .level2
+        case VocabStatus.level3.rawValue:
+            self = .level3
+        case VocabStatus.level4.rawValue:
+            self = .level4
+        case VocabStatus.known.rawValue:
+            self = .known
+        default:
+            self = .level1
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }
 
@@ -55,7 +129,7 @@ final class VocabEntry {
         word: String,
         normalizedKey: String,
         meaning: String,
-        status: VocabStatus = .new,
+        status: VocabStatus = .level1,
         createdAt: Date = Date(),
         lastSeenAt: Date = Date(),
         encounterCount: Int = 1

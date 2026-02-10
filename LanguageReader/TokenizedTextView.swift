@@ -3,7 +3,7 @@ import SwiftUI
 struct TokenizedTextView: View {
     let text: String
     let onWordTap: (String) -> Void
-    let statusProvider: ((String) -> VocabStatus?)?
+    let learningStateProvider: ((String) -> WordLearningVisualState)?
 
     private let tokenizer = Tokenizer()
     private let sentenceTokenizer = SentenceTokenizer()
@@ -12,11 +12,11 @@ struct TokenizedTextView: View {
     init(
         text: String,
         onWordTap: @escaping (String) -> Void,
-        statusProvider: ((String) -> VocabStatus?)? = nil
+        learningStateProvider: ((String) -> WordLearningVisualState)? = nil
     ) {
         self.text = text
         self.onWordTap = onWordTap
-        self.statusProvider = statusProvider
+        self.learningStateProvider = learningStateProvider
     }
 
     var body: some View {
@@ -30,8 +30,8 @@ struct TokenizedTextView: View {
                     FlowLayout(itemSpacing: 0, lineSpacing: 8) {
                         ForEach(block.tokens) { token in
                             if token.isWord {
-                                let status = statusProvider?(token.text) ?? .new
-                                let color = Theme.statusColor(status)
+                                let state = learningStateProvider?(token.text) ?? .new
+                                let color = Theme.wordHighlightColor(state)
 
                                 Button {
                                     onWordTap(token.text)
@@ -42,7 +42,7 @@ struct TokenizedTextView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .contentShape(Rectangle())
-                                .accessibilityLabel("Word \(token.text), status \(status.displayName)")
+                                .accessibilityLabel("Word \(token.text), status \(state.accessibilityLabel)")
                                 .accessibilityHint("Show meaning and add to vocabulary")
                             } else {
                                 Text(token.text)

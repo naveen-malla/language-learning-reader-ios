@@ -10,7 +10,7 @@
 1. Paste text into Reader (or use `Paste from Clipboard`) and save a document.
 2. Read with tappable word tokens.
 3. Tap a word to see meaning and add to vocab.
-4. Review/upgrade vocab via Vocab tab or Flashcards.
+4. Classify and review words with direct `1 2 3 4 Known` controls in Vocab and Flashcards.
 
 ## Bootstrap Data
 - On first launch, seed two large Kannada sample documents so reader behavior can be tested immediately.
@@ -24,13 +24,17 @@
 ## Sentence Mode UX
 - Sentence mode is a horizontal pager with one sentence per page.
 - Swiping left/right advances sentence pages.
-- A bottom sentence panel shows:
-  - current sentence
-  - translate action (dictionary gloss)
-  - per-word meaning + pronunciation list for `new`, `learning`, and unseen words
-- Known words are intentionally hidden in the sentence panel list.
-- Tapping a word in the page text or sentence panel opens the word detail sheet.
-- Sentence panel content refreshes when the document text changes.
+- Each sentence page integrates details in a single flow:
+  - one centered sentence shown once (no duplicate sentence overlay), tokenized and color-coded
+  - translate action (dictionary gloss) directly under the sentence
+  - wrapped translation text in a fixed-height scroll area
+  - per-word meaning + pronunciation list for unresolved words
+- Sentence header text uses a reduced large type size (`30pt`) for better balance with details below.
+- Known and ignored words are intentionally hidden in the in-page sentence word list.
+- New rows expose direct actions: `+` (add Level 1), `✓` (mark Known), and `delete` (ignore).
+- Learning rows show compact `L1/L2/L3/L4` badges.
+- Tapping a word in the sentence word list opens the word detail sheet.
+- Sentence details refresh when the selected sentence or document text changes.
 
 ## Tokenization
 - Use NaturalLanguage sentence tokenization for sentence-page boundaries and spacing.
@@ -50,13 +54,15 @@
 - Optional diagnostics mode shows lookup path (direct/suffix/redirect/override).
 
 ## Color Coding
-- New: blue.
-- Learning: yellow.
-- Known: gray.
+- New (untracked): blue highlight.
+- Learning (`L1-L4`): green highlight.
+- Known: primary text color (no highlight).
+- Ignored: hidden from sentence unresolved list and treated as non-highlighted.
 
 ## Data Model (V1)
 - Document: id, title, body, createdAt, updatedAt.
-- VocabEntry: id, surface, normalizedKey, meaning, status, createdAt, lastSeenAt, encounterCount.
+- VocabEntry: id, surface, normalizedKey, meaning, status (`level1`,`level2`,`level3`,`level4`,`known`), createdAt, lastSeenAt, encounterCount.
+- IgnoredWordsStore: persistent normalized-word key set in `UserDefaults` used by sentence filtering and highlight resolution.
 
 ## Dictionary
 - Offline, fast lookup.

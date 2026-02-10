@@ -7,7 +7,7 @@ struct FlashcardsView: View {
     @State private var currentIndex = 0
 
     private var availableEntries: [VocabEntry] {
-        entries
+        FlashcardDeck.reviewEntries(from: entries)
     }
 
     private var currentEntry: VocabEntry? {
@@ -30,6 +30,13 @@ struct FlashcardsView: View {
                                 .bold()
                                 .multilineTextAlignment(.center)
 
+                            Text(entry.status.levelBadgeLabel)
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .foregroundStyle(.white)
+                                .background(Theme.learningHighlight.opacity(0.85), in: Capsule())
+
                             if isRevealed {
                                 Text(entry.meaning.isEmpty ? "No meaning yet." : entry.meaning)
                                     .font(.title3)
@@ -50,22 +57,25 @@ struct FlashcardsView: View {
                         .accessibilityLabel("Flashcard")
                         .accessibilityHint("Tap to reveal meaning")
 
-                        HStack(spacing: 16) {
-                            Button {
-                                mark(entry: entry, status: .learning)
-                            } label: {
-                                Text("Still Learning")
-                                    .frame(maxWidth: .infinity)
+                        HStack(spacing: 8) {
+                            ForEach(VocabStatus.progression, id: \.rawValue) { status in
+                                Button {
+                                    setLevel(entry: entry, status: status)
+                                } label: {
+                                    Text(status.shortLabel)
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, status.isKnown ? 10 : 12)
+                                        .padding(.vertical, 8)
+                                        .foregroundStyle(foregroundColor(for: status, current: entry.status))
+                                        .background(backgroundColor(for: status, current: entry.status), in: Capsule())
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(borderColor(for: status, current: entry.status), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Set level \(status.displayName)")
                             }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                mark(entry: entry, status: .known)
-                            } label: {
-                                Text("Mark Known")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
                         }
                     } else {
                         ContentUnavailableView {
@@ -85,7 +95,7 @@ struct FlashcardsView: View {
         }
     }
 
-    private func mark(entry: VocabEntry, status: VocabStatus) {
+    private func setLevel(entry: VocabEntry, status: VocabStatus) {
         entry.status = status
         entry.lastSeenAt = Date()
         entry.encounterCount += 1
@@ -95,8 +105,32 @@ struct FlashcardsView: View {
 
     private func advance() {
         let count = availableEntries.count
-        guard count > 0 else { return }
+        guard count > 0 else {
+            currentIndex = 0
+            return
+        }
         currentIndex = FlashcardNavigator.nextIndex(current: currentIndex, count: count)
+    }
+
+    private func foregroundColor(for status: VocabStatus, current: VocabStatus) -> Color {
+        if status == current {
+            return .white
+        }
+        return status.isKnown ? .gray : Theme.learningHighlight
+    }
+
+    private func backgroundColor(for status: VocabStatus, current: VocabStatus) -> Color {
+        if status == current {
+            return status.isKnown ? Color.gray.opacity(0.75) : Theme.learningHighlight.opacity(0.85)
+        }
+        return status.isKnown ? Color.gray.opacity(0.12) : Theme.learningHighlight.opacity(0.12)
+    }
+
+    private func borderColor(for status: VocabStatus, current: VocabStatus) -> Color {
+        if status == current {
+            return .clear
+        }
+        return status.isKnown ? Color.gray.opacity(0.7) : Theme.learningHighlight.opacity(0.75)
     }
 }
 

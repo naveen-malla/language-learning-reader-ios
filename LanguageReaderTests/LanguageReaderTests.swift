@@ -18,7 +18,7 @@ final class LanguageReaderTests: XCTestCase {
         XCTAssertEqual(entry.word, "Hello")
         XCTAssertEqual(entry.normalizedKey, "hello")
         XCTAssertEqual(entry.meaning, "hi")
-        XCTAssertEqual(entry.status, .new)
+        XCTAssertEqual(entry.status, .level1)
         XCTAssertEqual(entry.encounterCount, 1)
     }
 
@@ -29,13 +29,13 @@ final class LanguageReaderTests: XCTestCase {
             word: "ಮನೆ",
             normalizedKey: "ಮನೆ",
             meaning: "house",
-            status: .learning,
+            status: .level2,
             createdAt: createdAt,
             lastSeenAt: lastSeenAt,
             encounterCount: 7
         )
 
-        XCTAssertEqual(entry.status, .learning)
+        XCTAssertEqual(entry.status, .level2)
         XCTAssertEqual(entry.createdAt, createdAt)
         XCTAssertEqual(entry.lastSeenAt, lastSeenAt)
         XCTAssertEqual(entry.encounterCount, 7)

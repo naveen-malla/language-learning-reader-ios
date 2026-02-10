@@ -36,8 +36,14 @@ struct SentenceReaderModel {
 enum SentencePanelWordFilter {
     static func visibleWords(
         from words: [SentenceWordInsight],
-        statusByKey: [String: VocabStatus]
+        statusByKey: [String: VocabStatus],
+        ignoredKeys: Set<String>
     ) -> [SentenceWordInsight] {
-        words.filter { statusByKey[$0.normalizedKey] != .known }
+        words.filter { word in
+            if ignoredKeys.contains(word.normalizedKey) {
+                return false
+            }
+            return statusByKey[word.normalizedKey]?.isKnown != true
+        }
     }
 }

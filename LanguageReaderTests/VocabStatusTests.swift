@@ -3,53 +3,75 @@ import XCTest
 
 final class VocabStatusTests: XCTestCase {
     func testDisplayNames() {
-        XCTAssertEqual(VocabStatus.new.displayName, "New")
-        XCTAssertEqual(VocabStatus.learning.displayName, "Learning")
+        XCTAssertEqual(VocabStatus.level1.displayName, "Level 1")
+        XCTAssertEqual(VocabStatus.level2.displayName, "Level 2")
+        XCTAssertEqual(VocabStatus.level3.displayName, "Level 3")
+        XCTAssertEqual(VocabStatus.level4.displayName, "Level 4")
         XCTAssertEqual(VocabStatus.known.displayName, "Known")
     }
 
+    func testShortLabels() {
+        XCTAssertEqual(VocabStatus.level1.shortLabel, "1")
+        XCTAssertEqual(VocabStatus.level2.shortLabel, "2")
+        XCTAssertEqual(VocabStatus.level3.shortLabel, "3")
+        XCTAssertEqual(VocabStatus.level4.shortLabel, "4")
+        XCTAssertEqual(VocabStatus.known.shortLabel, "Known")
+    }
+
     func testColorNames() {
-        XCTAssertEqual(VocabStatus.new.colorName, "blue")
-        XCTAssertEqual(VocabStatus.learning.colorName, "yellow")
+        XCTAssertEqual(VocabStatus.level1.colorName, "green")
+        XCTAssertEqual(VocabStatus.level2.colorName, "green")
+        XCTAssertEqual(VocabStatus.level3.colorName, "green")
+        XCTAssertEqual(VocabStatus.level4.colorName, "green")
         XCTAssertEqual(VocabStatus.known.colorName, "gray")
     }
 
     func testStatusCycle() {
-        XCTAssertEqual(VocabStatus.new.next, .learning)
-        XCTAssertEqual(VocabStatus.learning.next, .known)
-        XCTAssertEqual(VocabStatus.known.next, .new)
+        XCTAssertEqual(VocabStatus.level1.next, .level2)
+        XCTAssertEqual(VocabStatus.level2.next, .level3)
+        XCTAssertEqual(VocabStatus.level3.next, .level4)
+        XCTAssertEqual(VocabStatus.level4.next, .known)
+        XCTAssertEqual(VocabStatus.known.next, .level1)
     }
 
     func testStatusCycleCompleteness() {
-        let start = VocabStatus.new
+        let start = VocabStatus.level1
         let afterOne = start.next
         let afterTwo = afterOne.next
         let afterThree = afterTwo.next
-        XCTAssertEqual(afterThree, start)
+        let afterFour = afterThree.next
+        let afterFive = afterFour.next
+        XCTAssertEqual(afterFive, start)
     }
 
     func testAllCasesContainsAllStatuses() {
-        XCTAssertEqual(VocabStatus.allCases.count, 3)
-        XCTAssertTrue(VocabStatus.allCases.contains(.new))
-        XCTAssertTrue(VocabStatus.allCases.contains(.learning))
+        XCTAssertEqual(VocabStatus.allCases.count, 5)
+        XCTAssertEqual(VocabStatus.progression.count, 5)
+        XCTAssertEqual(VocabStatus.learningLevels, [.level1, .level2, .level3, .level4])
+        XCTAssertTrue(VocabStatus.allCases.contains(.level1))
+        XCTAssertTrue(VocabStatus.allCases.contains(.level2))
+        XCTAssertTrue(VocabStatus.allCases.contains(.level3))
+        XCTAssertTrue(VocabStatus.allCases.contains(.level4))
         XCTAssertTrue(VocabStatus.allCases.contains(.known))
     }
 
     func testStatusRawValues() {
-        XCTAssertEqual(VocabStatus.new.rawValue, "new")
-        XCTAssertEqual(VocabStatus.learning.rawValue, "learning")
+        XCTAssertEqual(VocabStatus.level1.rawValue, "level1")
+        XCTAssertEqual(VocabStatus.level2.rawValue, "level2")
+        XCTAssertEqual(VocabStatus.level3.rawValue, "level3")
+        XCTAssertEqual(VocabStatus.level4.rawValue, "level4")
         XCTAssertEqual(VocabStatus.known.rawValue, "known")
     }
 
-    func testDisplayAndColorMappingsAreUniquePerStatus() {
+    func testDisplayAndColorMappingsAreUniqueEnoughForUI() {
         let displayNames = Set(VocabStatus.allCases.map(\.displayName))
-        let colorNames = Set(VocabStatus.allCases.map(\.colorName))
+        let shortLabels = Set(VocabStatus.allCases.map(\.shortLabel))
 
         XCTAssertEqual(displayNames.count, VocabStatus.allCases.count)
-        XCTAssertEqual(colorNames.count, VocabStatus.allCases.count)
+        XCTAssertEqual(shortLabels.count, VocabStatus.allCases.count)
     }
 
-    func testStatusCodable() throws {
+    func testStatusCodableRoundTripForCurrentValues() throws {
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
 
@@ -58,6 +80,25 @@ final class VocabStatusTests: XCTestCase {
             let decoded = try decoder.decode(VocabStatus.self, from: encoded)
             XCTAssertEqual(decoded, status)
         }
+    }
+
+    func testDecodesLegacyStoredValues() throws {
+        let decoder = JSONDecoder()
+
+        let legacyNew = try decoder.decode(VocabStatus.self, from: Data("\"new\"".utf8))
+        let legacyLearning = try decoder.decode(VocabStatus.self, from: Data("\"learning\"".utf8))
+        let legacyKnown = try decoder.decode(VocabStatus.self, from: Data("\"known\"".utf8))
+
+        XCTAssertEqual(legacyNew, .level1)
+        XCTAssertEqual(legacyLearning, .level2)
+        XCTAssertEqual(legacyKnown, .known)
+    }
+
+    func testKnownAndLearningFlags() {
+        XCTAssertTrue(VocabStatus.known.isKnown)
+        XCTAssertFalse(VocabStatus.level1.isKnown)
+        XCTAssertFalse(VocabStatus.known.isLearning)
+        XCTAssertTrue(VocabStatus.level3.isLearning)
     }
 
     func testNormalizer() {

@@ -51,39 +51,67 @@ private struct VocabRow: View {
     @Bindable var entry: VocabEntry
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(entry.word)
-                    .font(.headline)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(entry.word)
+                .font(.headline)
 
-                if !entry.meaning.isEmpty {
-                    Text(entry.meaning)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Meaning not set yet")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            if !entry.meaning.isEmpty {
+                Text(entry.meaning)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Meaning not set yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                ForEach(VocabStatus.progression, id: \.rawValue) { status in
+                    Button {
+                        setStatus(status)
+                    } label: {
+                        Text(status.shortLabel)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, status.isKnown ? 10 : 12)
+                            .padding(.vertical, 6)
+                            .foregroundStyle(foregroundColor(for: status))
+                            .background(backgroundColor(for: status), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(borderColor(for: status), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Set level \(status.displayName)")
                 }
             }
-
-            Spacer()
-
-            Button {
-                entry.status = entry.status.next
-            } label: {
-                Text(entry.status.displayName)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .foregroundStyle(Theme.statusColor(entry.status))
-                    .background(Theme.statusColor(entry.status).opacity(0.15), in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Status \(entry.status.displayName)")
-            .accessibilityHint("Tap to change status")
         }
         .cardStyle()
+    }
+
+    private func setStatus(_ status: VocabStatus) {
+        entry.status = status
+        entry.lastSeenAt = Date()
+        entry.encounterCount += 1
+    }
+
+    private func foregroundColor(for status: VocabStatus) -> Color {
+        if entry.status == status {
+            return .white
+        }
+        return status.isKnown ? .gray : Theme.learningHighlight
+    }
+
+    private func backgroundColor(for status: VocabStatus) -> Color {
+        guard entry.status == status else { return .clear }
+        return status.isKnown ? Color.gray.opacity(0.75) : Theme.learningHighlight.opacity(0.88)
+    }
+
+    private func borderColor(for status: VocabStatus) -> Color {
+        if entry.status == status {
+            return .clear
+        }
+        return status.isKnown ? Color.gray.opacity(0.6) : Theme.learningHighlight.opacity(0.75)
     }
 }
 

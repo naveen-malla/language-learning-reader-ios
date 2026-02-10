@@ -2,6 +2,13 @@ import XCTest
 @testable import LanguageReader
 
 final class SentenceReaderModelTests: XCTestCase {
+    func testReaderModeToggleCopyMatchesReaderIntent() {
+        XCTAssertEqual(ReaderMode.word.toggleLabel, "Sentence View")
+        XCTAssertEqual(ReaderMode.sentence.toggleLabel, "Text View")
+        XCTAssertEqual(ReaderMode.word.toggleSystemImage, "text.justify")
+        XCTAssertEqual(ReaderMode.sentence.toggleSystemImage, "textformat")
+    }
+
     func testModelFiltersOutEmptyBlocks() {
         let blocks: [SentenceBlock] = [
             SentenceBlock(id: 0, text: "ಮೊದಲ ವಾಕ್ಯ.", isEmpty: false),
@@ -88,11 +95,12 @@ final class SentenceReaderModelTests: XCTestCase {
         let visible = SentencePanelWordFilter.visibleWords(
             from: words,
             statusByKey: [
-                "alli": .learning,
+                "alli": .level2,
                 "janara": .known
-            ]
+            ],
+            ignoredKeys: ["matu"]
         )
 
-        XCTAssertEqual(visible.map(\.normalizedKey), ["alli", "matu"])
+        XCTAssertEqual(visible.map(\.normalizedKey), ["alli"])
     }
 }

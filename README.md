@@ -9,15 +9,16 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 - Toggle between word-level and sentence-level reading using a bottom-center mode button with horizontal transition.
 - Word tokens are grouped by sentence for more readable spacing.
 - In sentence mode, swipe horizontally through exactly one sentence per page.
-- Sentence panel in sentence mode shows:
-  - current sentence text
+- In sentence mode, each page integrates all sentence details directly in the reader:
+  - a single centered sentence (shown once)
   - translate action (dictionary gloss)
-  - only `new`/`learning`/unseen words (known words are hidden)
-  - pronunciation + meaning for visible words
-- Add words to vocabulary with basic status tracking (new/learning/known).
-- Color-code words by status in the reader.
-- Vocab list with search and status updates.
-- Simple flashcards (Kannada prompt, English meaning reveal).
+  - only unresolved words (new + learning; known and ignored words are hidden)
+  - pronunciation + meaning for visible words in an in-page list
+- New rows in sentence mode provide direct actions: `+` (add Level 1), `✓` (mark Known), and `delete` (ignore permanently).
+- Add words to vocabulary with canonical status levels: `1`, `2`, `3`, `4`, and `Known` (`New` is untracked).
+- Color-code words by status in the reader with one shared resolver across text and sentence views.
+- Vocab list with search and always-visible one-tap level controls (`1 2 3 4 Known`).
+- Flashcards with direct level controls (`1 2 3 4 Known`) and a review deck that includes only levels `1-4`.
 - Settings for optional translation API key and dictionary source/licensing info.
 - App seeds two larger Kannada sample documents on first launch for quick testing.
 - Reader caches sentence splits and word tokenization per document text to keep scrolling responsive.
@@ -59,3 +60,4 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 - Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
 - Sentence translation is a dictionary gloss, not a full grammar-aware translation engine.
 - Sentence detection uses NaturalLanguage sentence boundaries; long/irregular punctuation still needs refinement.
+- Ignored words are currently permanent (no management screen yet).
