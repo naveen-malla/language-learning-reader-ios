@@ -99,6 +99,7 @@ struct DocumentReaderView: View {
         }
         .onChange(of: document.body) { _, _ in
             refreshSentenceBlocks()
+            refreshSentenceInsightsIfNeeded()
         }
         .onChange(of: readerMode) { _, newMode in
             guard newMode == .sentence else { return }

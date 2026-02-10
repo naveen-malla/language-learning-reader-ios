@@ -28,6 +28,16 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Prefer iPhone 14 Pro if available; otherwise use a recent iPhone runtime.
 - Build/run from CLI with `xcodebuild` after each milestone.
 
+## Local Scripts
+- Build (simulator): `./scripts/build.sh`
+- Run (build/install/launch): `./scripts/run.sh`
+- Test: `./scripts/test.sh`
+- Build bundled dictionary: `./scripts/build_dictionary.py`
+- Install dictionary into simulator: `./scripts/install_dictionary.sh`
+
+## Project Generation
+- If source files are added or removed, run `xcodegen generate`.
+
 ## Data & Secrets
 - Never commit secrets.
 - Store optional API keys in Keychain only.

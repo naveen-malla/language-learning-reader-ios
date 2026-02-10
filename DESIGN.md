@@ -30,6 +30,7 @@
   - per-word meaning + pronunciation list for `new`, `learning`, and unseen words
 - Known words are intentionally hidden in the sentence panel list.
 - Tapping a word in the page text or sentence panel opens the word detail sheet.
+- Sentence panel content refreshes when the document text changes.
 
 ## Tokenization
 - Use NaturalLanguage sentence tokenization for sentence-page boundaries and spacing.
