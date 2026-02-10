@@ -21,6 +21,7 @@
 - Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
 - Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
 - Sentence header text is reduced to `30pt` and uses token-level highlight colors.
+- Sentence header now includes a transliterated pronunciation line under the sentence.
 - Translation text is wrapped inside a fixed-height scrollable area below the translate action.
 
 ## Install On iPhone (Keep Using Without Cable)
@@ -54,6 +55,7 @@ Notes:
 - Manual reader checks after sentence-mode changes:
   - confirm sentence appears once per page (no duplicate overlay card)
   - confirm translate action and unresolved word list are visible in the same page
+  - confirm sentence transliteration is visible under the sentence and stays readable on long lines
   - confirm tapping a listed word still opens the word detail sheet
   - confirm the same word uses the same highlight state in text view and sentence view
   - confirm new-word quick actions exist (`+`, `✓`, `delete`) and apply immediately

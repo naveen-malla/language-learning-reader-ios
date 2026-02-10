@@ -21,4 +21,9 @@ final class TransliteratorTests: XCTestCase {
         let result = Transliterator().pronounce("ಕನ್ನಡ ಭಾಷೆ")
         XCTAssertEqual(result, "kannada bhase")
     }
+
+    func testPronounceSentenceWithPunctuation() {
+        let result = Transliterator().pronounce("ಇದು ಕನ್ನಡ ಭಾಷೆ.")
+        XCTAssertEqual(result, "idu kannada bhase.")
+    }
 }

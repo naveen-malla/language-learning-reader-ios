@@ -435,6 +435,11 @@ private struct SentenceIntegratedPage: View {
     let onAddLevel1: (SentenceWordInsight) -> Void
     let onMarkKnown: (SentenceWordInsight) -> Void
     let onIgnore: (SentenceWordInsight) -> Void
+    private let transliterator = Transliterator()
+
+    private var sentencePronunciation: String {
+        transliterator.pronounce(sentence)
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -447,6 +452,8 @@ private struct SentenceIntegratedPage: View {
                         learningStateForWord: learningStateForWord,
                         onWordTap: onWordTap
                     )
+
+                    SentencePronunciationView(pronunciation: sentencePronunciation)
 
                     Button(action: onTranslate) {
                         Label("Translate sentence", systemImage: "character.bubble")
@@ -491,6 +498,26 @@ private struct SentenceIntegratedPage: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
+    }
+}
+
+private struct SentencePronunciationView: View {
+    let pronunciation: String
+
+    var body: some View {
+        if !pronunciation.isEmpty {
+            ScrollView(.vertical, showsIndicators: false) {
+                Text(pronunciation)
+                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.66))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(minHeight: 26, maxHeight: 68)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("Sentence pronunciation \(pronunciation)")
+        }
     }
 }
 

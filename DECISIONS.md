@@ -14,6 +14,7 @@
 - Word mode remains full-document vertical reading.
 - Sentence mode uses a horizontal one-sentence pager for focused review.
 - Sentence detail content is integrated directly into each sentence page (no extra overlay panel).
+- Sentence pages show pronunciation in Latin script using the same `Transliterator` used for word-level pronunciation, keeping pronunciation rules consistent.
 - Sentence word list omits `known` and ignored words to reduce noise and emphasize unresolved vocabulary.
 - Sentence paging/progress/filter logic lives in a small model (`SentenceReaderModel`) so it can be tested without UI harnesses.
 

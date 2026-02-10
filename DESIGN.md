@@ -26,10 +26,12 @@
 - Swiping left/right advances sentence pages.
 - Each sentence page integrates details in a single flow:
   - one centered sentence shown once (no duplicate sentence overlay), tokenized and color-coded
+  - sentence-level transliteration directly under the sentence
   - translate action (dictionary gloss) directly under the sentence
   - wrapped translation text in a fixed-height scroll area
   - per-word meaning + pronunciation list for unresolved words
 - Sentence header text uses a reduced large type size (`30pt`) for better balance with details below.
+- Sentence transliteration uses smaller, muted typography in a capped-height area to keep spacing clean on long sentences.
 - Known and ignored words are intentionally hidden in the in-page sentence word list.
 - New rows expose direct actions: `+` (add Level 1), `✓` (mark Known), and `delete` (ignore).
 - Learning rows show compact `L1/L2/L3/L4` badges.

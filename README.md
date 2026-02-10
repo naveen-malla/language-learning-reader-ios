@@ -11,6 +11,7 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 - In sentence mode, swipe horizontally through exactly one sentence per page.
 - In sentence mode, each page integrates all sentence details directly in the reader:
   - a single centered sentence (shown once)
+  - sentence pronunciation in Latin script (transliteration) under the sentence
   - translate action (dictionary gloss)
   - only unresolved words (new + learning; known and ignored words are hidden)
   - pronunciation + meaning for visible words in an in-page list
