@@ -309,6 +309,7 @@ struct DocumentReaderView: View {
 
     private func refreshSentenceBlocks() {
         cachedSentenceBlocks = SentenceTextView.blocks(from: document.body)
+        sentenceIndex = sentenceReaderModel.clampedIndex(sentenceIndex)
     }
 
     private func refreshStatusMap() {

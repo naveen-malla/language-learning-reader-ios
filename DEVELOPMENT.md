@@ -23,6 +23,7 @@
 - Sentence header text is reduced to `30pt` and uses token-level highlight colors.
 - Sentence header now includes a transliterated pronunciation line under the sentence.
 - Translation text is wrapped inside a fixed-height scrollable area below the translate action.
+- Sentence pager clamps the current index after text edits to avoid landing on empty pages.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
