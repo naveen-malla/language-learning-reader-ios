@@ -27,6 +27,9 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Use iOS Simulator for all runs.
 - Prefer iPhone 14 Pro if available; otherwise use a recent iPhone runtime.
 - Build/run from CLI with `xcodebuild` after each milestone.
+- List simulators: `xcrun simctl list`
+- Build (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
+- Test (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
 
 ## Local Scripts
 - Build (simulator): `./scripts/build.sh`
@@ -37,6 +40,8 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Build bundled dictionary: `./scripts/build_dictionary.py`
 - Install dictionary into simulator: `./scripts/install_dictionary.sh`
 - Repo hygiene guard (main-only check/cleanup): `./scripts/guard_main.sh`
+- Enforce cleanup to main-only state: `./scripts/guard_main.sh --cleanup`
+- Cleanup while allowing local edits: `./scripts/guard_main.sh --cleanup --allow-dirty`
 
 ## Project Generation
 - If source files are added or removed, run `xcodegen generate`.
