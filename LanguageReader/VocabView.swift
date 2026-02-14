@@ -14,6 +14,14 @@ struct VocabView: View {
         }
     }
 
+    private var knownCount: Int {
+        entries.filter { $0.status == .known }.count
+    }
+
+    private var learningCount: Int {
+        entries.filter { $0.status.isLearning }.count
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -21,6 +29,30 @@ struct VocabView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        if !entries.isEmpty {
+                            SectionCard("Progress") {
+                                HStack(spacing: 10) {
+                                    VocabMetricPill(
+                                        title: "Total",
+                                        value: "\(entries.count)",
+                                        tint: Theme.accent
+                                    )
+
+                                    VocabMetricPill(
+                                        title: "Learning",
+                                        value: "\(learningCount)",
+                                        tint: Theme.learningHighlight
+                                    )
+
+                                    VocabMetricPill(
+                                        title: "Known",
+                                        value: "\(knownCount)",
+                                        tint: Theme.knownHighlight
+                                    )
+                                }
+                            }
+                        }
+
                         if filteredEntries.isEmpty {
                             ContentUnavailableView {
                                 Label("No vocabulary yet", systemImage: "text.book.closed")
@@ -37,7 +69,7 @@ struct VocabView: View {
                             }
                         }
                     }
-                    .padding()
+                    .padding(16)
                 }
             }
             .searchable(text: $searchText, prompt: "Search words or meanings")
@@ -47,42 +79,77 @@ struct VocabView: View {
     }
 }
 
+struct VocabMetricPill: View {
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.primary)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
 private struct VocabRow: View {
     @Bindable var entry: VocabEntry
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(entry.word)
-                .font(.headline)
+            HStack(alignment: .firstTextBaseline) {
+                Text(entry.word)
+                    .font(.title3.weight(.semibold))
+
+                Spacer()
+
+                Text(entry.status.levelBadgeLabel)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .foregroundStyle(.white)
+                    .background(Theme.statusTint(entry.status), in: Capsule())
+            }
 
             if !entry.meaning.isEmpty {
                 Text(entry.meaning)
-                    .font(.subheadline)
+                    .font(Theme.readingFont)
                     .foregroundStyle(.secondary)
             } else {
                 Text("Meaning not set yet")
-                    .font(.subheadline)
+                    .font(Theme.readingFont)
                     .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 8) {
-                ForEach(VocabStatus.progression, id: \.rawValue) { status in
-                    Button {
-                        setStatus(status)
-                    } label: {
-                        Text(status.shortLabel)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, status.isKnown ? 10 : 12)
-                            .padding(.vertical, 6)
-                            .foregroundStyle(foregroundColor(for: status))
-                            .background(backgroundColor(for: status), in: Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(borderColor(for: status), lineWidth: 1)
-                            )
+                Text("Seen \(entry.encounterCount)x")
+                    .subtleMetadataPillStyle()
+                    .foregroundStyle(.secondary)
+
+                Text("Updated \(entry.lastSeenAt, style: .relative)")
+                    .subtleMetadataPillStyle()
+                    .foregroundStyle(.secondary)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(VocabStatus.progression, id: \.rawValue) { status in
+                        StatusLevelChip(
+                            status: status,
+                            selectedStatus: entry.status,
+                            onSelect: { selected in
+                                setStatus(selected)
+                            }
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Set level \(status.displayName)")
                 }
             }
         }
@@ -93,25 +160,6 @@ private struct VocabRow: View {
         entry.status = status
         entry.lastSeenAt = Date()
         entry.encounterCount += 1
-    }
-
-    private func foregroundColor(for status: VocabStatus) -> Color {
-        if entry.status == status {
-            return .white
-        }
-        return status.isKnown ? .gray : Theme.learningHighlight
-    }
-
-    private func backgroundColor(for status: VocabStatus) -> Color {
-        guard entry.status == status else { return .clear }
-        return status.isKnown ? Color.gray.opacity(0.75) : Theme.learningHighlight.opacity(0.88)
-    }
-
-    private func borderColor(for status: VocabStatus) -> Color {
-        if entry.status == status {
-            return .clear
-        }
-        return status.isKnown ? Color.gray.opacity(0.6) : Theme.learningHighlight.opacity(0.75)
     }
 }
 

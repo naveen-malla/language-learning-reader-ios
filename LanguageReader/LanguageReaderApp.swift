@@ -8,11 +8,7 @@ struct LanguageReaderApp: App {
     private let sharedModelContainer: ModelContainer
 
     init() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor.systemBackground
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
+        Self.configureTabBarAppearance()
 
         do {
             sharedModelContainer = try ModelContainer(for: Document.self, VocabEntry.self)
@@ -20,6 +16,35 @@ struct LanguageReaderApp: App {
         } catch {
             fatalError("Failed to initialize model container: \(error)")
         }
+    }
+
+    private static func configureTabBarAppearance() {
+        let selectedColor = UIColor(red: 0.13, green: 0.45, blue: 0.9, alpha: 1)
+        let normalColor = UIColor.label.withAlphaComponent(0.86)
+
+        let itemAppearance = UITabBarItemAppearance(style: .stacked)
+        itemAppearance.normal.iconColor = normalColor
+        itemAppearance.normal.titleTextAttributes = [
+            .foregroundColor: normalColor,
+            .font: UIFont.systemFont(ofSize: 11, weight: .semibold)
+        ]
+        itemAppearance.selected.iconColor = selectedColor
+        itemAppearance.selected.titleTextAttributes = [
+            .foregroundColor: selectedColor,
+            .font: UIFont.systemFont(ofSize: 11, weight: .semibold)
+        ]
+
+        let appearance = UITabBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.7)
+        appearance.shadowColor = UIColor.clear
+        appearance.stackedLayoutAppearance = itemAppearance
+        appearance.inlineLayoutAppearance = itemAppearance
+        appearance.compactInlineLayoutAppearance = itemAppearance
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 
     var body: some Scene {

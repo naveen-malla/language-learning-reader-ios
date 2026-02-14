@@ -14,9 +14,17 @@
 - Word mode remains full-document vertical reading.
 - Sentence mode uses a horizontal one-sentence pager for focused review.
 - Sentence detail content is integrated directly into each sentence page (no extra overlay panel).
+- Sentence page layout favors screen usage over card chrome: reduced horizontal inset, compact top bar, and a capped/scrollable sentence header region.
+- Sentence header keeps a stable centered anchor to avoid disruptive jumps when translation appears.
 - Sentence pages show pronunciation in Latin script using the same `Transliterator` used for word-level pronunciation, keeping pronunciation rules consistent.
 - Sentence word list omits `known` and ignored words to reduce noise and emphasize unresolved vocabulary.
 - Sentence paging/progress/filter logic lives in a small model (`SentenceReaderModel`) so it can be tested without UI harnesses.
+
+## Visual System
+- Use one shared theme/token file (`DesignSystem.swift`) for accent colors, card chrome, and status chip styling to keep tab-level UI consistent.
+- Keep a deliberate contrast split: light app shell for management screens, dark reader canvas for immersion and longer reading sessions.
+- Prefer rounded card surfaces and capsule controls over dense form rows to reduce interaction friction during repeated vocab updates.
+- Keep micro-interactions subtle and functional: shared press states for token taps and icon actions are preferred over heavy animation.
 
 ## Learning State Model
 - Canonical tracked vocab states are `level1`, `level2`, `level3`, `level4`, and `known`.
@@ -30,7 +38,9 @@
 - If full dataset is too large for git, download locally and build index DB.
 - For V1 (Kannada), bundle the full SQLite dictionary in the app so device updates don’t require re-downloads.
 - For future languages, plan to separate dictionaries from the app bundle and provide download links/install flow.
-- Use light heuristic suffix stripping for Kannada inflections; not a full morphological analyzer.
+- Use heuristic suffix stripping for Kannada inflections (including common accusative/genitive forms); not a full morphological analyzer.
+- Add a lightweight progressive-verb fallback (`-ುತ್ತ...` forms) to improve hit rate on reading text without a full lemmatizer.
+- Prefer concise meanings in UI by stripping metadata prefixes and trimming long multi-sense tails.
 - Resolve single-hop dictionary redirects that use `=` prefix; strip trailing digits in redirect targets.
 - Maintain a local TSV override file and missing-word log in Documents for quick corrections without re-bundling.
 

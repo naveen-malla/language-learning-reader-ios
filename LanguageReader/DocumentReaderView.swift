@@ -14,6 +14,8 @@ struct DocumentReaderView: View {
     @State private var translatedSentence: String?
     @State private var isTranslatingSentence = false
     @State private var translationTask: Task<Void, Never>?
+    @State private var wordLookupTask: Task<Void, Never>?
+    @State private var sentenceMeaningPrefetchTask: Task<Void, Never>?
     @State private var scrollOffset: CGFloat = 0
     @State private var contentHeight: CGFloat = 1
     @State private var viewportHeight: CGFloat = 1
@@ -49,7 +51,7 @@ struct DocumentReaderView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .top) {
+            ZStack {
                 ReaderBackground()
 
                 Group {
@@ -61,10 +63,10 @@ struct DocumentReaderView: View {
                 }
                 .transition(.slide.combined(with: .opacity))
                 .animation(.easeInOut(duration: 0.22), value: readerMode)
-
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
                 ReaderTopBar(
                     progress: progress,
-                    safeTop: proxy.safeAreaInsets.top,
                     onClose: { dismiss() },
                     onSeek: readerMode == .sentence ? { seekSentence(to: $0) } : nil
                 )
@@ -104,12 +106,15 @@ struct DocumentReaderView: View {
         }
         .onDisappear {
             translationTask?.cancel()
+            wordLookupTask?.cancel()
+            sentenceMeaningPrefetchTask?.cancel()
         }
         .sheet(item: $selection) { selected in
             WordDetailSheet(
                 word: selected.text,
                 meaning: selected.lookup.meaning,
                 diagnostics: selected.lookup,
+                isMeaningLoading: selected.isMeaningLoading,
                 onAdd: {
                     addToVocab(word: selected.text, meaning: selected.lookup.meaning, status: .level1)
                     selection = nil
@@ -120,7 +125,7 @@ struct DocumentReaderView: View {
                 onSaveOverride: { overrideMeaning in
                     DictionaryManager.shared.setOverride(word: selected.text, meaning: overrideMeaning)
                     let refreshed = DictionaryManager.shared.lookupDetailed(selected.text)
-                    selection = WordSelection(text: selected.text, lookup: refreshed)
+                    selection = WordSelection(text: selected.text, lookup: refreshed, isMeaningLoading: false)
                     refreshSentenceInsightsIfNeeded()
                 }
             )
@@ -143,7 +148,7 @@ struct DocumentReaderView: View {
                 .accessibilityLabel("Document words")
             }
             .padding(.horizontal, 24)
-            .padding(.top, 102)
+            .padding(.top, ReaderLayoutMetrics.wordModeTopPadding)
             .padding(.bottom, scrollBottomPadding)
             .background(
                 GeometryReader { contentProxy in
@@ -197,8 +202,8 @@ struct DocumentReaderView: View {
             onIgnore: { insight in
                 ignoreWord(normalizedKey: insight.normalizedKey)
             },
-            topInset: proxy.safeAreaInsets.top + 72,
-            bottomInset: max(proxy.safeAreaInsets.bottom, 12) + 72
+            topInset: ReaderLayoutMetrics.sentenceTopInsetExtra,
+            bottomInset: max(proxy.safeAreaInsets.bottom, 10) + ReaderLayoutMetrics.sentenceBottomInsetExtra
         )
     }
 
@@ -211,6 +216,7 @@ struct DocumentReaderView: View {
             refreshSentenceInsightsForCurrentSentence()
         } else {
             translationTask?.cancel()
+            sentenceMeaningPrefetchTask?.cancel()
             isTranslatingSentence = false
             sentenceInsights = nil
             translatedSentence = nil
@@ -242,7 +248,9 @@ struct DocumentReaderView: View {
 
     private func refreshSentenceInsightsIfNeeded() {
         guard readerMode == .sentence, let selectedSentenceBlock else { return }
-        sentenceInsights = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
+        let built = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
+        sentenceInsights = built
+        enrichSentenceMeaningsIfNeeded(sentence: selectedSentenceBlock.text, insights: built)
         if translatedSentence != nil {
             translateCurrentSentence()
         }
@@ -252,6 +260,7 @@ struct DocumentReaderView: View {
         clampSentenceIndex()
         guard let selectedSentenceBlock else {
             translationTask?.cancel()
+            sentenceMeaningPrefetchTask?.cancel()
             isTranslatingSentence = false
             sentenceInsights = nil
             translatedSentence = nil
@@ -259,8 +268,11 @@ struct DocumentReaderView: View {
         }
 
         translationTask?.cancel()
+        sentenceMeaningPrefetchTask?.cancel()
         isTranslatingSentence = false
-        sentenceInsights = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
+        let built = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
+        sentenceInsights = built
+        enrichSentenceMeaningsIfNeeded(sentence: selectedSentenceBlock.text, insights: built)
         translatedSentence = nil
     }
 
@@ -291,8 +303,62 @@ struct DocumentReaderView: View {
     }
 
     private func openWordSheet(for word: String) {
+        wordLookupTask?.cancel()
+
         let lookup = DictionaryManager.shared.lookupDetailed(word)
-        selection = WordSelection(text: word, lookup: lookup)
+        let shouldLoadRemoteMeaning = lookup.meaning == nil && DictionaryManager.shared.isCloudFallbackEnabled
+
+        selection = WordSelection(
+            text: word,
+            lookup: lookup,
+            isMeaningLoading: shouldLoadRemoteMeaning
+        )
+
+        guard shouldLoadRemoteMeaning else {
+            return
+        }
+
+        wordLookupTask = Task {
+            let refreshed = await DictionaryManager.shared.lookupDetailedWithRemoteFallback(word)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard selection?.text == word else { return }
+                selection = WordSelection(
+                    text: word,
+                    lookup: refreshed,
+                    isMeaningLoading: false
+                )
+                refreshSentenceInsightsIfNeeded()
+            }
+        }
+    }
+
+    private func enrichSentenceMeaningsIfNeeded(sentence: String, insights: SentenceInsights) {
+        guard DictionaryManager.shared.isCloudFallbackEnabled else {
+            return
+        }
+
+        let missingWords = insights.words
+            .filter { $0.meaning == nil }
+            .map(\.word)
+        guard !missingWords.isEmpty else {
+            sentenceMeaningPrefetchTask?.cancel()
+            sentenceMeaningPrefetchTask = nil
+            return
+        }
+
+        sentenceMeaningPrefetchTask?.cancel()
+        sentenceMeaningPrefetchTask = Task {
+            await DictionaryManager.shared.prefetchRemoteMeanings(for: missingWords)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard readerMode == .sentence else { return }
+                guard selectedSentenceBlock?.text == sentence else { return }
+                sentenceInsights = sentenceInsightsBuilder.build(for: sentence)
+            }
+        }
     }
 
     private func addToVocab(word: String, meaning: String?, status: VocabStatus) {
@@ -387,19 +453,30 @@ private struct WordSelection: Identifiable {
     let id = UUID()
     let text: String
     let lookup: DictionaryLookupResult
+    let isMeaningLoading: Bool
 }
 
 private struct ReaderBackground: View {
     var body: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.05, green: 0.06, blue: 0.08),
-                Color(red: 0.02, green: 0.02, blue: 0.03),
-                Color.black
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.04, green: 0.07, blue: 0.12),
+                    Color(red: 0.01, green: 0.02, blue: 0.05),
+                    Color.black
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            RadialGradient(
+                colors: [Theme.accent.opacity(0.2), .clear],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 280
+            )
+            .blendMode(.plusLighter)
+        }
         .ignoresSafeArea()
     }
 }
@@ -446,7 +523,7 @@ private struct SentencePagerView: View {
                         onIgnore: onIgnore
                     )
                     .tag(index)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, ReaderLayoutMetrics.sentenceHorizontalPadding)
                     .padding(.top, topInset)
                     .padding(.bottom, bottomInset)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -477,49 +554,57 @@ private struct SentenceIntegratedPage: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let wordsSectionHeight = max(220, min(360, proxy.size.height * 0.42))
+            let wordsSectionHeight = ReaderLayoutMetrics.sentenceWordsSectionHeight(for: proxy.size.height)
+            let topSectionHeight = max(proxy.size.height - wordsSectionHeight, 0)
 
             VStack(spacing: 0) {
-                VStack(spacing: 14) {
-                    SentenceTokenizedHeader(
-                        sentence: sentence,
-                        learningStateForWord: learningStateForWord,
-                        onWordTap: onWordTap
-                    )
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        SentenceTokenizedHeader(
+                            sentence: sentence,
+                            learningStateForWord: learningStateForWord,
+                            onWordTap: onWordTap
+                        )
 
-                    SentencePronunciationView(pronunciation: sentencePronunciation)
+                        SentencePronunciationView(pronunciation: sentencePronunciation)
 
-                    Button(action: onTranslate) {
-                        Group {
-                            if isTranslatingSentence {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .tint(.blue)
-                                    Text("Translating...")
+                        Button(action: onTranslate) {
+                            Group {
+                                if isTranslatingSentence {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .tint(Theme.accent)
+                                        Text("Translating...")
+                                    }
+                                } else {
+                                    Label("Translate sentence", systemImage: "character.bubble")
                                 }
-                            } else {
-                                Label("Translate sentence", systemImage: "character.bubble")
                             }
+                            .font(Theme.readingEmphasisFont)
+                            .foregroundStyle(Theme.accent)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.05), in: Capsule())
                         }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.blue)
-                    }
-                    .disabled(isTranslatingSentence)
+                        .disabled(isTranslatingSentence)
+                        .padding(.top, 2)
 
-                    if let translatedSentence {
-                        ScrollView {
+                        if let translatedSentence, !translatedSentence.isEmpty {
                             Text(translatedSentence)
-                                .font(.body)
+                                .font(Theme.readingFont)
                                 .foregroundStyle(Color.white.opacity(0.82))
                                 .multilineTextAlignment(.leading)
                                 .lineSpacing(4)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .frame(minHeight: 74, maxHeight: 120)
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 8)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: max(topSectionHeight - 12, 0), alignment: .center)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: max(proxy.size.height - wordsSectionHeight, 0), alignment: .center)
+                .frame(height: topSectionHeight, alignment: .top)
 
                 Divider()
                     .overlay(Color.white.opacity(0.2))
@@ -534,15 +619,8 @@ private struct SentenceIntegratedPage: View {
                 )
                 .frame(height: wordsSectionHeight)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.02))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        )
     }
 }
 
@@ -551,17 +629,13 @@ private struct SentencePronunciationView: View {
 
     var body: some View {
         if !pronunciation.isEmpty {
-            ScrollView(.vertical, showsIndicators: false) {
-                Text(pronunciation)
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.66))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .frame(minHeight: 26, maxHeight: 68)
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel("Sentence pronunciation \(pronunciation)")
+            Text(pronunciation)
+                .font(Theme.readingFont)
+                .foregroundStyle(Color.white.opacity(0.66))
+                .multilineTextAlignment(.leading)
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel("Sentence pronunciation \(pronunciation)")
         }
     }
 }
@@ -574,7 +648,7 @@ private struct SentenceTokenizedHeader: View {
     private let tokenizer = Tokenizer()
 
     var body: some View {
-        FlowLayout(itemSpacing: 0, lineSpacing: 10) {
+        FlowLayout(itemSpacing: 0, lineSpacing: 4) {
             ForEach(tokenizer.tokenize(sentence)) { token in
                 if token.isWord {
                     let state = learningStateForWord(token.text)
@@ -582,38 +656,38 @@ private struct SentenceTokenizedHeader: View {
                         onWordTap(token.text)
                     } label: {
                         Text(token.text)
-                            .font(.system(size: 30, weight: .medium, design: .rounded))
+                            .font(Theme.readingEmphasisFont)
                             .foregroundStyle(Theme.wordHighlightColor(state))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(TokenTapButtonStyle())
                     .accessibilityLabel("Word \(token.text), status \(state.accessibilityLabel)")
                     .accessibilityHint("Show meaning and add to vocabulary")
                 } else {
                     Text(token.text)
-                        .font(.system(size: 30, weight: .medium, design: .rounded))
+                        .font(Theme.readingFont)
                         .foregroundStyle(.white.opacity(0.9))
                         .accessibilityHidden(true)
                 }
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 private struct ReaderTopBar: View {
     let progress: Double
-    let safeTop: CGFloat
     let onClose: () -> Void
     let onSeek: ((Double) -> Void)?
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 12) {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.08), in: Circle())
                 }
                 .accessibilityLabel("Close reader")
 
@@ -625,10 +699,10 @@ private struct ReaderTopBar: View {
                         ),
                         in: 0...1
                     )
-                    .tint(.green)
+                    .tint(Theme.learningHighlight)
                 } else {
                     Slider(value: .constant(progress), in: 0...1)
-                        .tint(.green)
+                        .tint(Theme.learningHighlight)
                         .disabled(true)
                         .accessibilityHidden(true)
                 }
@@ -639,12 +713,16 @@ private struct ReaderTopBar: View {
                     .frame(width: 36, height: 36)
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 8)
+            .padding(.horizontal, 10)
+            .padding(.top, ReaderLayoutMetrics.topBarTopOffset)
             .padding(.bottom, 8)
         }
-        .padding(.top, safeTop + 4)
-        .background(Color.black.opacity(0.48))
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(Color.white.opacity(0.08))
+        }
     }
 }
 
@@ -659,17 +737,18 @@ private struct ReaderModeDockButton: View {
                 mode.toggleLabel,
                 systemImage: mode.toggleSystemImage
             )
-            .font(.subheadline.weight(.semibold))
+            .font(.headline.weight(.semibold))
             .foregroundStyle(.white)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .padding(.horizontal, 18)
             .background(.ultraThinMaterial, in: Capsule())
             .overlay(
                 Capsule()
-                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
             )
         }
         .padding(.bottom, max(safeBottom, 10))
+        .shadow(color: Color.black.opacity(0.28), radius: 12, y: 4)
         .accessibilityLabel(mode.toggleAccessibilityLabel)
     }
 }
@@ -686,13 +765,14 @@ private struct SentenceWordsSection: View {
         ScrollView {
             if words.isEmpty {
                 Text("No new or learning words in this sentence.")
-                    .font(.subheadline)
+                    .font(Theme.readingFont)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 10)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 12)
             } else {
-                VStack(spacing: 8) {
-                    ForEach(words) { insight in
+                VStack(spacing: 0) {
+                    ForEach(Array(words.enumerated()), id: \.element.id) { index, insight in
                         let state = learningStateForKey(insight.normalizedKey)
                         SentenceWordRow(
                             insight: insight,
@@ -710,12 +790,18 @@ private struct SentenceWordsSection: View {
                                 onIgnore(insight)
                             }
                         )
+                        .padding(.vertical, 6)
+
+                        if index < words.count - 1 {
+                            Divider()
+                                .overlay(Color.white.opacity(0.08))
+                        }
                     }
                 }
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 0)
+        .padding(.vertical, 8)
     }
 }
 
@@ -743,13 +829,13 @@ private struct SentenceWordRow: View {
             Circle()
                 .fill(dotColor)
                 .frame(width: 10, height: 10)
-                .padding(.top, 7)
+                .padding(.top, 6)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Button(action: onTap) {
                         Text(insight.word)
-                            .font(.system(size: 28, weight: .semibold, design: .rounded))
+                            .font(Theme.readingEmphasisFont)
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
@@ -765,11 +851,11 @@ private struct SentenceWordRow: View {
                 }
 
                 Text(insight.pronunciation)
-                    .font(.subheadline)
+                    .font(Theme.readingFont)
                     .foregroundStyle(Color.white.opacity(0.65))
 
                 Text(insight.meaning ?? "No meaning yet.")
-                    .font(.body)
+                    .font(Theme.readingFont)
                     .foregroundStyle((insight.meaning == nil) ? .secondary : Color.white.opacity(0.9))
                     .multilineTextAlignment(.leading)
             }
@@ -781,25 +867,25 @@ private struct SentenceWordRow: View {
                     Button(action: onAddLevel1) {
                         Image(systemName: "plus.circle")
                             .font(.title3)
-                            .foregroundStyle(Theme.newHighlight)
+                            .foregroundStyle(Theme.newHighlight.opacity(0.96))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(IconCircleButtonStyle(tint: Theme.newHighlight))
                     .accessibilityLabel("Add word to level 1")
 
                     Button(action: onIgnore) {
                         Image(systemName: "trash")
                             .font(.title3)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.secondary.opacity(0.95))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(IconCircleButtonStyle(tint: .secondary))
                     .accessibilityLabel("Ignore word")
 
                     Button(action: onMarkKnown) {
                         Image(systemName: "checkmark")
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(.white.opacity(0.88))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(IconCircleButtonStyle(tint: .white))
                     .accessibilityLabel("Mark word known")
                 }
                 .padding(.top, 4)

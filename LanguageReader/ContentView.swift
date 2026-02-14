@@ -24,6 +24,8 @@ struct ContentView: View {
                 }
         }
         .tint(Theme.accent)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
     }
 }
 

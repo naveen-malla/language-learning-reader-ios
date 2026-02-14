@@ -20,11 +20,18 @@
 - In sentence mode, swipe horizontally to move one sentence at a time.
 - Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
 - Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
-- Sentence header text is reduced to `30pt` and uses token-level highlight colors.
+- Sentence content uses one unified reading size (`17pt`) across sentence, transliteration, and translation.
 - Sentence header now includes a transliterated pronunciation line under the sentence.
-- Translation text is wrapped inside a fixed-height scrollable area below the translate action.
+- Translation text appears inline in the same top canvas (no separate translation scroll box).
+- Top canvas keeps a stable center anchor when translation appears.
 - Sentence translate action uses Azure Translator when configured in Settings; otherwise it falls back to offline gloss.
+- Sentence page now uses reduced side insets and no floating card container so more of the screen is usable.
+- Reader top bar is compact and pinned higher to reduce dead space above the progress slider.
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
+- Main tabs now share one visual system: pastel canvas, rounded surfaces, translucent tab bar, and status chips.
+- Reader entry view now uses a card composer layout (title/input/actions grouped together) instead of a plain form section.
+- Reader composer now exposes live stats (`words`, `sentences`, `min read`) so save decisions are immediate.
+- Documents list now includes a quick text preview and word-count metadata chip per row.
 
 ## Translation API Setup
 1. Open Settings -> Translation API.
@@ -62,9 +69,13 @@ Notes:
 - Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known+ignored filtering).
 - Manual reader checks after sentence-mode changes:
   - confirm sentence appears once per page (no duplicate overlay card)
+  - confirm sentence mode fills more horizontal space and does not look boxed-in
+  - confirm top progress bar is positioned higher with reduced extra padding
+  - confirm sentence/transliteration/translation share one top canvas scroll area
+  - confirm top canvas stays visually stable after translation appears (no big upward jump)
   - confirm translate action and unresolved word list are visible in the same page
   - confirm sentence transliteration is visible under the sentence and stays readable on long lines
-  - confirm translate action shows a loading state and resolves into wrapped text
+  - confirm translate action shows a loading state and resolves into wrapped inline text
   - confirm translation still works (fallback gloss) if API key is missing/cleared
   - confirm tapping a listed word still opens the word detail sheet
   - confirm the same word uses the same highlight state in text view and sentence view
@@ -72,6 +83,7 @@ Notes:
   - confirm learning rows show `L1-L4` badges
   - confirm vocab and flashcards expose direct one-tap controls (`1 2 3 4 Known`) with no dropdowns
   - confirm flashcard review pool excludes `Known`
+  - confirm Reader/Vocab/Flashcards/Settings all render with the shared card + chip styling (no mixed legacy controls)
 
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.
@@ -83,6 +95,12 @@ Notes:
    `./scripts/install_dictionary.sh`
 
 The app will automatically use the Documents SQLite file if present. Otherwise it uses the bundled `LanguageReader/Resources/dictionary.sqlite`.
+
+Dictionary quality notes:
+- Build script now normalizes meanings for concise display (strips leading metadata and trims multi-sense tails).
+- Runtime lookup now includes broader Kannada suffix handling and light `-ುತ್ತ...` progressive verb fallback.
+- Re-run dictionary-focused tests after lookup changes:
+  `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryManagerTests`
 
 ## Dictionary Overrides
 - Overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).

@@ -37,16 +37,16 @@ struct TokenizedTextView: View {
                                     onWordTap(token.text)
                                 } label: {
                                     Text(token.text)
-                                        .font(.body)
+                                        .font(Theme.readingFont)
                                         .foregroundStyle(color)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(TokenTapButtonStyle())
                                 .contentShape(Rectangle())
                                 .accessibilityLabel("Word \(token.text), status \(state.accessibilityLabel)")
                                 .accessibilityHint("Show meaning and add to vocabulary")
                             } else {
                                 Text(token.text)
-                                    .font(.body)
+                                    .font(Theme.readingFont)
                                     .foregroundStyle(.primary)
                                     .accessibilityHidden(true)
                             }

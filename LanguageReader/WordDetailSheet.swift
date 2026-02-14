@@ -4,6 +4,7 @@ struct WordDetailSheet: View {
     let word: String
     let meaning: String?
     let diagnostics: DictionaryLookupResult?
+    let isMeaningLoading: Bool
     let onAdd: () -> Void
     let onReportMissing: (() -> Void)?
     let onSaveOverride: ((String) -> Void)?
@@ -15,6 +16,7 @@ struct WordDetailSheet: View {
         word: String,
         meaning: String?,
         diagnostics: DictionaryLookupResult?,
+        isMeaningLoading: Bool = false,
         onAdd: @escaping () -> Void,
         onReportMissing: (() -> Void)? = nil,
         onSaveOverride: ((String) -> Void)? = nil
@@ -22,6 +24,7 @@ struct WordDetailSheet: View {
         self.word = word
         self.meaning = meaning
         self.diagnostics = diagnostics
+        self.isMeaningLoading = isMeaningLoading
         self.onAdd = onAdd
         self.onReportMissing = onReportMissing
         self.onSaveOverride = onSaveOverride
@@ -29,86 +32,104 @@ struct WordDetailSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(word)
-                .font(.largeTitle)
-                .bold()
+        ZStack {
+            AppBackground()
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Pronunciation")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(word)
+                        .font(.title2.weight(.semibold))
 
-                Text(transliterator.pronounce(word))
-                    .font(.body)
-            }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Pronunciation")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Meaning")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if let meaning, !meaning.isEmpty {
-                    Text(meaning)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                } else {
-                    Text("No meaning yet.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            if diagnosticsEnabled, let diagnostics {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Diagnostics")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    LabeledContent("Lookup", value: diagnostics.path.displayName)
-                    if let matchedKey = diagnostics.matchedKey {
-                        LabeledContent("Matched Key", value: matchedKey)
+                        Text(transliterator.pronounce(word))
+                            .font(Theme.readingFont)
                     }
-                }
-            }
+                    .cardStyle()
 
-            if diagnosticsEnabled, let onSaveOverride {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Override Meaning")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Meaning")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                    TextField("Enter override meaning", text: $overrideText)
-                        .textInputAutocapitalization(.sentences)
-
-                    Button("Save Override") {
-                        let trimmed = overrideText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        onSaveOverride(trimmed)
+                        if isMeaningLoading {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Fetching meaning from cloud...")
+                                    .font(Theme.readingFont)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if let meaning, !meaning.isEmpty {
+                            Text(meaning)
+                                .font(Theme.readingFont)
+                                .foregroundStyle(.primary)
+                        } else {
+                            Text("No meaning yet.")
+                                .font(Theme.readingFont)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .buttonStyle(.bordered)
+                    .cardStyle()
+
+                    if diagnosticsEnabled, let diagnostics {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Diagnostics")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            LabeledContent("Lookup", value: diagnostics.path.displayName)
+                            if let matchedKey = diagnostics.matchedKey {
+                                LabeledContent("Matched Key", value: matchedKey)
+                            }
+                        }
+                        .cardStyle()
+                    }
+
+                    if diagnosticsEnabled, let onSaveOverride {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Override Meaning")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            TextField("Enter override meaning", text: $overrideText)
+                                .textInputAutocapitalization(.sentences)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                            Button("Save Override") {
+                                let trimmed = overrideText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                guard !trimmed.isEmpty else { return }
+                                onSaveOverride(trimmed)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .cardStyle()
+                    }
+
+                    if !isMeaningLoading, meaning == nil, let onReportMissing {
+                        Button("Report missing meaning") {
+                            onReportMissing()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    Button {
+                        onAdd()
+                    } label: {
+                        Text("Add to Vocab")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isMeaningLoading)
+                    .accessibilityLabel("Add to vocabulary")
+                    .accessibilityHint("Saves this word to your vocabulary list")
                 }
+                .padding(16)
             }
-
-            if meaning == nil, let onReportMissing {
-                Button("Report missing meaning") {
-                    onReportMissing()
-                }
-                .buttonStyle(.bordered)
-            }
-
-            Button {
-                onAdd()
-            } label: {
-                Text("Add to Vocab")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .accessibilityLabel("Add to vocabulary")
-            .accessibilityHint("Saves this word to your vocabulary list")
-
-            Spacer()
         }
-        .padding()
         .presentationDetents([.medium, .large])
     }
 }

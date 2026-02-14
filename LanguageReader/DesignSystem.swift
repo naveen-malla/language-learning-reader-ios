@@ -1,16 +1,65 @@
 import SwiftUI
 
 enum Theme {
-    static let accent = Color.blue
-    static let cardBackground = Color(.systemBackground)
-    static let canvas = Color(.systemGroupedBackground)
-    static let shadow = Color.black.opacity(0.08)
+    static let accent = Color(red: 0.13, green: 0.45, blue: 0.9)
+    static let accentSecondary = Color(red: 0.12, green: 0.68, blue: 0.63)
+    static let cardBackground = Color(uiColor: .systemBackground)
+    static let canvas = Color(uiColor: .systemGroupedBackground)
+    static let shadow = Color.black.opacity(0.14)
+    static let cornerRadius: CGFloat = 18
+    static let surfaceStroke = Color.primary.opacity(0.08)
+    static let readingTextSize: CGFloat = 17
 
-    static let newHighlight = Color.blue
-    static let learningHighlight = Color.green
+    static let newHighlight = Color(red: 0.28, green: 0.64, blue: 1.0)
+    static let learningHighlight = Color(red: 0.2, green: 0.78, blue: 0.56)
+    static let knownHighlight = Color(uiColor: .systemGray2)
+
+    static var readingFont: Font {
+        .system(size: readingTextSize, weight: .regular, design: .rounded)
+    }
+
+    static var readingEmphasisFont: Font {
+        .system(size: readingTextSize, weight: .semibold, design: .rounded)
+    }
 
     static func statusColor(_ status: VocabStatus) -> Color {
-        status.isKnown ? .gray : learningHighlight
+        statusTint(status)
+    }
+
+    static func statusTint(_ status: VocabStatus) -> Color {
+        switch status {
+        case .level1:
+            return Color(red: 0.19, green: 0.72, blue: 1.0)
+        case .level2:
+            return Color(red: 0.2, green: 0.78, blue: 0.56)
+        case .level3:
+            return Color(red: 0.95, green: 0.68, blue: 0.24)
+        case .level4:
+            return Color(red: 0.94, green: 0.47, blue: 0.34)
+        case .known:
+            return knownHighlight
+        }
+    }
+
+    static func statusChipBackground(_ status: VocabStatus, isSelected: Bool) -> Color {
+        if isSelected {
+            return statusTint(status).opacity(status.isKnown ? 0.25 : 0.92)
+        }
+        return statusTint(status).opacity(status.isKnown ? 0.08 : 0.14)
+    }
+
+    static func statusChipForeground(_ status: VocabStatus, isSelected: Bool) -> Color {
+        if isSelected {
+            return status.isKnown ? .primary : .white
+        }
+        return status.isKnown ? .secondary : statusTint(status)
+    }
+
+    static func statusChipBorder(_ status: VocabStatus, isSelected: Bool) -> Color {
+        if isSelected {
+            return .clear
+        }
+        return statusTint(status).opacity(status.isKnown ? 0.34 : 0.6)
     }
 
     static func wordHighlightColor(_ state: WordLearningVisualState) -> Color {
@@ -29,13 +78,28 @@ struct AppBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let base = Theme.canvas
-        let accent = colorScheme == .dark ? Color.blue.opacity(0.25) : Color.blue.opacity(0.15)
-        LinearGradient(
-            colors: [base, accent, base],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        let top = colorScheme == .dark
+            ? Color(red: 0.08, green: 0.11, blue: 0.16)
+            : Color(red: 0.92, green: 0.95, blue: 1.0)
+        let mid = colorScheme == .dark
+            ? Color(red: 0.05, green: 0.07, blue: 0.11)
+            : Color(red: 0.86, green: 0.92, blue: 0.98)
+        let bottom = colorScheme == .dark
+            ? Color(red: 0.03, green: 0.04, blue: 0.07)
+            : Color(red: 0.95, green: 0.97, blue: 1.0)
+        let glow = colorScheme == .dark ? Theme.accent.opacity(0.28) : Theme.accent.opacity(0.18)
+
+        ZStack {
+            LinearGradient(colors: [top, mid, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
+
+            RadialGradient(
+                colors: [glow, .clear],
+                center: .topTrailing,
+                startRadius: 30,
+                endRadius: 340
+            )
+            .blendMode(.plusLighter)
+        }
         .ignoresSafeArea()
     }
 }
@@ -52,13 +116,72 @@ struct SectionCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.headline)
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(.primary)
             content
         }
         .padding(16)
-        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Theme.shadow, radius: 8, y: 4)
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                .stroke(Theme.surfaceStroke, lineWidth: 1)
+        )
+        .shadow(color: Theme.shadow.opacity(0.7), radius: 12, y: 6)
+    }
+}
+
+struct StatusLevelChip: View {
+    let status: VocabStatus
+    let selectedStatus: VocabStatus
+    let onSelect: (VocabStatus) -> Void
+
+    private var isSelected: Bool {
+        selectedStatus == status
+    }
+
+    var body: some View {
+        Button {
+            onSelect(status)
+        } label: {
+            Text(status.shortLabel)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, status.isKnown ? 10 : 12)
+                .padding(.vertical, 7)
+                .foregroundStyle(Theme.statusChipForeground(status, isSelected: isSelected))
+                .background(Theme.statusChipBackground(status, isSelected: isSelected), in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Theme.statusChipBorder(status, isSelected: isSelected), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Set level \(status.displayName)")
+    }
+}
+
+struct TokenTapButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 1)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.white.opacity(configuration.isPressed ? 0.1 : 0.0001))
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
+struct IconCircleButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: 30, height: 30)
+            .background(tint.opacity(configuration.isPressed ? 0.2 : 0.1), in: Circle())
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 
@@ -66,7 +189,27 @@ extension View {
     func cardStyle() -> some View {
         self
             .padding(16)
-            .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Theme.shadow, radius: 8, y: 4)
+            .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                    .stroke(Theme.surfaceStroke, lineWidth: 1)
+            )
+            .shadow(color: Theme.shadow.opacity(0.7), radius: 12, y: 6)
+    }
+
+    func readerUtilityButtonStyle() -> some View {
+        self
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    func subtleMetadataPillStyle() -> some View {
+        self
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(Color.primary.opacity(0.07), in: Capsule())
     }
 }
