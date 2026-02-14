@@ -12,6 +12,8 @@ struct DocumentReaderView: View {
     @State private var sentenceIndex = 0
     @State private var sentenceInsights: SentenceInsights?
     @State private var translatedSentence: String?
+    @State private var isTranslatingSentence = false
+    @State private var translationTask: Task<Void, Never>?
     @State private var scrollOffset: CGFloat = 0
     @State private var contentHeight: CGFloat = 1
     @State private var viewportHeight: CGFloat = 1
@@ -21,7 +23,7 @@ struct DocumentReaderView: View {
 
     private let normalizer = TextNormalizer()
     private let sentenceInsightsBuilder = SentenceInsightsBuilder()
-    private let sentenceTranslator = SentenceGlossTranslator()
+    private let sentenceTranslator = SentenceTranslationService()
     private let learningStateResolver = WordLearningStateResolver()
     private let ignoredWordsStore = IgnoredWordsStore()
 
@@ -100,6 +102,9 @@ struct DocumentReaderView: View {
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             refreshStatusMap()
         }
+        .onDisappear {
+            translationTask?.cancel()
+        }
         .sheet(item: $selection) { selected in
             WordDetailSheet(
                 word: selected.text,
@@ -171,6 +176,7 @@ struct DocumentReaderView: View {
             sentences: sentenceReaderModel.sentences,
             sentenceIndex: $sentenceIndex,
             translatedSentence: translatedSentence,
+            isTranslatingSentence: isTranslatingSentence,
             visibleWords: sentenceInsights.map(visibleSentenceWords(from:)) ?? [],
             learningStateForWord: { word in
                 learningState(for: word)
@@ -204,6 +210,8 @@ struct DocumentReaderView: View {
         if nextMode == .sentence {
             refreshSentenceInsightsForCurrentSentence()
         } else {
+            translationTask?.cancel()
+            isTranslatingSentence = false
             sentenceInsights = nil
             translatedSentence = nil
         }
@@ -211,25 +219,47 @@ struct DocumentReaderView: View {
 
     private func translateCurrentSentence() {
         guard let selectedSentenceBlock else { return }
-        translatedSentence = sentenceTranslator.gloss(selectedSentenceBlock.text).text
+        translationTask?.cancel()
+
+        let sentence = selectedSentenceBlock.text
+        let expectedIndex = sentenceIndex
+        isTranslatingSentence = true
+
+        translationTask = Task {
+            let translated = await sentenceTranslator.translate(sentence: sentence)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard readerMode == .sentence else { return }
+                guard sentenceIndex == expectedIndex else { return }
+                guard self.selectedSentenceBlock?.text == sentence else { return }
+
+                translatedSentence = translated
+                isTranslatingSentence = false
+            }
+        }
     }
 
     private func refreshSentenceInsightsIfNeeded() {
         guard readerMode == .sentence, let selectedSentenceBlock else { return }
         sentenceInsights = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
         if translatedSentence != nil {
-            translatedSentence = sentenceTranslator.gloss(selectedSentenceBlock.text).text
+            translateCurrentSentence()
         }
     }
 
     private func refreshSentenceInsightsForCurrentSentence() {
         clampSentenceIndex()
         guard let selectedSentenceBlock else {
+            translationTask?.cancel()
+            isTranslatingSentence = false
             sentenceInsights = nil
             translatedSentence = nil
             return
         }
 
+        translationTask?.cancel()
+        isTranslatingSentence = false
         sentenceInsights = sentenceInsightsBuilder.build(for: selectedSentenceBlock.text)
         translatedSentence = nil
     }
@@ -378,6 +408,7 @@ private struct SentencePagerView: View {
     let sentences: [SentenceBlock]
     @Binding var sentenceIndex: Int
     let translatedSentence: String?
+    let isTranslatingSentence: Bool
     let visibleWords: [SentenceWordInsight]
     let learningStateForWord: (String) -> WordLearningVisualState
     let learningStateForKey: (String) -> WordLearningVisualState
@@ -404,6 +435,7 @@ private struct SentencePagerView: View {
                     SentenceIntegratedPage(
                         sentence: block.text,
                         translatedSentence: (index == sentenceIndex) ? translatedSentence : nil,
+                        isTranslatingSentence: (index == sentenceIndex) ? isTranslatingSentence : false,
                         words: (index == sentenceIndex) ? visibleWords : [],
                         learningStateForWord: learningStateForWord,
                         learningStateForKey: learningStateForKey,
@@ -428,6 +460,7 @@ private struct SentencePagerView: View {
 private struct SentenceIntegratedPage: View {
     let sentence: String
     let translatedSentence: String?
+    let isTranslatingSentence: Bool
     let words: [SentenceWordInsight]
     let learningStateForWord: (String) -> WordLearningVisualState
     let learningStateForKey: (String) -> WordLearningVisualState
@@ -457,10 +490,21 @@ private struct SentenceIntegratedPage: View {
                     SentencePronunciationView(pronunciation: sentencePronunciation)
 
                     Button(action: onTranslate) {
-                        Label("Translate sentence", systemImage: "character.bubble")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.blue)
+                        Group {
+                            if isTranslatingSentence {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .tint(.blue)
+                                    Text("Translating...")
+                                }
+                            } else {
+                                Label("Translate sentence", systemImage: "character.bubble")
+                            }
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.blue)
                     }
+                    .disabled(isTranslatingSentence)
 
                     if let translatedSentence {
                         ScrollView {

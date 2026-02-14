@@ -23,7 +23,14 @@
 - Sentence header text is reduced to `30pt` and uses token-level highlight colors.
 - Sentence header now includes a transliterated pronunciation line under the sentence.
 - Translation text is wrapped inside a fixed-height scrollable area below the translate action.
+- Sentence translate action uses Azure Translator when configured in Settings; otherwise it falls back to offline gloss.
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
+
+## Translation API Setup
+1. Open Settings -> Translation API.
+2. Enter endpoint, region, and Key 1 from Azure Translator.
+3. Save settings; key is stored in Keychain.
+4. Use sentence mode -> `Translate sentence` to verify live translation.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -57,6 +64,8 @@ Notes:
   - confirm sentence appears once per page (no duplicate overlay card)
   - confirm translate action and unresolved word list are visible in the same page
   - confirm sentence transliteration is visible under the sentence and stays readable on long lines
+  - confirm translate action shows a loading state and resolves into wrapped text
+  - confirm translation still works (fallback gloss) if API key is missing/cleared
   - confirm tapping a listed word still opens the word detail sheet
   - confirm the same word uses the same highlight state in text view and sentence view
   - confirm new-word quick actions exist (`+`, `✓`, `delete`) and apply immediately

@@ -12,7 +12,7 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 - In sentence mode, each page integrates all sentence details directly in the reader:
   - a single centered sentence (shown once)
   - sentence pronunciation in Latin script (transliteration) under the sentence
-  - translate action (dictionary gloss)
+  - translate action (Azure Translator when configured, otherwise offline dictionary gloss fallback)
   - only unresolved words (new + learning; known and ignored words are hidden)
   - pronunciation + meaning for visible words in an in-page list
 - New rows in sentence mode provide direct actions: `+` (add Level 1), `✓` (mark Known), and `delete` (ignore permanently).
@@ -54,11 +54,20 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 - Local overrides live in `Documents/dictionary_overrides.tsv` (TSV: normalized_key<TAB>meaning).
 - Missing meanings are logged to `Documents/dictionary_missing.tsv`.
 
+## Azure Translation Setup (Optional)
+- Open Settings -> Translation API.
+- Enter:
+  - Endpoint: `https://api.cognitive.microsofttranslator.com`
+  - Region: your Azure region code (for example `germanywestcentral`)
+  - Key 1: saved to Keychain only (never stored in source or `UserDefaults`)
+- Tap `Save Translation Settings`.
+
 ## Known Limitations
 - Dictionary coverage depends on the bundled subset or locally downloaded dataset.
 - Translation API is optional and not required for the MVP.
 - Inflected Kannada forms use a small heuristic suffix strip; it won’t cover all morphology.
 - Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
-- Sentence translation is a dictionary gloss, not a full grammar-aware translation engine.
+- Sentence translation uses Azure if configured; if unavailable/failing, it falls back to dictionary gloss.
+- Azure dictionary lookup endpoints are not available for Kannada, so per-word meanings stay dictionary-first.
 - Sentence detection uses NaturalLanguage sentence boundaries; long/irregular punctuation still needs refinement.
 - Ignored words are currently permanent (no management screen yet).

@@ -14,6 +14,7 @@
 		0B1232093177257140447957 /* TokenizerEdgeCasesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */; };
 		0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 507F0DECE74E7B240451E31D /* FlowLayout.swift */; };
 		138F8E7D58E3D95A05F80FB8 /* FlashcardDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3358F84D5EB791E944BE93E4 /* FlashcardDeck.swift */; };
+		1434DDD402564D6969E20287 /* SentenceTranslationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5B6693712961D98064798B /* SentenceTranslationService.swift */; };
 		14DE66849FDEB47D911AD95A /* DictionaryOverrideStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6ED3C4DD79E65E273C48B14 /* DictionaryOverrideStore.swift */; };
 		15297A951657A50100BF44C1 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */; };
 		17177483B9A8E38DD7D384FF /* LanguageReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */; };
@@ -28,6 +29,7 @@
 		44D72F4C2656F66B7F927C4D /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83574C6CA00EEE79873A7D88 /* Document.swift */; };
 		45E0532A82E1D26DEF08428F /* WordLearningStateResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF51C5F563980B0D0414E21A /* WordLearningStateResolverTests.swift */; };
 		4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */; };
+		4C9A6F7BEAFB0E8B6808ACA9 /* AzureTranslatorClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3341B085FE651FE1611901 /* AzureTranslatorClient.swift */; };
 		55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */; };
 		5A073BAB501EA63244A66081 /* WordLearningStateResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F4173C0163E7A6873A14EA /* WordLearningStateResolver.swift */; };
 		5D41AF565DCA3C97F01BF119 /* TransliteratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */; };
@@ -35,10 +37,12 @@
 		7412827BD938D5A0880F5AC1 /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE021185D006A04450A65CE /* TextNormalizerTests.swift */; };
 		7706B79A70500BD75721204A /* DocumentReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79B0FDC7AF69C466C687930 /* DocumentReaderView.swift */; };
 		79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58101E386AAAD669B0E71F82 /* ReaderView.swift */; };
+		83D783938754D6005C4D9E9F /* SentenceTranslationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F17BDCCEDA84A517F2D9A06 /* SentenceTranslationServiceTests.swift */; };
 		88518463F63406E83736F8F2 /* FlashcardDeckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514783E2E8B83C13BBF13A44 /* FlashcardDeckTests.swift */; };
 		8E1A94773D48C9F355B48391 /* IgnoredWordsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECFFF6294E2E0FF0B980CB7 /* IgnoredWordsStoreTests.swift */; };
 		954207AF9CAB12581ECA0A60 /* dictionary.sqlite in Resources */ = {isa = PBXBuildFile; fileRef = 0BF21C18FC77B36CEB2B8259 /* dictionary.sqlite */; };
 		9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */; };
+		99DB6E3C7AF0A6A72FD93531 /* KeychainSecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5F68A6624DFA5E5CEDDCA2 /* KeychainSecretStore.swift */; };
 		9AB0AD59D3D5E801C1852FDC /* SentenceTextViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8736E0ADBC10C12AD5381652 /* SentenceTextViewTests.swift */; };
 		9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63D640A38A99377FD7B8064C /* Assets.xcassets */; };
 		9F35E89209F8F9DE576B6676 /* IgnoredWordsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49AA7B79ADABC54279052FC0 /* IgnoredWordsStore.swift */; };
@@ -53,14 +57,17 @@
 		C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */; };
 		C959E9CB79FCD5EA1CD568B1 /* DictionaryOverrideStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */; };
 		DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */; };
+		DFFFDCC9C193AB67CF4F70DA /* AzureTranslatorClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A87E56BB99099969C8D501 /* AzureTranslatorClientTests.swift */; };
 		E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C924FAB0A3E47FED5C27A16A /* SampleDictionaryProvider.swift */; };
 		E4D0923A2FC4ACB5DF9ED0D1 /* VocabEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */; };
 		E5D848B321EF2FA5FFE665B6 /* SentenceTokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACE6AA91863EF9905618C4FF /* SentenceTokenizerTests.swift */; };
 		E92CE745ADAA648AB60497AE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4836238FC51DEDA6B4723DFD /* ContentView.swift */; };
 		ECD021E3E3A36853A3BCCA1F /* DictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B026E76EF7A9A2E85A5F08FE /* DictionaryProvider.swift */; };
 		F08370466FE321BD07ECF5F4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */; };
+		F8CAFD4C23905138B07F7146 /* TranslationSettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 777EA231949FD6AC8971FDE8 /* TranslationSettingsStoreTests.swift */; };
 		FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */; };
 		FD9DF269CC226D8B5BED61DC /* FlashcardNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122AB9776CD69557C590C0E3 /* FlashcardNavigator.swift */; };
+		FF81B7C3F0EFB5967C0AC6E6 /* TranslationSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB02A1345F07DEF6C6B11000 /* TranslationSettingsStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,10 +87,12 @@
 		127DDEEE2440414892719D87 /* VocabStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabStatusTests.swift; sourceTree = "<group>"; };
 		1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryTests.swift; sourceTree = "<group>"; };
 		1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		1A5F68A6624DFA5E5CEDDCA2 /* KeychainSecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecretStore.swift; sourceTree = "<group>"; };
 		1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		2CEA19E87BDCA7B44E079C07 /* SampleDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDocuments.swift; sourceTree = "<group>"; };
 		3358F84D5EB791E944BE93E4 /* FlashcardDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardDeck.swift; sourceTree = "<group>"; };
+		38A87E56BB99099969C8D501 /* AzureTranslatorClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureTranslatorClientTests.swift; sourceTree = "<group>"; };
 		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		49AA7B79ADABC54279052FC0 /* IgnoredWordsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoredWordsStore.swift; sourceTree = "<group>"; };
@@ -102,6 +111,9 @@
 		63D640A38A99377FD7B8064C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6912B052B7C9E0731389FF68 /* SentenceReaderModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceReaderModelTests.swift; sourceTree = "<group>"; };
 		6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerTests.swift; sourceTree = "<group>"; };
+		6F3341B085FE651FE1611901 /* AzureTranslatorClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureTranslatorClient.swift; sourceTree = "<group>"; };
+		777EA231949FD6AC8971FDE8 /* TranslationSettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationSettingsStoreTests.swift; sourceTree = "<group>"; };
+		7F17BDCCEDA84A517F2D9A06 /* SentenceTranslationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTranslationServiceTests.swift; sourceTree = "<group>"; };
 		83574C6CA00EEE79873A7D88 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
 		8736E0ADBC10C12AD5381652 /* SentenceTextViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTextViewTests.swift; sourceTree = "<group>"; };
 		8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizedTextView.swift; sourceTree = "<group>"; };
@@ -120,6 +132,7 @@
 		B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabEntry.swift; sourceTree = "<group>"; };
 		BD658B4B2612902C9431D75C /* SentenceReaderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceReaderModel.swift; sourceTree = "<group>"; };
 		C924FAB0A3E47FED5C27A16A /* SampleDictionaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDictionaryProvider.swift; sourceTree = "<group>"; };
+		CB02A1345F07DEF6C6B11000 /* TranslationSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationSettingsStore.swift; sourceTree = "<group>"; };
 		CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderApp.swift; sourceTree = "<group>"; };
 		DECFFF6294E2E0FF0B980CB7 /* IgnoredWordsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoredWordsStoreTests.swift; sourceTree = "<group>"; };
 		E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTokenizer.swift; sourceTree = "<group>"; };
@@ -128,6 +141,7 @@
 		F0F4173C0163E7A6873A14EA /* WordLearningStateResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordLearningStateResolver.swift; sourceTree = "<group>"; };
 		F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteDictionaryProvider.swift; sourceTree = "<group>"; };
 		F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTextView.swift; sourceTree = "<group>"; };
+		FA5B6693712961D98064798B /* SentenceTranslationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTranslationService.swift; sourceTree = "<group>"; };
 		FEB6EC35B769BB8BDBAD10A3 /* WordDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordDetailSheet.swift; sourceTree = "<group>"; };
 		FF6003B699E24F2AEBFD59B2 /* SentenceInsightsBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceInsightsBuilderTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -165,6 +179,7 @@
 		3CA56DAFA4F43118E274C908 /* LanguageReaderTests */ = {
 			isa = PBXGroup;
 			children = (
+				38A87E56BB99099969C8D501 /* AzureTranslatorClientTests.swift */,
 				5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */,
 				0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */,
 				1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */,
@@ -176,9 +191,11 @@
 				6912B052B7C9E0731389FF68 /* SentenceReaderModelTests.swift */,
 				8736E0ADBC10C12AD5381652 /* SentenceTextViewTests.swift */,
 				ACE6AA91863EF9905618C4FF /* SentenceTokenizerTests.swift */,
+				7F17BDCCEDA84A517F2D9A06 /* SentenceTranslationServiceTests.swift */,
 				4DE021185D006A04450A65CE /* TextNormalizerTests.swift */,
 				A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */,
 				6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */,
+				777EA231949FD6AC8971FDE8 /* TranslationSettingsStoreTests.swift */,
 				94FF6030A79F944365D2BBD5 /* TransliteratorTests.swift */,
 				127DDEEE2440414892719D87 /* VocabStatusTests.swift */,
 				AF51C5F563980B0D0414E21A /* WordLearningStateResolverTests.swift */,
@@ -221,6 +238,7 @@
 			isa = PBXGroup;
 			children = (
 				63D640A38A99377FD7B8064C /* Assets.xcassets */,
+				6F3341B085FE651FE1611901 /* AzureTranslatorClient.swift */,
 				4836238FC51DEDA6B4723DFD /* ContentView.swift */,
 				5AB520B0AE9F2660E827D2D0 /* DesignSystem.swift */,
 				83574C6CA00EEE79873A7D88 /* Document.swift */,
@@ -231,6 +249,7 @@
 				AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */,
 				507F0DECE74E7B240451E31D /* FlowLayout.swift */,
 				49AA7B79ADABC54279052FC0 /* IgnoredWordsStore.swift */,
+				1A5F68A6624DFA5E5CEDDCA2 /* KeychainSecretStore.swift */,
 				CC1865C00F160FD3D14D97BB /* LanguageReaderApp.swift */,
 				1957E7BF53184A8FB733522A /* LaunchScreen.storyboard */,
 				58101E386AAAD669B0E71F82 /* ReaderView.swift */,
@@ -239,10 +258,12 @@
 				BD658B4B2612902C9431D75C /* SentenceReaderModel.swift */,
 				F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */,
 				E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */,
+				FA5B6693712961D98064798B /* SentenceTranslationService.swift */,
 				1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */,
 				5D361AD9762B749101E84012 /* TextNormalizer.swift */,
 				8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */,
 				3F25B5E93FBC962853030C5C /* Tokenizer.swift */,
+				CB02A1345F07DEF6C6B11000 /* TranslationSettingsStore.swift */,
 				61C1D8AC10E692481F04C1E3 /* Transliterator.swift */,
 				B1245D3BC99ADD960C3DBA6B /* VocabEntry.swift */,
 				9623AFD5A1EF3B2081BB7E2E /* VocabView.swift */,
@@ -341,6 +362,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C9A6F7BEAFB0E8B6808ACA9 /* AzureTranslatorClient.swift in Sources */,
 				E92CE745ADAA648AB60497AE /* ContentView.swift in Sources */,
 				4A400258A76C941A5EF373A3 /* DesignSystem.swift in Sources */,
 				0873D7B354B8D8480CEA83BD /* DictionaryLookupResult.swift in Sources */,
@@ -356,6 +378,7 @@
 				9935E0C13ACDEB63A5BB507D /* FlashcardsView.swift in Sources */,
 				0E40D2E6F5D12878E046159C /* FlowLayout.swift in Sources */,
 				9F35E89209F8F9DE576B6676 /* IgnoredWordsStore.swift in Sources */,
+				99DB6E3C7AF0A6A72FD93531 /* KeychainSecretStore.swift in Sources */,
 				17177483B9A8E38DD7D384FF /* LanguageReaderApp.swift in Sources */,
 				79FF35C7E038D8741644E6BE /* ReaderView.swift in Sources */,
 				C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */,
@@ -365,10 +388,12 @@
 				175CE53B47795CC28CDB804C /* SentenceReaderModel.swift in Sources */,
 				223E545AE32DFF1032F17357 /* SentenceTextView.swift in Sources */,
 				203405BD555E15738F57C50C /* SentenceTokenizer.swift in Sources */,
+				1434DDD402564D6969E20287 /* SentenceTranslationService.swift in Sources */,
 				F08370466FE321BD07ECF5F4 /* SettingsView.swift in Sources */,
 				00E7CB44195D7B8C7CDD429A /* TextNormalizer.swift in Sources */,
 				1D68C289805ED116DF2A0BC2 /* TokenizedTextView.swift in Sources */,
 				A03994CB7E7BB200A4EA1DD0 /* Tokenizer.swift in Sources */,
+				FF81B7C3F0EFB5967C0AC6E6 /* TranslationSettingsStore.swift in Sources */,
 				B5FFC2935E7E803602244390 /* Transliterator.swift in Sources */,
 				E4D0923A2FC4ACB5DF9ED0D1 /* VocabEntry.swift in Sources */,
 				A2FF3916FC53AD54598BF904 /* VocabView.swift in Sources */,
@@ -381,6 +406,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DFFFDCC9C193AB67CF4F70DA /* AzureTranslatorClientTests.swift in Sources */,
 				B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */,
 				C959E9CB79FCD5EA1CD568B1 /* DictionaryOverrideStoreTests.swift in Sources */,
 				FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */,
@@ -392,9 +418,11 @@
 				B35E0DA89260490ED44D55CF /* SentenceReaderModelTests.swift in Sources */,
 				9AB0AD59D3D5E801C1852FDC /* SentenceTextViewTests.swift in Sources */,
 				E5D848B321EF2FA5FFE665B6 /* SentenceTokenizerTests.swift in Sources */,
+				83D783938754D6005C4D9E9F /* SentenceTranslationServiceTests.swift in Sources */,
 				7412827BD938D5A0880F5AC1 /* TextNormalizerTests.swift in Sources */,
 				0B1232093177257140447957 /* TokenizerEdgeCasesTests.swift in Sources */,
 				DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */,
+				F8CAFD4C23905138B07F7146 /* TranslationSettingsStoreTests.swift in Sources */,
 				5D41AF565DCA3C97F01BF119 /* TransliteratorTests.swift in Sources */,
 				B4A9B22F943460F842D69304 /* VocabStatusTests.swift in Sources */,
 				45E0532A82E1D26DEF08428F /* WordLearningStateResolverTests.swift in Sources */,

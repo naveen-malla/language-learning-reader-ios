@@ -37,7 +37,10 @@
 ## Translation APIs
 - Optional only; no runtime dependency in MVP.
 - API key stored in Keychain.
-- V1 uses an offline dictionary-based sentence gloss when the user taps translate (rough translation, not full grammar).
+- Azure Translator is the first network provider for sentence translation (`kn -> en`) when configured.
+- Endpoint + region are stored in `UserDefaults`; API key remains in Keychain.
+- Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
+- If network translation is unavailable, reader falls back to the existing offline dictionary gloss.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.

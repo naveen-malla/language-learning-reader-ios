@@ -4,7 +4,7 @@
 - Reader: create and open documents, read text, tap words.
 - Vocab: list/search vocabulary, adjust status.
 - Flashcards: simple review flow.
-- Settings: optional API key, dictionary info/license.
+- Settings: optional Azure translation config + key management, dictionary info/license.
 
 ## Core Flow
 1. Paste text into Reader (or use `Paste from Clipboard`) and save a document.
@@ -46,8 +46,9 @@
 
 ## Sentence Translation (Gloss)
 - Triggered explicitly by user action (no auto-translate).
-- Offline dictionary-based gloss; replaces known words with meanings and preserves punctuation.
-- Label as rough translation; not fully grammatical.
+- Uses Azure Translator (`kn -> en`) when endpoint + region + key are configured.
+- Falls back to offline dictionary gloss if config is missing or API request fails.
+- Translation text remains a rough aid and not a full grammar-aware translation engine.
 
 ## Dictionary Normalization
 - Normalize by trimming and lowercasing.
