@@ -1,89 +1,89 @@
 # LanguageReader
 
-A personal language reading app with vocabulary tracking and simple flashcards.
+An iOS reading-first language learning app (initial scope: Kannada) with offline word lookup, vocabulary tracking, and adaptive spaced-repetition flashcards.
 
-## MVP Scope
-- Paste text into the app and save as a document (initial scope: Kannada).
-- Reader has a direct `Paste from Clipboard` action for simulator/device reliability.
-- App shell uses a soft pastel canvas with rounded cards and a translucent tab bar for quick visual scanning.
-- Reader composer shows live writing stats (`words`, `sentences`, `estimated read time`) before save.
-- Read the document in a full-bleed reader with a progress slider.
-- Toggle between word-level and sentence-level reading using a bottom-center mode button with horizontal transition.
-- Word tokens are grouped by sentence for more readable spacing.
-- In sentence mode, swipe horizontally through exactly one sentence per page.
-- In sentence mode, each page integrates all sentence details directly in the reader:
-  - a single sentence shown once in a full-width page layout
-  - sentence pronunciation in Latin script (transliteration) under the sentence
-  - translate action (Azure Translator when configured, otherwise offline dictionary gloss fallback)
-  - sentence, transliteration, and translation live in one unified top canvas (single scroll area)
-  - top canvas keeps a stable center anchor; content only shifts naturally when it truly overflows
-  - only unresolved words (new + learning; known and ignored words are hidden)
-  - pronunciation + meaning for visible words in an in-page list
-  - unified reading text size (`17pt`) across sentence text, transliteration, translations, and word meanings
-- New rows in sentence mode provide direct actions: `+` (add Level 1), `✓` (mark Known), and `delete` (ignore permanently).
-- Add words to vocabulary with canonical status levels: `1`, `2`, `3`, `4`, and `Known` (`New` is untracked).
-- Color-code words by status in the reader with one shared resolver across text and sentence views.
-- Vocab list with search and always-visible one-tap level controls (`1 2 3 4 Known`).
-- Flashcards with direct level controls (`1 2 3 4 Known`) and a review deck that includes only levels `1-4`.
-- Vocab and Flashcards include compact progress pills (`Total`, `Learning`, `Known` / `Deck`, `Known`, `Index`) for fast session awareness.
-- Documents list surfaces a short preview + word count metadata for faster re-entry.
-- Settings for optional translation API key and dictionary source/licensing info.
-- App seeds two larger Kannada sample documents on first launch for quick testing.
-- Reader caches sentence splits and word tokenization per document text to keep scrolling responsive.
-- Word lookup is dictionary-first with optional cloud fallback for missing meanings, cached locally per source language.
+## Product Snapshot
+- Read saved documents in a distraction-light interface designed for long sessions.
+- Tap words to get instant meanings, pronunciation, and vocabulary actions.
+- Keep learning state unified across Reader, Vocab, and Flashcards.
+- Review only what is due with adaptive scheduling (`Again`, `Hard`, `Good`, `Easy`).
+- Work fully offline by default; optional cloud translation/fallback is additive.
 
-## Run Instructions
+## Screenshots
+
+| Reader | Vocab |
+|---|---|
+| ![Reader tab](docs/screenshots/reader.jpg) | ![Vocab tab](docs/screenshots/vocab.jpg) |
+
+| Flashcards | Settings |
+|---|---|
+| ![Flashcards tab](docs/screenshots/flashcards.jpg) | ![Settings tab](docs/screenshots/settings.jpg) |
+
+## Core UX
+- **Reader-first flow**: minimal friction from paste/import to immersive reading.
+- **Word-level intelligence**: dictionary lookup path tracking (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
+- **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with consistent color mapping.
+- **Session-focused flashcards**: due filtering, re-queue for misses, and interval previews.
+- **Sentence support**: one-sentence paging with transliteration and translation fallback.
+
+## Spaced Repetition (Words Only)
+- Scheduler engine supports adaptive FSRS-style behavior with SM-2 fallback.
+- Review outcomes update interval, stability/difficulty signals, repetition count, lapses, and next due date.
+- `Known` and suspended cards are excluded from due queues.
+- Session metrics track `Due`, `Queue`, and `Accuracy` to keep review decisions fast.
+
+## Getting Started
 Prerequisites:
 - Xcode (latest stable)
-- iOS Simulator
+- iOS Simulator (prefer iPhone 14 Pro)
 
-Steps:
-1. Open `LanguageReader.xcodeproj` in Xcode.
-2. Select an iPhone Simulator (prefer iPhone 14 Pro; otherwise use the newest available).
-3. Build and run.
+### Xcode
+1. Open `LanguageReader.xcodeproj`.
+2. Select an iPhone simulator.
+3. Build and Run.
 
-CLI (once project exists):
+### CLI
+- Boot simulator: `./scripts/boot_simulator.sh`
+- Build: `./scripts/build.sh`
+- Run (build + install + launch): `./scripts/run.sh`
+- Test: `./scripts/test.sh`
 - List simulators: `xcrun simctl list`
-- Boot simulator: `open -a Simulator`
-- Build: `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
-- Guard repository hygiene (main-only): `./scripts/guard_main.sh`
 
-## Dictionary Data
-The app uses an offline dictionary for the initial language. A full dictionary is bundled in the app for Kannada so device updates do not require re-downloading.
+## Dictionary Pipeline
+- Bundled SQLite dictionary powers offline lookup.
+- Build/update bundled dictionary:
 
 ```bash
 ./scripts/build_dictionary.py
 ```
 
-This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.sqlite` (bundled in the app). The app prefers a local `Documents/dictionary.sqlite` if one exists, so you can still override by installing a custom dictionary into the app container.
+- Runtime prefers app-container dictionary if present, otherwise bundled fallback.
+- Local correction files in app Documents:
+  - `dictionary_overrides.tsv`
+  - `dictionary_missing.tsv`
+  - `dictionary_cloud_cache.tsv`
 
-Current build behavior:
-- Meanings are cleaned to be more concise before insertion (metadata prefixes removed, multi-sense tails truncated).
-- Redirect entries (`= ...`) are preserved so runtime redirect resolution still works.
-- Runtime lookup uses language profiles: generic behavior by default, with optional per-language inflection rules.
+## Optional Translation Setup
+Translation is optional and not required for core functionality.
 
-## Dictionary Overrides
-- Enable “Show diagnostics” in Settings to see lookup paths.
-- Local overrides live in `Documents/dictionary_overrides.tsv` (TSV: normalized_key<TAB>meaning).
-- Missing meanings are logged to `Documents/dictionary_missing.tsv`.
-- Cloud fallback cache is stored in `Documents/dictionary_cloud_cache.tsv`.
+In **Settings -> Translation API**, provide:
+- Endpoint (example): `https://api.cognitive.microsofttranslator.com`
+- Region
+- API key (stored in Keychain)
 
-## Azure Translation Setup (Optional)
-- Open Settings -> Translation API.
-- Enter:
-  - Endpoint: `https://api.cognitive.microsofttranslator.com`
-  - Region: your Azure region code (for example `germanywestcentral`)
-  - Key 1: saved to Keychain only (never stored in source or `UserDefaults`)
-- Tap `Save Translation Settings`.
+## Quality Bar
+- Deterministic domain logic where practical.
+- Strong unit coverage on tokenizer, dictionary lookup paths, vocab state resolution, and flashcard scheduling.
+- Full simulator test runs supported via `./scripts/test.sh`.
 
-## Known Limitations
-- Dictionary coverage depends on the bundled subset or locally downloaded dataset.
-- Translation API is optional and not required for the MVP.
-- Inflected Kannada forms use heuristic suffix and verb-form stripping (including common accusative/genitive endings and `-ುತ್ತ...` progressive forms); it still won’t cover full morphology.
-- Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
-- Meaning cleanup is heuristic and may occasionally shorten a definition too aggressively; use overrides to correct.
-- Sentence translation uses Azure if configured; if unavailable/failing, it falls back to dictionary gloss.
-- Per-word cloud fallback currently uses one-word translation, not full lexical sense disambiguation; quality can vary by context.
-- Language expansion still needs per-language dictionary source/import pipelines, but runtime lookup is already language-profile based.
-- Sentence detection uses NaturalLanguage sentence boundaries; long/irregular punctuation still needs refinement.
-- Ignored words are currently permanent (no management screen yet).
+## Documentation Map
+- Product plan and checkpoints: `PLANS.md`
+- Development workflow: `DEVELOPMENT.md`
+- UX and behavior details: `DESIGN.md`
+- Architecture decisions: `DECISIONS.md`
+
+## Known Limits (Current Scope)
+- Kannada is the first fully wired language profile.
+- Morphology handling is heuristic, not full linguistic analysis.
+- Per-word cloud fallback is context-light and can vary by sentence context.
+- No cloud sync in V1.
