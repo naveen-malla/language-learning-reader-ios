@@ -178,6 +178,58 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertEqual(entry.srsAlgorithm, SpacedRepetitionAlgorithm.fsrs.rawValue)
     }
 
+    func testAdaptiveEngineCanFallbackToSM2() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = VocabEntry(word: "word", normalizedKey: "word", meaning: "", status: .level1)
+        let scheduler = SpacedRepetitionEngine(algorithm: .sm2)
+
+        scheduler.apply(rating: .good, to: entry, now: now)
+
+        XCTAssertEqual(entry.srsAlgorithm, SpacedRepetitionAlgorithm.sm2.rawValue)
+    }
+
+    func testFSRSAgainOnReviewedCardResetsAndIncrementsLapses() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = VocabEntry(
+            word: "word",
+            normalizedKey: "word",
+            meaning: "",
+            status: .level4,
+            srsIntervalDays: 12,
+            srsRepetition: 5,
+            srsLapseCount: 1,
+            srsStability: 7.0,
+            srsDifficulty: 5.4
+        )
+        let scheduler = FSRSScheduler()
+
+        scheduler.apply(rating: .again, to: entry, now: now)
+
+        XCTAssertEqual(entry.status, .level1)
+        XCTAssertEqual(entry.srsRepetition ?? -1, 0)
+        XCTAssertEqual(entry.srsLapseCount ?? -1, 2)
+        XCTAssertEqual(entry.srsAlgorithm, SpacedRepetitionAlgorithm.fsrs.rawValue)
+        guard let dueAt = entry.dueAt else {
+            XCTFail("Expected due date after applying a review")
+            return
+        }
+        XCTAssertEqual(dueAt.timeIntervalSince1970, now.addingTimeInterval(10 * 60).timeIntervalSince1970, accuracy: 1)
+    }
+
+    func testNextDueDateIgnoresKnownAndSuspendedCards() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entries = [
+            VocabEntry(word: "known", normalizedKey: "known", meaning: "", status: .known, dueAt: now.addingTimeInterval(300)),
+            VocabEntry(word: "s1", normalizedKey: "s1", meaning: "", status: .level1, dueAt: now.addingTimeInterval(100), isSuspended: true),
+            VocabEntry(word: "l1", normalizedKey: "l1", meaning: "", status: .level2, dueAt: now.addingTimeInterval(200)),
+            VocabEntry(word: "l2", normalizedKey: "l2", meaning: "", status: .level3, dueAt: now.addingTimeInterval(400))
+        ]
+
+        let nextDue = FlashcardDeck.nextDueDate(from: entries, now: now)
+
+        XCTAssertEqual(nextDue, now.addingTimeInterval(200))
+    }
+
     func testIntervalLabelUsesMinutesHoursAndDays() {
         XCTAssertEqual(FlashcardDeck.intervalLabel(for: 4 * 60), "4m")
         XCTAssertEqual(FlashcardDeck.intervalLabel(for: 3 * 60 * 60), "3h")

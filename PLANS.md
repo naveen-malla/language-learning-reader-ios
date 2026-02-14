@@ -31,6 +31,7 @@ Completed:
 - Vocab statuses (`new`, `learning`, `known`) with color coding.
 - Flashcards upgraded to due-based spaced repetition with adaptive FSRS-style scheduling (SM-2 fallback), `Again/Hard/Good/Easy` ratings, and in-session re-queue for misses.
 - Flashcards visual polish pass: flip-style reveal, interval-aware answer rail, session summary state, and haptic feedback cues.
+- Hardening pass after flashcard rewrite: scheduler edge/failure tests expanded and full simulator test suite run clean.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
 
 In progress:
