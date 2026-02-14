@@ -35,6 +35,7 @@ Completed:
 In progress:
 - Dictionary quality for inflected forms and coverage gaps (Phase 1 ongoing).
 - Phase 1 expansion for multi-language-ready lookup architecture (language profiles + cloud cache path).
+- Dictionary quality evaluation pipeline (coverage + gold accuracy + thresholds) with first Kannada fixture.
 - Reader visual polish toward a cleaner LingQ-like reading experience.
 
 Pending:
@@ -66,6 +67,11 @@ Tasks:
    - Keep fallback language-agnostic at architecture level (language profiles + source-language keyed cache). (done)
 5. Phase 1E:
    - Add language onboarding checklist (dictionary source import + profile rules + fixture tests) so new languages avoid re-engineering.
+6. Phase 1F (started):
+   - Add dictionary evaluator script (`scripts/evaluate_dictionary.py`) for corpus coverage + gold-meaning accuracy.
+   - Add fixture-driven thresholds and machine-readable report output for repeatable quality tracking.
+   - Add evaluator unit tests (`scripts/test_evaluate_dictionary.py`) so metric logic is regression-safe.
+   - Add initial Kannada core fixture as baseline quality gate.
 
 Acceptance criteria:
 - Manual sample text lookup feels consistent and fast.
@@ -73,6 +79,11 @@ Acceptance criteria:
 - Diagnostic mode clearly shows `direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, or `none`.
 - Missing/incorrect meanings can be fixed via overrides without rebuilding the app.
 - Unknown words can be backfilled once from cloud fallback and reused offline from local cache.
+- Dictionary quality is measurable with explicit metrics:
+  - token coverage
+  - unique-word coverage
+  - gold hit rate
+  - gold accuracy (context-appropriate meaning)
 
 ### Phase 2: Reader UX Restructure
 Goals:

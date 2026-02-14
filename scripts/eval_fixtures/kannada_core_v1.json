@@ -1,0 +1,35 @@
+{
+  "name": "kannada_core_v1",
+  "corpus_sentences": [
+    "ನಮಸ್ಕಾರ, ಇದು ನನ್ನ ಮನೆ.",
+    "ಅವನು ಪುಸ್ತಕವನ್ನು ಓದುತ್ತಿದ್ದ.",
+    "ನಾನು ಶಾಲೆಗೆ ಹೋಗುತ್ತೇನೆ.",
+    "ಅವರು ಆಹಾರವನ್ನು ತಿನ್ನುತ್ತಿದ್ದರು.",
+    "ನೀರು ಸ್ವಚ್ಛವಾಗಿದೆ.",
+    "ಇದು ಒಂದು ಸುಂದರ ಕಥೆ.",
+    "ಮಗನು ಕಿಟಕಿಯನ್ನು ತೆರೆದನು.",
+    "ಅವಳು ಪತ್ರವನ್ನು ಬರೆದಳು.",
+    "ಬೆಳಿಗ್ಗೆ ನಾವು ಮಾರುಕಟ್ಟೆಗೆ ಹೋಗಿದ್ದೆವು.",
+    "ಭಾಷೆ ಕಲಿಯುವುದು ಸಮಯ ತೆಗೆದುಕೊಳ್ಳುತ್ತದೆ."
+  ],
+  "gold": [
+    { "word": "ನಮಸ್ಕಾರ", "accepted_meanings": ["hello", "greeting"] },
+    { "word": "ಮನೆ", "accepted_meanings": ["house", "home"] },
+    { "word": "ಪುಸ್ತಕ", "accepted_meanings": ["book"] },
+    { "word": "ಶಾಲೆ", "accepted_meanings": ["school"] },
+    { "word": "ಆಹಾರ", "accepted_meanings": ["food"] },
+    { "word": "ನೀರು", "accepted_meanings": ["water"] },
+    { "word": "ಕಥೆ", "accepted_meanings": ["story"] },
+    { "word": "ಭಾಷೆ", "accepted_meanings": ["language"] },
+    { "word": "ಕಿಟಕಿ", "accepted_meanings": ["window"] },
+    { "word": "ಪತ್ರ", "accepted_meanings": ["letter"] },
+    { "word": "ಮಾರುಕಟ್ಟೆ", "accepted_meanings": ["market"] }
+  ],
+  "thresholds": {
+    "token_coverage_min": 0.7,
+    "unique_coverage_min": 0.6,
+    "gold_hit_rate_min": 0.8,
+    "gold_accuracy_min": 0.6
+  }
+}
+
