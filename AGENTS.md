@@ -13,6 +13,8 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Challenge assumptions and suggest better approaches.
 - Prefer small, inspectable changes and clear structure.
 - Keep commits small and focused.
+- Commit and push completed milestones immediately without waiting for approval.
+- When multiple agents are working in parallel, stage and commit only files touched in the current task.
 - Build with learning psychology in mind: reduce friction, reinforce recall, and keep the reading flow smooth.
 
 ## Quality Bar
