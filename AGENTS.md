@@ -13,9 +13,20 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Challenge assumptions and suggest better approaches.
 - Prefer small, inspectable changes and clear structure.
 - Keep commits small and focused.
-- Commit and push completed milestones immediately without waiting for approval.
-- When multiple agents are working in parallel, stage and commit only files touched in the current task.
 - Build with learning psychology in mind: reduce friction, reinforce recall, and keep the reading flow smooth.
+
+## Git Cadence (Default)
+- Commit and push logical checkpoints immediately without waiting for manual approval.
+- Pair each checkpoint with the relevant verification (`xcodebuild` or script-based build/test) for touched scope.
+- Keep each commit single-purpose and include related docs/tests updates in the same checkpoint.
+- Never use force-push.
+
+## Multi-Agent Safety
+- Assume parallel agents are active and stage only files touched in the current task (no broad staging).
+- Before every push, run `git fetch origin` and `git rebase origin/main`.
+- If a rebase conflict overlaps another agent's in-flight work, stop and report instead of overwriting.
+- Never erase, reset, or revert unrelated edits.
+- Exclude generated/transient artifacts from commits.
 
 ## Quality Bar
 - Deterministic behavior where possible.
