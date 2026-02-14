@@ -28,6 +28,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Prefer iPhone 14 Pro if available; otherwise use a recent iPhone runtime.
 - Build/run from CLI with `xcodebuild` after each milestone.
 - List simulators: `xcrun simctl list`
+- Boot simulator: `open -a Simulator`
 - Build (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
 - Test (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
 
