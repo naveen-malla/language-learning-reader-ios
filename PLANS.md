@@ -29,7 +29,7 @@ Completed:
 - Language-profile-based lookup (`generic` default + Kannada profile rules) to reduce re-engineering per language.
 - Optional cloud fallback for missing single-word meanings with persistent local cache.
 - Vocab statuses (`new`, `learning`, `known`) with color coding.
-- Flashcards upgraded to due-based spaced repetition (SM-2 style), with `Again/Hard/Good/Easy` ratings and in-session re-queue for misses.
+- Flashcards upgraded to due-based spaced repetition with adaptive FSRS-style scheduling (SM-2 fallback), `Again/Hard/Good/Easy` ratings, and in-session re-queue for misses.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
 
 In progress:
@@ -40,7 +40,7 @@ In progress:
 - Phase 3 learning loop refinement (advanced scheduler tuning + session analytics polish).
 
 Pending:
-- FSRS-grade scheduler calibration and retention-target tuning.
+- FSRS parameter calibration against real review logs and retention outcomes.
 - Reader-library UX alignment and quality pass.
 
 ## Roadmap

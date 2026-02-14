@@ -10,7 +10,7 @@ struct FlashcardsView: View {
     @State private var sessionReviewed = 0
     @State private var sessionCorrect = 0
 
-    private let scheduler = SM2Scheduler()
+    private let scheduler = SpacedRepetitionEngine(algorithm: .fsrs)
 
     private var entryByID: [UUID: VocabEntry] {
         Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })

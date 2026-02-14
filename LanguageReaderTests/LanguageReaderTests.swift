@@ -26,6 +26,9 @@ final class LanguageReaderTests: XCTestCase {
         XCTAssertEqual(entry.srsRepetition ?? -1, 0)
         XCTAssertEqual(entry.srsLapseCount ?? -1, 0)
         XCTAssertEqual(entry.isSuspended, false)
+        XCTAssertNil(entry.srsStability)
+        XCTAssertNil(entry.srsDifficulty)
+        XCTAssertNil(entry.srsAlgorithm)
     }
 
     func testVocabEntryCustomInitialization() {
@@ -44,7 +47,10 @@ final class LanguageReaderTests: XCTestCase {
             srsEaseFactor: 2.2,
             srsRepetition: 3,
             srsLapseCount: 1,
-            isSuspended: true
+            isSuspended: true,
+            srsStability: 4.5,
+            srsDifficulty: 6.2,
+            srsAlgorithm: "fsrs"
         )
 
         XCTAssertEqual(entry.status, .level2)
@@ -57,5 +63,8 @@ final class LanguageReaderTests: XCTestCase {
         XCTAssertEqual(entry.srsRepetition ?? -1, 3)
         XCTAssertEqual(entry.srsLapseCount ?? -1, 1)
         XCTAssertEqual(entry.isSuspended, true)
+        XCTAssertEqual(entry.srsStability, 4.5)
+        XCTAssertEqual(entry.srsDifficulty, 6.2)
+        XCTAssertEqual(entry.srsAlgorithm, "fsrs")
     }
 }

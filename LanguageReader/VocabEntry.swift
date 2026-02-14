@@ -130,6 +130,9 @@ final class VocabEntry {
     var srsRepetition: Int?
     var srsLapseCount: Int?
     var isSuspended: Bool?
+    var srsStability: Double?
+    var srsDifficulty: Double?
+    var srsAlgorithm: String?
 
     init(
         word: String,
@@ -144,7 +147,10 @@ final class VocabEntry {
         srsEaseFactor: Double = 2.5,
         srsRepetition: Int = 0,
         srsLapseCount: Int = 0,
-        isSuspended: Bool = false
+        isSuspended: Bool = false,
+        srsStability: Double? = nil,
+        srsDifficulty: Double? = nil,
+        srsAlgorithm: String? = nil
     ) {
         self.id = UUID()
         self.word = word
@@ -160,5 +166,8 @@ final class VocabEntry {
         self.srsRepetition = srsRepetition
         self.srsLapseCount = srsLapseCount
         self.isSuspended = isSuspended
+        self.srsStability = srsStability
+        self.srsDifficulty = srsDifficulty
+        self.srsAlgorithm = srsAlgorithm
     }
 }

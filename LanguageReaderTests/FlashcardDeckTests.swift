@@ -134,6 +134,50 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertEqual(dueAt.timeIntervalSince1970, now.addingTimeInterval(30 * 60).timeIntervalSince1970, accuracy: 1)
     }
 
+    func testFSRSGoodOnNewCardPersistsAdaptiveState() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = VocabEntry(word: "word", normalizedKey: "word", meaning: "", status: .level1)
+        let scheduler = FSRSScheduler()
+
+        scheduler.apply(rating: .good, to: entry, now: now)
+
+        XCTAssertEqual(entry.srsAlgorithm, SpacedRepetitionAlgorithm.fsrs.rawValue)
+        XCTAssertEqual(entry.srsRepetition ?? -1, 1)
+        XCTAssertEqual(entry.status, .level2)
+        XCTAssertEqual(entry.srsIntervalDays ?? 0, 2, accuracy: 0.001)
+        XCTAssertEqual(entry.srsStability ?? 0, 1.2, accuracy: 0.001)
+        XCTAssertNotNil(entry.srsDifficulty)
+    }
+
+    func testFSRSEasyHasLongerPreviewThanGoodForSameCard() {
+        let entry = VocabEntry(
+            word: "word",
+            normalizedKey: "word",
+            meaning: "",
+            status: .level3,
+            srsIntervalDays: 4,
+            srsRepetition: 4,
+            srsStability: 4.0,
+            srsDifficulty: 5.0
+        )
+        let scheduler = FSRSScheduler()
+
+        let good = scheduler.previewInterval(for: entry, rating: .good)
+        let easy = scheduler.previewInterval(for: entry, rating: .easy)
+
+        XCTAssertGreaterThan(easy, good)
+    }
+
+    func testAdaptiveEngineDefaultsToFSRS() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = VocabEntry(word: "word", normalizedKey: "word", meaning: "", status: .level1)
+        let scheduler = SpacedRepetitionEngine()
+
+        scheduler.apply(rating: .good, to: entry, now: now)
+
+        XCTAssertEqual(entry.srsAlgorithm, SpacedRepetitionAlgorithm.fsrs.rawValue)
+    }
+
     func testIntervalLabelUsesMinutesHoursAndDays() {
         XCTAssertEqual(FlashcardDeck.intervalLabel(for: 4 * 60), "4m")
         XCTAssertEqual(FlashcardDeck.intervalLabel(for: 3 * 60 * 60), "3h")
