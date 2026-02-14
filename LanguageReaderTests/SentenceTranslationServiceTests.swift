@@ -70,6 +70,32 @@ final class SentenceTranslationServiceTests: XCTestCase {
         XCTAssertEqual(fake.callCount, 1)
     }
 
+    func testRetriesCloudAfterFailureForSameSentence() async throws {
+        let defaults = testDefaults()
+        let keychain = InMemorySecretStore()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        settings.regionText = "germanywestcentral"
+        try settings.saveAPIKey("secret")
+
+        let fake = FakeAzureTranslatorClient(
+            results: [
+                .failure(FakeAzureTranslatorClient.FakeError.failed),
+                .success("cloud translation")
+            ]
+        )
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: fake
+        )
+
+        let first = await service.translate(sentence: "plain unknown sentence")
+        let second = await service.translate(sentence: "plain unknown sentence")
+
+        XCTAssertEqual(first, "plain unknown sentence")
+        XCTAssertEqual(second, "cloud translation")
+        XCTAssertEqual(fake.callCount, 2)
+    }
+
     private func testDefaults() -> UserDefaults {
         let name = "SentenceTranslationServiceTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -83,16 +109,21 @@ private final class FakeAzureTranslatorClient: AzureSentenceTranslating {
         case failed
     }
 
-    private let result: Result<String, Error>
+    private let results: [Result<String, Error>]
     private(set) var callCount = 0
 
     init(result: Result<String, Error> = .success("translated")) {
-        self.result = result
+        self.results = [result]
+    }
+
+    init(results: [Result<String, Error>]) {
+        self.results = results.isEmpty ? [.success("translated")] : results
     }
 
     func translate(text: String, configuration: AzureTranslatorConfiguration) async throws -> String {
         callCount += 1
-        return try result.get()
+        let index = min(callCount - 1, results.count - 1)
+        return try results[index].get()
     }
 }
 

@@ -34,10 +34,9 @@ actor SentenceTranslationService {
                 cache[key] = translated
                 return translated
             } catch {
-                // Keep the existing offline behavior when API config/network fails.
-                let fallback = fallbackTranslator.gloss(trimmed).text
-                cache[key] = fallback
-                return fallback
+                // Keep existing offline behavior, but do not cache transient cloud failures.
+                // This allows the next tap to retry cloud translation.
+                return fallbackTranslator.gloss(trimmed).text
             }
         }
 
