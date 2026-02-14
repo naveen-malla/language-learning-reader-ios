@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct FlashcardsView: View {
     @Query(sort: \VocabEntry.createdAt) private var entries: [VocabEntry]
@@ -39,6 +40,12 @@ struct FlashcardsView: View {
         return "\(Int(round(value)))%"
     }
 
+    private var progressFraction: Double {
+        let total = sessionReviewed + sessionQueueIDs.count
+        guard total > 0 else { return 0 }
+        return Double(sessionReviewed) / Double(total)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -56,6 +63,9 @@ struct FlashcardsView: View {
 
                         if let entry = currentEntry {
                             cardContent(for: entry)
+                                .transition(.opacity.combined(with: .move(edge: .trailing)))
+                        } else if sessionReviewed > 0 {
+                            sessionSummaryContent
                         } else if dueEntries.isEmpty {
                             noDueContent
                         } else {
@@ -67,11 +77,21 @@ struct FlashcardsView: View {
             }
             .navigationTitle("Flashcards")
             .navigationBarTitleDisplayMode(.large)
+            .animation(.spring(response: 0.35, dampingFraction: 0.88), value: sessionQueueIDs.first)
         }
     }
 
     private func cardContent(for entry: VocabEntry) -> some View {
         VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                ProgressView(value: progressFraction)
+                    .progressViewStyle(.linear)
+                Text("\(sessionReviewed) done")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 4)
+
             ZStack {
                 RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                     .fill(
@@ -79,7 +99,7 @@ struct FlashcardsView: View {
                             colors: [
                                 Theme.cardBackground,
                                 Theme.cardBackground.opacity(0.98),
-                                Theme.accent.opacity(0.08)
+                                Theme.accent.opacity(0.07)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -89,6 +109,18 @@ struct FlashcardsView: View {
                         RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                             .stroke(Theme.surfaceStroke, lineWidth: 1)
                     )
+
+                Circle()
+                    .fill(Theme.accent.opacity(0.12))
+                    .frame(width: 160, height: 160)
+                    .offset(x: 130, y: -140)
+                    .blur(radius: 1)
+
+                Circle()
+                    .fill(Theme.accentSecondary.opacity(0.12))
+                    .frame(width: 190, height: 190)
+                    .offset(x: -140, y: 140)
+                    .blur(radius: 1)
 
                 VStack(spacing: 16) {
                     HStack {
@@ -101,48 +133,27 @@ struct FlashcardsView: View {
 
                         Spacer()
 
-                        if let dueAt = entry.dueAt {
-                            Text("Due \(dueAt, style: .relative)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("Due now")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("FSRS")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .foregroundStyle(.secondary)
+                            .background(Color.primary.opacity(0.08), in: Capsule())
                     }
 
-                    Spacer(minLength: 4)
-
-                    Text(entry.word)
-                        .font(.system(size: 36, weight: .semibold, design: .rounded))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    Group {
-                        if isRevealed {
-                            Text(entry.meaning.isEmpty ? "No meaning yet." : entry.meaning)
-                                .font(Theme.readingFont)
-                                .foregroundStyle(entry.meaning.isEmpty ? .secondary : .primary)
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(3)
-                        } else {
-                            Label("Reveal meaning", systemImage: "hand.tap")
-                                .font(Theme.readingFont)
-                                .foregroundStyle(.secondary)
+                    flashcardFace(for: entry)
+                        .frame(maxWidth: .infinity, minHeight: 190)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            toggleReveal()
                         }
-                    }
-                    .frame(minHeight: 44)
-
-                    Spacer(minLength: 4)
 
                     if isRevealed {
                         reviewButtonRow(for: entry)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.18)) {
-                                isRevealed = true
-                            }
+                            toggleReveal()
                         } label: {
                             Text("Reveal")
                                 .font(.headline.weight(.semibold))
@@ -152,24 +163,68 @@ struct FlashcardsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+
+                    Button {
+                        markCurrentKnown()
+                    } label: {
+                        Label("Mark Known", systemImage: "checkmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 20)
             }
-            .frame(minHeight: 340)
-
-            Button {
-                markCurrentKnown()
-            } label: {
-                Label("Mark Known", systemImage: "checkmark.circle")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
+            .frame(minHeight: 390)
         }
-        .animation(.easeInOut(duration: 0.18), value: isRevealed)
+        .animation(.easeInOut(duration: 0.2), value: isRevealed)
+    }
+
+    private func flashcardFace(for entry: VocabEntry) -> some View {
+        ZStack {
+            VStack(spacing: 10) {
+                Text(entry.word)
+                    .font(.system(size: 38, weight: .semibold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+
+                if let dueAt = entry.dueAt {
+                    Text("Due \(dueAt, style: .relative)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Due now")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .opacity(isRevealed ? 0 : 1)
+
+            VStack(spacing: 12) {
+                Text(entry.word)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Text(entry.meaning.isEmpty ? "No meaning yet." : entry.meaning)
+                    .font(Theme.readingFont)
+                    .foregroundStyle(entry.meaning.isEmpty ? .secondary : .primary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+            }
+            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+            .opacity(isRevealed ? 1 : 0)
+        }
+        .frame(maxWidth: .infinity)
+        .rotation3DEffect(
+            .degrees(isRevealed ? 180 : 0),
+            axis: (x: 0, y: 1, z: 0),
+            perspective: 0.55
+        )
     }
 
     private var startSessionContent: some View {
@@ -178,7 +233,7 @@ struct FlashcardsView: View {
                 Text("\(dueEntries.count) words are due now.")
                     .font(Theme.readingEmphasisFont)
 
-                Text("Start a focused review session with spaced repetition scheduling.")
+                Text("Start a focused review session with adaptive spaced repetition scheduling.")
                     .font(Theme.readingFont)
                     .foregroundStyle(.secondary)
 
@@ -186,6 +241,40 @@ struct FlashcardsView: View {
                     startSession()
                 } label: {
                     Label("Start Session", systemImage: "play.fill")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Theme.accent.opacity(0.2), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var sessionSummaryContent: some View {
+        SectionCard("Session Complete") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Reviewed \(sessionReviewed) words")
+                    .font(Theme.readingEmphasisFont)
+
+                HStack(spacing: 8) {
+                    Text("Accuracy \(accuracyText)")
+                        .subtleMetadataPillStyle()
+                    Text("Remaining due \(dueEntries.count)")
+                        .subtleMetadataPillStyle()
+                }
+                .foregroundStyle(.secondary)
+
+                if dueEntries.isEmpty {
+                    Text("No cards are currently due.")
+                        .font(Theme.readingFont)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    startSession()
+                } label: {
+                    Label(dueEntries.isEmpty ? "Start New Session" : "Review Remaining", systemImage: "arrow.clockwise")
                         .font(.headline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -215,24 +304,16 @@ struct FlashcardsView: View {
                         .font(Theme.readingFont)
                         .foregroundStyle(.secondary)
                 }
-
-                if sessionReviewed > 0 {
-                    Text("Session: \(sessionReviewed) reviewed · \(accuracyText) correct")
-                        .subtleMetadataPillStyle()
-                        .foregroundStyle(.secondary)
-                }
             }
         }
     }
 
     private func reviewButtonRow(for entry: VocabEntry) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                reviewButton(for: .again, entry: entry)
-                reviewButton(for: .hard, entry: entry)
-                reviewButton(for: .good, entry: entry)
-                reviewButton(for: .easy, entry: entry)
-            }
+        HStack(spacing: 8) {
+            reviewButton(for: .again, entry: entry)
+            reviewButton(for: .hard, entry: entry)
+            reviewButton(for: .good, entry: entry)
+            reviewButton(for: .easy, entry: entry)
         }
     }
 
@@ -249,8 +330,18 @@ struct FlashcardsView: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(ratingTint(rating).opacity(0.18), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .padding(.vertical, 9)
+            .background(
+                LinearGradient(
+                    colors: [
+                        ratingTint(rating).opacity(0.23),
+                        ratingTint(rating).opacity(0.14)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(ratingTint(rating).opacity(0.35), lineWidth: 1)
@@ -278,6 +369,14 @@ struct FlashcardsView: View {
         sessionReviewed = 0
         sessionCorrect = 0
         isRevealed = false
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+    }
+
+    private func toggleReveal() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isRevealed.toggle()
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private func markCurrentKnown() {
@@ -285,6 +384,7 @@ struct FlashcardsView: View {
         entry.status = .known
         entry.lastSeenAt = Date()
         entry.encounterCount += 1
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         advanceQueue(after: nil, for: entry.id)
     }
 
@@ -300,7 +400,21 @@ struct FlashcardsView: View {
             sessionCorrect += 1
         }
 
+        haptic(for: rating)
         advanceQueue(after: rating, for: entry.id)
+    }
+
+    private func haptic(for rating: ReviewRating) {
+        switch rating {
+        case .again:
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        case .hard:
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        case .good:
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        case .easy:
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
     }
 
     private func advanceQueue(after rating: ReviewRating?, for currentID: UUID) {

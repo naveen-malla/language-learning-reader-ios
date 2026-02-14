@@ -30,6 +30,7 @@ Completed:
 - Optional cloud fallback for missing single-word meanings with persistent local cache.
 - Vocab statuses (`new`, `learning`, `known`) with color coding.
 - Flashcards upgraded to due-based spaced repetition with adaptive FSRS-style scheduling (SM-2 fallback), `Again/Hard/Good/Easy` ratings, and in-session re-queue for misses.
+- Flashcards visual polish pass: flip-style reveal, interval-aware answer rail, session summary state, and haptic feedback cues.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
 
 In progress:
@@ -110,7 +111,7 @@ Goals:
 Tasks:
 - Refine flashcard session logic (queue, revisit wrong items). (done)
 - Tune status transitions (`new` -> `learning` -> `known`). (ongoing)
-- Add lightweight stats for daily review and known ratio. (partially done: session `Due/Queue/Accuracy`)
+- Add lightweight stats for daily review and known ratio. (partially done: session `Due/Queue/Accuracy` + session completion summary)
 
 Acceptance criteria:
 - A short review session can be completed without navigation friction.
