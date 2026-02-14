@@ -124,6 +124,12 @@ final class VocabEntry {
     var createdAt: Date
     var lastSeenAt: Date
     var encounterCount: Int
+    var dueAt: Date?
+    var srsIntervalDays: Double?
+    var srsEaseFactor: Double?
+    var srsRepetition: Int?
+    var srsLapseCount: Int?
+    var isSuspended: Bool?
 
     init(
         word: String,
@@ -132,7 +138,13 @@ final class VocabEntry {
         status: VocabStatus = .level1,
         createdAt: Date = Date(),
         lastSeenAt: Date = Date(),
-        encounterCount: Int = 1
+        encounterCount: Int = 1,
+        dueAt: Date? = nil,
+        srsIntervalDays: Double = 0,
+        srsEaseFactor: Double = 2.5,
+        srsRepetition: Int = 0,
+        srsLapseCount: Int = 0,
+        isSuspended: Bool = false
     ) {
         self.id = UUID()
         self.word = word
@@ -142,5 +154,11 @@ final class VocabEntry {
         self.createdAt = createdAt
         self.lastSeenAt = lastSeenAt
         self.encounterCount = encounterCount
+        self.dueAt = dueAt
+        self.srsIntervalDays = srsIntervalDays
+        self.srsEaseFactor = srsEaseFactor
+        self.srsRepetition = srsRepetition
+        self.srsLapseCount = srsLapseCount
+        self.isSuspended = isSuspended
     }
 }

@@ -29,7 +29,7 @@ Completed:
 - Language-profile-based lookup (`generic` default + Kannada profile rules) to reduce re-engineering per language.
 - Optional cloud fallback for missing single-word meanings with persistent local cache.
 - Vocab statuses (`new`, `learning`, `known`) with color coding.
-- Basic flashcards with reveal and status updates.
+- Flashcards upgraded to due-based spaced repetition (SM-2 style), with `Again/Hard/Good/Easy` ratings and in-session re-queue for misses.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
 
 In progress:
@@ -37,9 +37,10 @@ In progress:
 - Phase 1 expansion for multi-language-ready lookup architecture (language profiles + cloud cache path).
 - Dictionary quality evaluation pipeline (coverage + gold accuracy + thresholds) with first Kannada fixture.
 - Reader visual polish toward a cleaner LingQ-like reading experience.
+- Phase 3 learning loop refinement (advanced scheduler tuning + session analytics polish).
 
 Pending:
-- Better spaced repetition behavior (beyond current basic flashcards).
+- FSRS-grade scheduler calibration and retention-target tuning.
 - Reader-library UX alignment and quality pass.
 
 ## Roadmap
@@ -107,9 +108,9 @@ Goals:
 - Stronger recall workflow with low friction.
 
 Tasks:
-- Refine flashcard session logic (queue, revisit wrong items).
-- Tune status transitions (`new` -> `learning` -> `known`).
-- Add lightweight stats for daily review and known ratio.
+- Refine flashcard session logic (queue, revisit wrong items). (done)
+- Tune status transitions (`new` -> `learning` -> `known`). (ongoing)
+- Add lightweight stats for daily review and known ratio. (partially done: session `Due/Queue/Accuracy`)
 
 Acceptance criteria:
 - A short review session can be completed without navigation friction.

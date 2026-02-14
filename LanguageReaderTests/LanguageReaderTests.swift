@@ -20,6 +20,12 @@ final class LanguageReaderTests: XCTestCase {
         XCTAssertEqual(entry.meaning, "hi")
         XCTAssertEqual(entry.status, .level1)
         XCTAssertEqual(entry.encounterCount, 1)
+        XCTAssertNil(entry.dueAt)
+        XCTAssertEqual(entry.srsIntervalDays ?? -1, 0)
+        XCTAssertEqual(entry.srsEaseFactor ?? -1, 2.5)
+        XCTAssertEqual(entry.srsRepetition ?? -1, 0)
+        XCTAssertEqual(entry.srsLapseCount ?? -1, 0)
+        XCTAssertEqual(entry.isSuspended, false)
     }
 
     func testVocabEntryCustomInitialization() {
@@ -32,12 +38,24 @@ final class LanguageReaderTests: XCTestCase {
             status: .level2,
             createdAt: createdAt,
             lastSeenAt: lastSeenAt,
-            encounterCount: 7
+            encounterCount: 7,
+            dueAt: Date(timeIntervalSince1970: 300),
+            srsIntervalDays: 6,
+            srsEaseFactor: 2.2,
+            srsRepetition: 3,
+            srsLapseCount: 1,
+            isSuspended: true
         )
 
         XCTAssertEqual(entry.status, .level2)
         XCTAssertEqual(entry.createdAt, createdAt)
         XCTAssertEqual(entry.lastSeenAt, lastSeenAt)
         XCTAssertEqual(entry.encounterCount, 7)
+        XCTAssertEqual(entry.dueAt, Date(timeIntervalSince1970: 300))
+        XCTAssertEqual(entry.srsIntervalDays ?? -1, 6)
+        XCTAssertEqual(entry.srsEaseFactor ?? -1, 2.2)
+        XCTAssertEqual(entry.srsRepetition ?? -1, 3)
+        XCTAssertEqual(entry.srsLapseCount ?? -1, 1)
+        XCTAssertEqual(entry.isSuspended, true)
     }
 }
