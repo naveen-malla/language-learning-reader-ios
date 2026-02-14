@@ -2,12 +2,27 @@ import Foundation
 
 final class DictionaryManager {
     static let shared = DictionaryManager()
+    static let cloudFallbackEnabledKey = "dictionaryCloudFallbackEnabled"
+    static let cloudFallbackTargetLanguageKey = "dictionaryCloudFallbackTargetLanguage"
 
     private let provider: DictionaryProvider
     private let normalizer = TextNormalizer()
     private let overrideStore: DictionaryOverrideStore
+    private let cloudStore: DictionaryCloudMeaningStore
+    private let remoteProvider: RemoteWordMeaningProviding?
+    private let sourceLanguageProvider: () -> String
+    private let targetLanguageProvider: () -> String
+    private let defaults: UserDefaults
 
-    init(provider: DictionaryProvider? = nil, overrideStore: DictionaryOverrideStore? = nil) {
+    init(
+        provider: DictionaryProvider? = nil,
+        overrideStore: DictionaryOverrideStore? = nil,
+        cloudStore: DictionaryCloudMeaningStore? = nil,
+        remoteProvider: RemoteWordMeaningProviding? = AzureRemoteWordMeaningProvider(),
+        sourceLanguageProvider: (() -> String)? = nil,
+        targetLanguageProvider: (() -> String)? = nil,
+        defaults: UserDefaults = .standard
+    ) {
         if let provider {
             self.provider = provider
         } else {
@@ -17,6 +32,17 @@ final class DictionaryManager {
             fileURL: DictionaryPaths.documentsOverridesURL(),
             missingURL: DictionaryPaths.documentsMissingURL()
         )
+        self.cloudStore = cloudStore ?? DictionaryCloudMeaningStore(
+            fileURL: DictionaryPaths.documentsCloudCacheURL()
+        )
+        self.remoteProvider = remoteProvider
+        self.defaults = defaults
+        self.sourceLanguageProvider = sourceLanguageProvider ?? {
+            TranslationSettingsStore(defaults: defaults).sourceLanguage
+        }
+        self.targetLanguageProvider = targetLanguageProvider ?? {
+            TranslationSettingsStore(defaults: defaults).targetLanguage
+        }
     }
 
     func lookup(_ word: String) -> String? {
@@ -24,7 +50,120 @@ final class DictionaryManager {
     }
 
     func lookupDetailed(_ word: String) -> DictionaryLookupResult {
+        lookupDetailed(word, includeCloudCache: true)
+    }
+
+    func lookupDetailedWithRemoteFallback(_ word: String) async -> DictionaryLookupResult {
+        let baseline = lookupDetailed(word, includeCloudCache: true)
+        guard baseline.meaning == nil else {
+            return baseline
+        }
+
+        let lookupWord = baseline.normalizedKey
+        guard !lookupWord.isEmpty else {
+            return baseline
+        }
+
+        guard isCloudFallbackEnabled, let remoteProvider else {
+            return baseline
+        }
+
+        let sourceLanguage = activeSourceLanguageCode
+        let targetLanguage = activeTargetLanguageCode
+
+        guard
+            let remoteMeaning = await remoteProvider.lookupMeaning(
+                for: lookupWord,
+                sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage
+            )
+        else {
+            return baseline
+        }
+
+        guard let cleanedMeaning = cleanMeaning(remoteMeaning, for: baseline.normalizedKey) else {
+            return baseline
+        }
+
+        cloudStore.setMeaning(
+            normalizedKey: baseline.normalizedKey,
+            languageCode: sourceLanguage,
+            meaning: cleanedMeaning,
+            source: "remote"
+        )
+
+        return DictionaryLookupResult(
+            word: word,
+            normalizedKey: baseline.normalizedKey,
+            matchedKey: baseline.normalizedKey,
+            meaning: cleanedMeaning,
+            path: .remote
+        )
+    }
+
+    func prefetchRemoteMeanings(for words: [String]) async {
+        guard isCloudFallbackEnabled, remoteProvider != nil else {
+            return
+        }
+
+        var seen: Set<String> = []
+        for word in words {
+            let normalized = normalizer.normalize(word)
+            guard !normalized.isEmpty, !seen.contains(normalized) else {
+                continue
+            }
+            seen.insert(normalized)
+
+            let local = lookupDetailed(word, includeCloudCache: true)
+            guard local.meaning == nil else {
+                continue
+            }
+
+            _ = await lookupDetailedWithRemoteFallback(word)
+        }
+    }
+
+    func cloudCacheCount() -> Int {
+        cloudStore.allCount()
+    }
+
+    func clearCloudCache() {
+        cloudStore.clear()
+    }
+
+    var isCloudFallbackEnabled: Bool {
+        if defaults.object(forKey: Self.cloudFallbackEnabledKey) == nil {
+            return true
+        }
+        return defaults.bool(forKey: Self.cloudFallbackEnabledKey)
+    }
+
+    private var activeSourceLanguageCode: String {
+        normalizeLanguageCode(sourceLanguageProvider())
+    }
+
+    private var activeTargetLanguageCode: String {
+        let override = defaults.string(forKey: Self.cloudFallbackTargetLanguageKey)
+        let raw = (override?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? (override ?? "")
+            : targetLanguageProvider()
+        let normalized = normalizeLanguageCode(raw)
+        return normalized.isEmpty ? "en" : normalized
+    }
+
+    private func lookupDetailed(_ word: String, includeCloudCache: Bool) -> DictionaryLookupResult {
         let normalized = normalizer.normalize(word)
+        let languageCode = activeSourceLanguageCode
+        guard !normalized.isEmpty else {
+            return DictionaryLookupResult(
+                word: word,
+                normalizedKey: normalized,
+                matchedKey: nil,
+                meaning: nil,
+                path: .none
+            )
+        }
+
         if let overrideMeaning = overrideStore.lookup(normalizedKey: normalized) {
             return DictionaryLookupResult(
                 word: word,
@@ -35,7 +174,7 @@ final class DictionaryManager {
             )
         }
 
-        let candidates = candidateKeys(for: word)
+        let candidates = candidateKeys(for: word, languageCode: languageCode)
         for key in candidates {
             if let raw = provider.lookup(normalizedKey: key) {
                 if let resolved = resolveMeaning(raw, for: key) {
@@ -50,6 +189,17 @@ final class DictionaryManager {
                     )
                 }
             }
+        }
+
+        if includeCloudCache,
+           let cachedMeaning = cloudStore.lookup(normalizedKey: normalized, languageCode: languageCode) {
+            return DictionaryLookupResult(
+                word: word,
+                normalizedKey: normalized,
+                matchedKey: normalized,
+                meaning: cachedMeaning,
+                path: .cache
+            )
         }
 
         return DictionaryLookupResult(
@@ -93,8 +243,11 @@ final class DictionaryManager {
         return SampleDictionaryProvider()
     }
 
-    private func candidateKeys(for word: String) -> [String] {
+    private func candidateKeys(for word: String, languageCode: String) -> [String] {
         let normalized = normalizer.normalize(word)
+        let stripped = stripEdgePunctuation(normalized)
+        let profile = DictionaryLanguageProfile.resolve(for: languageCode)
+        let generator = DictionaryWordFormGenerator(profile: profile)
         var candidates: [String] = []
 
         func appendIfNew(_ value: String) {
@@ -102,10 +255,10 @@ final class DictionaryManager {
             candidates.append(value)
         }
 
-        appendIfNew(stripEdgePunctuation(normalized))
-
-        for stripped in stripCommonKannadaSuffixes(from: normalized) {
-            appendIfNew(stripped)
+        appendIfNew(normalized)
+        appendIfNew(stripped)
+        for candidate in generator.candidateKeys(from: stripped) {
+            appendIfNew(candidate)
         }
 
         return candidates
@@ -113,46 +266,6 @@ final class DictionaryManager {
 
     private func stripEdgePunctuation(_ text: String) -> String {
         text.trimmingCharacters(in: CharacterSet.punctuationCharacters)
-    }
-
-    private func stripCommonKannadaSuffixes(from text: String) -> [String] {
-        let suffixes = [
-            "ಗಳಲ್ಲಿ",
-            "ಯಲಿ",
-            "ಯಲ್ಲಿ",
-            "ದಲ್ಲಿ",
-            "ನಲ್ಲಿ",
-            "ಗಳು",
-            "ಗಳ",
-            "ಕ್ಕೆ",
-            "ನಿಗೆ",
-            "ರಿಗೆ",
-            "ಗೆ",
-            "ದಿಂದ",
-            "ನ್ನು",
-            "ನು",
-            "ಲಿ",
-            "ಲ್ಲಿ"
-        ]
-
-        var results: [String] = []
-        func appendIfValid(_ value: String) {
-            guard value.count >= 2, !results.contains(value) else { return }
-            results.append(value)
-        }
-
-        for suffix in suffixes {
-            guard text.hasSuffix(suffix) else { continue }
-            let base = String(text.dropLast(suffix.count))
-            appendIfValid(base)
-
-            // Some inflected forms retain a linking "ಯ" (e.g. ಮನೆಯಲಿ -> ಮನೆ).
-            if base.hasSuffix("ಯ") {
-                appendIfValid(String(base.dropLast()))
-            }
-        }
-
-        return results
     }
 
     private func resolveMeaning(_ meaning: String, for key: String) -> (meaning: String, isRedirect: Bool)? {
@@ -189,9 +302,7 @@ final class DictionaryManager {
 
     private func cleanMeaning(_ meaning: String, for key: String) -> String? {
         var cleaned = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
-        if cleaned.hasSuffix(".") {
-            cleaned.removeLast()
-        }
+        cleaned = conciseMeaning(from: cleaned)
 
         if cleaned.isEmpty {
             return nil
@@ -211,6 +322,80 @@ final class DictionaryManager {
             result.removeLast()
         }
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func conciseMeaning(from meaning: String) -> String {
+        var value = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return "" }
+
+        if value.hasPrefix("=") {
+            return value
+        }
+
+        value = stripLeadingMetadata(from: value)
+
+        if let range = value.range(of: " - a)", options: [.caseInsensitive]) {
+            let candidate = value[..<range.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !candidate.isEmpty {
+                value = candidate
+            }
+        }
+
+        if let semicolonIndex = value.firstIndex(of: ";") {
+            let candidate = value[..<semicolonIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !candidate.isEmpty {
+                value = candidate
+            }
+        }
+
+        if value.count > 140, let commaIndex = value.firstIndex(of: ",") {
+            let candidate = value[..<commaIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            if candidate.count >= 10 {
+                value = candidate
+            }
+        }
+
+        value = value.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        while let last = value.last {
+            switch last {
+            case ".", ";", ",", ":":
+                value.removeLast()
+                value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            default:
+                return value
+            }
+        }
+
+        return value
+    }
+
+    private func stripLeadingMetadata(from text: String) -> String {
+        let patterns = [
+            #"^\s*\([^)]*\)\s*"#,
+            #"^\s*\[[^\]]*\]\s*"#,
+            #"^\s*\d+\.\s*"#
+        ]
+
+        var value = text
+        var madeProgress = true
+        while madeProgress {
+            madeProgress = false
+            for pattern in patterns {
+                if let range = value.range(of: pattern, options: .regularExpression) {
+                    value.removeSubrange(range)
+                    value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    madeProgress = true
+                }
+            }
+        }
+
+        return value
+    }
+
+    private func normalizeLanguageCode(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 

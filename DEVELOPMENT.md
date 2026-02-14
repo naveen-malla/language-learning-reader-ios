@@ -28,6 +28,7 @@
 - Sentence page now uses reduced side insets and no floating card container so more of the screen is usable.
 - Reader top bar is compact and pinned higher to reduce dead space above the progress slider.
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
+- Tapping an unknown word now triggers optional cloud fallback (if enabled) and stores resolved meaning in local cloud cache.
 - Main tabs now share one visual system: pastel canvas, rounded surfaces, translucent tab bar, and status chips.
 - Reader entry view now uses a card composer layout (title/input/actions grouped together) instead of a plain form section.
 - Reader composer now exposes live stats (`words`, `sentences`, `min read`) so save decisions are immediate.
@@ -37,7 +38,8 @@
 1. Open Settings -> Translation API.
 2. Enter endpoint, region, and Key 1 from Azure Translator.
 3. Save settings; key is stored in Keychain.
-4. Use sentence mode -> `Translate sentence` to verify live translation.
+4. In Settings -> Dictionary Quality, keep `Use cloud fallback for missing words` enabled (or disable to force offline-only word lookup).
+5. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -99,6 +101,8 @@ The app will automatically use the Documents SQLite file if present. Otherwise i
 Dictionary quality notes:
 - Build script now normalizes meanings for concise display (strips leading metadata and trims multi-sense tails).
 - Runtime lookup now includes broader Kannada suffix handling and light `-ುತ್ತ...` progressive verb fallback.
+- Runtime lookup path is language-profile based (`kn` has inflection rules; other languages use generic exact lookup by default).
+- Missing-word cloud fallback results are cached in `Documents/dictionary_cloud_cache.tsv`.
 - Re-run dictionary-focused tests after lookup changes:
   `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryManagerTests`
 

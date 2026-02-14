@@ -4,7 +4,7 @@
 - Reader: create and open documents, read text, tap words.
 - Vocab: list/search vocabulary, adjust status.
 - Flashcards: simple review flow.
-- Settings: optional Azure translation config + key management, dictionary info/license.
+- Settings: optional Azure translation config + key management, dictionary info/license, diagnostics, and cloud fallback controls.
 
 ## Visual Language
 - Non-reader screens use a light pastel canvas and elevated rounded cards to reduce harsh contrast in management flows.
@@ -64,11 +64,13 @@
 
 ## Dictionary Normalization
 - Normalize by trimming and lowercasing.
-- If direct lookup fails, try a heuristic set of common Kannada suffix strips (including accusative/genitive markers).
-- Add lightweight progressive-verb fallback candidates for common `-ುತ್ತ...` forms.
+- Resolve lookup candidates through a language profile:
+  - default profile: exact lookup only
+  - Kannada profile: heuristic suffix strips + lightweight progressive-verb fallback (`-ುತ್ತ...`)
 - Clean dictionary meanings that are redirect-like (values starting with `=`) by resolving a single redirect hop when possible.
 - Clean dictionary meanings for readability (remove leading metadata markers and trim long multi-sense tails).
-- Optional diagnostics mode shows lookup path (direct/suffix/redirect/override).
+- If no local meaning exists and cloud fallback is enabled, fetch one-word translation and store it in local cache.
+- Optional diagnostics mode shows lookup path (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
 
 ## Color Coding
 - New (untracked): blue highlight.

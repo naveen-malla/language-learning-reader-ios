@@ -3,6 +3,7 @@ import XCTest
 
 final class DictionaryManagerTests: XCTestCase {
     private var cleanupURLs: [URL] = []
+    private var cleanupDefaultsSuites: [String] = []
 
     override func tearDown() {
         let fileManager = FileManager.default
@@ -10,13 +11,23 @@ final class DictionaryManagerTests: XCTestCase {
             try? fileManager.removeItem(at: url)
         }
         cleanupURLs.removeAll()
+
+        for suite in cleanupDefaultsSuites {
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        }
+        cleanupDefaultsSuites.removeAll()
         super.tearDown()
     }
 
     private func makeManager(
         entries: [String: String],
         overrides: [String: String] = [:],
-        missingURL: URL? = nil
+        missingURL: URL? = nil,
+        cloudEntries: [CachedWordMeaning] = [],
+        remoteProvider: RemoteWordMeaningProviding? = nil,
+        sourceLanguage: String = "kn",
+        targetLanguage: String = "en",
+        cloudFallbackEnabled: Bool = true
     ) -> DictionaryManager {
         let provider = SampleDictionaryProvider(entries: entries)
         let overrideStore = DictionaryOverrideStore(
@@ -24,7 +35,22 @@ final class DictionaryManagerTests: XCTestCase {
             missingURL: missingURL,
             overrides: overrides
         )
-        return DictionaryManager(provider: provider, overrideStore: overrideStore)
+        let cloudStore = DictionaryCloudMeaningStore(fileURL: nil, entries: cloudEntries)
+        let suite = "DictionaryManagerTests.\(UUID().uuidString)"
+        cleanupDefaultsSuites.append(suite)
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defaults.set(cloudFallbackEnabled, forKey: DictionaryManager.cloudFallbackEnabledKey)
+
+        return DictionaryManager(
+            provider: provider,
+            overrideStore: overrideStore,
+            cloudStore: cloudStore,
+            remoteProvider: remoteProvider,
+            sourceLanguageProvider: { sourceLanguage },
+            targetLanguageProvider: { targetLanguage },
+            defaults: defaults
+        )
     }
 
     private func makeTemporaryURL(fileName: String) -> URL {
@@ -60,6 +86,33 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertEqual(result.path, .suffix)
         XCTAssertEqual(result.matchedKey, "ಮನೆ")
         XCTAssertEqual(result.meaning, "house")
+    }
+
+    func testLookupDetailedSuffixPathForAccusativeForm() {
+        let manager = makeManager(entries: ["ಪದ": "word"])
+        let result = manager.lookupDetailed("ಪದವನ್ನು")
+
+        XCTAssertEqual(result.path, .suffix)
+        XCTAssertEqual(result.matchedKey, "ಪದ")
+        XCTAssertEqual(result.meaning, "word")
+    }
+
+    func testLookupDetailedSuffixPathForGenitiveForm() {
+        let manager = makeManager(entries: ["ಮನೆ": "house"])
+        let result = manager.lookupDetailed("ಮನೆಯ")
+
+        XCTAssertEqual(result.path, .suffix)
+        XCTAssertEqual(result.matchedKey, "ಮನೆ")
+        XCTAssertEqual(result.meaning, "house")
+    }
+
+    func testLookupDetailedSuffixPathForVerbProgressiveForm() {
+        let manager = makeManager(entries: ["ಬೀಸು": "to blow"])
+        let result = manager.lookupDetailed("ಬೀಸುತ್ತಿತ್ತು")
+
+        XCTAssertEqual(result.path, .suffix)
+        XCTAssertEqual(result.matchedKey, "ಬೀಸು")
+        XCTAssertEqual(result.meaning, "to blow")
     }
 
     func testLookupTrimsEdgePunctuation() {
@@ -109,12 +162,80 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertNil(result.meaning)
     }
 
+    func testCleanMeaningKeepsConcisePrefixForEnumeratedDefinitions() {
+        let manager = makeManager(entries: ["ಪದ": "pronunciation - a) how a word is spoken; b) articulation"])
+        let result = manager.lookupDetailed("ಪದ")
+
+        XCTAssertEqual(result.meaning, "pronunciation")
+    }
+
+    func testCleanMeaningUsesFirstClauseBeforeSemicolon() {
+        let manager = makeManager(entries: ["ಪದ": "meaningful clause; extra clause"])
+        let result = manager.lookupDetailed("ಪದ")
+
+        XCTAssertEqual(result.meaning, "meaningful clause")
+    }
+
     func testOverrideTakesPrecedence() {
         let manager = makeManager(entries: ["hello": "hi"], overrides: ["hello": "override"])
         let result = manager.lookupDetailed("hello")
 
         XCTAssertEqual(result.path, .override)
         XCTAssertEqual(result.meaning, "override")
+    }
+
+    func testLookupReadsCloudCacheWhenLocalDictionaryMisses() {
+        let cached = CachedWordMeaning(
+            languageCode: "kn",
+            normalizedKey: "ಮನೆ",
+            meaning: "house",
+            source: "remote",
+            updatedAt: Date()
+        )
+        let manager = makeManager(entries: [:], cloudEntries: [cached], sourceLanguage: "kn")
+
+        let result = manager.lookupDetailed("ಮನೆ")
+
+        XCTAssertEqual(result.path, .cache)
+        XCTAssertEqual(result.meaning, "house")
+    }
+
+    func testLookupWithRemoteFallbackStoresMeaningInCache() async {
+        let remote = FakeRemoteWordMeaningProvider(resultsByWord: ["hola": " hello "])
+        let manager = makeManager(
+            entries: [:],
+            remoteProvider: remote,
+            sourceLanguage: "es",
+            targetLanguage: "en"
+        )
+
+        let remoteResult = await manager.lookupDetailedWithRemoteFallback("hola")
+        let cachedResult = manager.lookupDetailed("hola")
+
+        XCTAssertEqual(remoteResult.path, .remote)
+        XCTAssertEqual(remoteResult.meaning, "hello")
+        XCTAssertEqual(cachedResult.path, .cache)
+        XCTAssertEqual(cachedResult.meaning, "hello")
+        let remoteCalls = await remote.lookupCallCount()
+        XCTAssertEqual(remoteCalls, 1)
+    }
+
+    func testLookupWithRemoteFallbackSkipsNetworkWhenDisabled() async {
+        let remote = FakeRemoteWordMeaningProvider(resultsByWord: ["hola": "hello"])
+        let manager = makeManager(
+            entries: [:],
+            remoteProvider: remote,
+            sourceLanguage: "es",
+            targetLanguage: "en",
+            cloudFallbackEnabled: false
+        )
+
+        let result = await manager.lookupDetailedWithRemoteFallback("hola")
+
+        XCTAssertEqual(result.path, .none)
+        XCTAssertNil(result.meaning)
+        let remoteCalls = await remote.lookupCallCount()
+        XCTAssertEqual(remoteCalls, 0)
     }
 
     func testReportMissingAppendsWithoutOverwriting() throws {
@@ -154,5 +275,23 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertEqual(result.wordCount, 2)
         XCTAssertEqual(result.glossedWordCount, 1)
         XCTAssertEqual(result.coverage, 0.5, accuracy: 0.001)
+    }
+}
+
+private actor FakeRemoteWordMeaningProvider: RemoteWordMeaningProviding {
+    private let resultsByWord: [String: String]
+    private var calls = 0
+
+    init(resultsByWord: [String: String]) {
+        self.resultsByWord = resultsByWord
+    }
+
+    func lookupMeaning(for word: String, sourceLanguage: String, targetLanguage: String) async -> String? {
+        calls += 1
+        return resultsByWord[word]
+    }
+
+    func lookupCallCount() -> Int {
+        calls
     }
 }

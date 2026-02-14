@@ -30,6 +30,7 @@ A personal language reading app with vocabulary tracking and simple flashcards.
 - Settings for optional translation API key and dictionary source/licensing info.
 - App seeds two larger Kannada sample documents on first launch for quick testing.
 - Reader caches sentence splits and word tokenization per document text to keep scrolling responsive.
+- Word lookup is dictionary-first with optional cloud fallback for missing meanings, cached locally per source language.
 
 ## Run Instructions
 Prerequisites:
@@ -59,11 +60,13 @@ This downloads the Alar dataset and writes `LanguageReader/Resources/dictionary.
 Current build behavior:
 - Meanings are cleaned to be more concise before insertion (metadata prefixes removed, multi-sense tails truncated).
 - Redirect entries (`= ...`) are preserved so runtime redirect resolution still works.
+- Runtime lookup uses language profiles: generic behavior by default, with optional per-language inflection rules.
 
 ## Dictionary Overrides
 - Enable “Show diagnostics” in Settings to see lookup paths.
 - Local overrides live in `Documents/dictionary_overrides.tsv` (TSV: normalized_key<TAB>meaning).
 - Missing meanings are logged to `Documents/dictionary_missing.tsv`.
+- Cloud fallback cache is stored in `Documents/dictionary_cloud_cache.tsv`.
 
 ## Azure Translation Setup (Optional)
 - Open Settings -> Translation API.
@@ -80,6 +83,7 @@ Current build behavior:
 - Some dictionary entries are redirects (`=`) or aliases; the app resolves one hop only.
 - Meaning cleanup is heuristic and may occasionally shorten a definition too aggressively; use overrides to correct.
 - Sentence translation uses Azure if configured; if unavailable/failing, it falls back to dictionary gloss.
-- Azure dictionary lookup endpoints are not available for Kannada, so per-word meanings stay dictionary-first.
+- Per-word cloud fallback currently uses one-word translation, not full lexical sense disambiguation; quality can vary by context.
+- Language expansion still needs per-language dictionary source/import pipelines, but runtime lookup is already language-profile based.
 - Sentence detection uses NaturalLanguage sentence boundaries; long/irregular punctuation still needs refinement.
 - Ignored words are currently permanent (no management screen yet).

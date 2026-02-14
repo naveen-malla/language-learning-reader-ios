@@ -6,6 +6,8 @@ struct DictionaryLookupResult {
         case direct
         case suffix
         case redirect
+        case cache
+        case remote
         case none
 
         var displayName: String {
@@ -18,6 +20,10 @@ struct DictionaryLookupResult {
                 return "Suffix"
             case .redirect:
                 return "Redirect"
+            case .cache:
+                return "Cache"
+            case .remote:
+                return "Remote"
             case .none:
                 return "None"
             }

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import sqlite3
 import sys
 import tempfile
@@ -17,6 +18,66 @@ except Exception:
 
 def normalize(text: str) -> str:
     return text.strip().lower()
+
+
+def strip_leading_metadata(text: str) -> str:
+    patterns = [
+        r"^\s*\([^)]*\)\s*",
+        r"^\s*\[[^\]]*\]\s*",
+        r"^\s*\d+\.\s*",
+    ]
+    value = text.strip()
+    changed = True
+    while changed and value:
+        changed = False
+        for pattern in patterns:
+            updated = re.sub(pattern, "", value)
+            if updated != value:
+                value = updated.strip()
+                changed = True
+    return value
+
+
+def clean_meaning(text: str) -> str:
+    value = text.strip()
+    if not value:
+        return ""
+    if value.startswith("="):
+        return value
+
+    value = strip_leading_metadata(value)
+
+    split_index = value.lower().find(" - a)")
+    if split_index != -1:
+        prefix = value[:split_index].strip()
+        if prefix:
+            value = prefix
+
+    if ";" in value:
+        first_clause = value.split(";", 1)[0].strip()
+        if first_clause:
+            value = first_clause
+
+    if len(value) > 140 and "," in value:
+        first_phrase = value.split(",", 1)[0].strip()
+        if len(first_phrase) >= 10:
+            value = first_phrase
+
+    value = re.sub(r"\s+", " ", value).strip()
+    value = value.rstrip(".,;:").strip()
+    return value
+
+
+def extract_primary_meaning(defs) -> str:
+    for definition in defs:
+        raw = (definition.get("entry") or "").strip()
+        if not raw:
+            continue
+        cleaned = clean_meaning(raw)
+        if cleaned:
+            return cleaned
+    return ""
+
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -44,12 +105,7 @@ for item in data:
     if not word:
         continue
     defs = item.get("defs") or []
-    meaning = ""
-    for d in defs:
-        entry = (d.get("entry") or "").strip()
-        if entry:
-            meaning = entry
-            break
+    meaning = extract_primary_meaning(defs)
     if not meaning:
         continue
 

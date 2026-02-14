@@ -38,11 +38,14 @@
 - If full dataset is too large for git, download locally and build index DB.
 - For V1 (Kannada), bundle the full SQLite dictionary in the app so device updates don’t require re-downloads.
 - For future languages, plan to separate dictionaries from the app bundle and provide download links/install flow.
+- Keep lookup architecture language-agnostic via `DictionaryLanguageProfile` (generic default plus language-specific inflection rules).
 - Use heuristic suffix stripping for Kannada inflections (including common accusative/genitive forms); not a full morphological analyzer.
 - Add a lightweight progressive-verb fallback (`-ುತ್ತ...` forms) to improve hit rate on reading text without a full lemmatizer.
 - Prefer concise meanings in UI by stripping metadata prefixes and trimming long multi-sense tails.
 - Resolve single-hop dictionary redirects that use `=` prefix; strip trailing digits in redirect targets.
 - Maintain a local TSV override file and missing-word log in Documents for quick corrections without re-bundling.
+- Store cloud-fetched missing meanings in `dictionary_cloud_cache.tsv` keyed by `language + normalized_key`.
+- Lookup priority is: override -> local dictionary candidates -> cloud cache -> optional remote fallback.
 
 ## Translation APIs
 - Optional only; no runtime dependency in MVP.
@@ -51,6 +54,7 @@
 - Endpoint + region are stored in `UserDefaults`; API key remains in Keychain.
 - Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
 - If network translation is unavailable, reader falls back to the existing offline dictionary gloss.
+- For missing single-word meanings, optional Azure-backed fallback is used and persisted locally so repeated lookups stay offline after first fetch.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.

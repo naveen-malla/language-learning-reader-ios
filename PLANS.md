@@ -13,7 +13,7 @@ Use this file as the first read in a new chat, then read:
 3. `DESIGN.md`
 4. `DECISIONS.md`
 
-## Status Snapshot (2026-02-09)
+## Status Snapshot (2026-02-14)
 Completed:
 - iOS SwiftUI app scaffold with SwiftData models.
 - Tabs: Reader, Vocab, Flashcards, Settings.
@@ -26,12 +26,15 @@ Completed:
 - Sentence mode and word mode in reader.
 - Offline SQLite dictionary integration.
 - Dictionary diagnostics, local overrides, and missing-word logging.
+- Language-profile-based lookup (`generic` default + Kannada profile rules) to reduce re-engineering per language.
+- Optional cloud fallback for missing single-word meanings with persistent local cache.
 - Vocab statuses (`new`, `learning`, `known`) with color coding.
 - Basic flashcards with reveal and status updates.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
 
 In progress:
-- Dictionary quality for inflected Kannada forms and coverage gaps.
+- Dictionary quality for inflected forms and coverage gaps (Phase 1 ongoing).
+- Phase 1 expansion for multi-language-ready lookup architecture (language profiles + cloud cache path).
 - Reader visual polish toward a cleaner LingQ-like reading experience.
 
 Pending:
@@ -43,18 +46,33 @@ Pending:
 ### Phase 1: Dictionary Reliability (Current Priority)
 Goals:
 - Improve lookup hit rate for common inflections.
+- Keep word meanings concise and usable in reading flow.
 - Make lookup path observable and correctable locally.
 
 Tasks:
-- Expand normalization and suffix heuristics for Kannada forms.
-- Add tests for known failure words from `dictionary_missing.tsv`.
-- Keep single-hop redirect resolution stable; avoid noisy meanings.
-- Add optional tooling to summarize missing words by frequency.
+1. Phase 1A (started):
+   - Expand normalization and suffix heuristics for Kannada forms. (done)
+   - Add lightweight inflection fallback for common verb-progressive endings. (done)
+   - Clean noisy meanings at lookup time (strip metadata, truncate long multi-sense strings). (done)
+   - Add regression tests for suffix/cleanup behavior. (done)
+2. Phase 1B:
+   - Improve dictionary build script so bundled entries are pre-cleaned and concise by default. (done)
+   - Rebuild `dictionary.sqlite` and verify no schema breakage. (ongoing per dataset refresh cycle)
+3. Phase 1C:
+   - Add tests for known failure words from `dictionary_missing.tsv` fixtures.
+   - Add optional tooling to summarize missing words by frequency.
+4. Phase 1D:
+   - Add optional API fallback for unresolved single-word meanings with local caching. (done, enabled by user setting)
+   - Keep fallback language-agnostic at architecture level (language profiles + source-language keyed cache). (done)
+5. Phase 1E:
+   - Add language onboarding checklist (dictionary source import + profile rules + fixture tests) so new languages avoid re-engineering.
 
 Acceptance criteria:
 - Manual sample text lookup feels consistent and fast.
-- Diagnostic mode clearly shows `direct`, `suffix`, `redirect`, `override`, or `none`.
+- Meaning text shown in UI is usually short and readable (avoid long encyclopedic definitions where possible).
+- Diagnostic mode clearly shows `direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, or `none`.
 - Missing/incorrect meanings can be fixed via overrides without rebuilding the app.
+- Unknown words can be backfilled once from cloud fallback and reused offline from local cache.
 
 ### Phase 2: Reader UX Restructure
 Goals:

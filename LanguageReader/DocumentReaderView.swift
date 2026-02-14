@@ -450,10 +450,22 @@ enum ReaderMode {
 }
 
 private struct WordSelection: Identifiable {
-    let id = UUID()
+    let id: UUID
     let text: String
     let lookup: DictionaryLookupResult
     let isMeaningLoading: Bool
+
+    init(
+        id: UUID = UUID(),
+        text: String,
+        lookup: DictionaryLookupResult,
+        isMeaningLoading: Bool = false
+    ) {
+        self.id = id
+        self.text = text
+        self.lookup = lookup
+        self.isMeaningLoading = isMeaningLoading
+    }
 }
 
 private struct ReaderBackground: View {

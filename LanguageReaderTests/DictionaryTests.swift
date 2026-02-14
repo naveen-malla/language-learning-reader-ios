@@ -26,6 +26,8 @@ final class DictionaryTests: XCTestCase {
         XCTAssertEqual(DictionaryLookupResult.Path.direct.displayName, "Direct")
         XCTAssertEqual(DictionaryLookupResult.Path.suffix.displayName, "Suffix")
         XCTAssertEqual(DictionaryLookupResult.Path.redirect.displayName, "Redirect")
+        XCTAssertEqual(DictionaryLookupResult.Path.cache.displayName, "Cache")
+        XCTAssertEqual(DictionaryLookupResult.Path.remote.displayName, "Remote")
         XCTAssertEqual(DictionaryLookupResult.Path.none.displayName, "None")
     }
 }
