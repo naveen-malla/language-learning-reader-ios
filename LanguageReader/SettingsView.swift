@@ -4,6 +4,7 @@ struct SettingsView: View {
     private let dictionaryManager = DictionaryManager.shared
     private let translationSettings = TranslationSettingsStore()
     @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
+    @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
     @State private var endpointText = ""
     @State private var regionText = ""
     @State private var sourceLanguageText = ""
@@ -71,6 +72,25 @@ struct SettingsView: View {
                                         .foregroundStyle(hasStoredAPIKey ? Theme.learningHighlight : .secondary)
                                 }
                             }
+                        }
+
+                        SectionCard("Flashcards") {
+                            HStack {
+                                Text("Words per session")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Picker("Words per session", selection: $sessionWordLimit) {
+                                    ForEach(FlashcardSettings.sessionWordLimitOptions, id: \.self) { option in
+                                        Text("\(option)").tag(option)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .labelsHidden()
+                            }
+
+                            Text("Controls how many due words start each flashcard session. Default is 5 words.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
 
                         SectionCard("Dictionary Quality") {
@@ -202,6 +222,7 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
+                sessionWordLimit = normalizedSessionWordLimit
                 loadTranslationSettings()
                 evaluateDictionaryQuality()
             }
@@ -269,5 +290,9 @@ struct SettingsView: View {
 
     private var selectedAppearanceMode: AppAppearanceMode {
         AppAppearanceMode(rawValue: appearanceModeRawValue) ?? .defaultValue
+    }
+
+    private var normalizedSessionWordLimit: Int {
+        FlashcardSettings.normalizedSessionWordLimit(sessionWordLimit)
     }
 }

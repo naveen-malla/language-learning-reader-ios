@@ -6,6 +6,7 @@ struct FlashcardsView: View {
     @Query(sort: \VocabEntry.createdAt) private var entries: [VocabEntry]
 
     @AppStorage("flashcards_simple_mode_migrated_v1") private var simpleModeMigrationApplied = false
+    @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
 
     @State private var promptQueue: [FlashcardPrompt] = []
     @State private var pendingAnswersByWordID: [UUID: [FlashcardBinaryAnswer]] = [:]
@@ -56,6 +57,14 @@ struct FlashcardsView: View {
 
     private var hasActiveSession: Bool {
         !promptQueue.isEmpty
+    }
+
+    private var remainingWordCount: Int {
+        Set(promptQueue.map(\.entryID)).count
+    }
+
+    private var normalizedSessionWordLimit: Int {
+        FlashcardSettings.normalizedSessionWordLimit(sessionWordLimit)
     }
 
     var body: some View {
@@ -155,7 +164,7 @@ struct FlashcardsView: View {
     private var sessionMetrics: some View {
         HStack(spacing: 8) {
             metricPill(title: "Due", value: "\(dueEntries.count)")
-            metricPill(title: "Queue", value: "\(promptQueue.count)")
+            metricPill(title: "Queue", value: "\(remainingWordCount)")
             metricPill(title: "Accuracy", value: accuracyText)
         }
     }
@@ -533,6 +542,12 @@ struct FlashcardsView: View {
                         Text("2 perfect rounds")
                             .foregroundStyle(.secondary)
                     }
+                    HStack {
+                        Text("Words per session")
+                        Spacer()
+                        Text("\(normalizedSessionWordLimit)")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle("Session Settings")
@@ -578,7 +593,7 @@ struct FlashcardsView: View {
     }
 
     private func startSession() {
-        promptQueue = FlashcardDeck.sessionPrompts(from: entries)
+        promptQueue = FlashcardDeck.sessionPrompts(from: entries, limit: normalizedSessionWordLimit)
         pendingAnswersByWordID = [:]
         requeuedWordIDs = []
         sessionReviewed = 0

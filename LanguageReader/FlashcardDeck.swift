@@ -25,6 +25,18 @@ struct FlashcardRoundOutcome {
     let shouldRequeue: Bool
 }
 
+enum FlashcardSettings {
+    static let sessionWordLimitKey = "flashcards_session_word_limit"
+    static let sessionWordLimitOptions = [5, 10, 15, 20, 30]
+
+    static func normalizedSessionWordLimit(_ value: Int) -> Int {
+        guard sessionWordLimitOptions.contains(value) else {
+            return FlashcardDeck.defaultSessionWordLimit
+        }
+        return value
+    }
+}
+
 enum SimpleLevelScheduler {
     private static let secondsPerDay: TimeInterval = 24 * 60 * 60
 
@@ -101,6 +113,8 @@ enum FlashcardRoundEvaluator {
 }
 
 enum FlashcardDeck {
+    static let defaultSessionWordLimit = 5
+
     static func prompts(for entryID: UUID) -> [FlashcardPrompt] {
         [
             FlashcardPrompt(entryID: entryID, direction: .wordToMeaning),
@@ -137,7 +151,11 @@ enum FlashcardDeck {
             .min()
     }
 
-    static func sessionPrompts(from entries: [VocabEntry], now: Date = Date(), limit: Int = 40) -> [FlashcardPrompt] {
+    static func sessionPrompts(
+        from entries: [VocabEntry],
+        now: Date = Date(),
+        limit: Int = defaultSessionWordLimit
+    ) -> [FlashcardPrompt] {
         dueEntries(from: entries, now: now, limit: limit)
             .flatMap { prompts(for: $0.id) }
     }
