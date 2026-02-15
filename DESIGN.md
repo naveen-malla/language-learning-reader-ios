@@ -4,7 +4,7 @@
 - Reader: create and open documents, read text, tap words.
 - Vocab: list/search vocabulary, adjust status.
 - Flashcards: due-based spaced repetition review flow.
-- Settings: optional Azure translation config + key management, dictionary info/license, diagnostics, and cloud fallback controls.
+- Settings: optional Azure translation config + key management, appearance + flashcard preferences, and a compact dictionary quality panel.
 
 ## Visual Language
 - Non-reader screens use a light pastel canvas and elevated rounded cards to reduce harsh contrast in management flows.
@@ -90,7 +90,7 @@
 - Session starts from due-only queue; non-due learning words are hidden.
 - Session size is configurable in Settings via `Words per session`; default is `5` due words.
 - Ready state shows both total due words and the selected session word count.
-- Each due word is tested twice in-session: `word -> meaning`, then `meaning -> word`.
+- Each due word is tested twice in-session with separated directional passes: all `word -> meaning` cards first, then `meaning -> word` cards in rotated order to avoid immediate same-word reversal.
 - Card flow is: front prompt -> flip -> `Wrong`/`Correct` -> advance.
 - Word transliteration is shown on word-facing prompts/reveals to support pronunciation memory.
 - Level changes are resolved only after both directional answers are submitted.
@@ -106,3 +106,5 @@
 ## Dictionary
 - Offline, fast lookup.
 - Bundle a small subset initially; allow local download/indexing later.
+- Quality panel is metrics-first (`token coverage`, `unique coverage`, `gold hit rate`, `gold accuracy`, gate result, unresolved list).
+- Quality metrics are evaluated against saved documents and saved vocab meanings so scores match what the user is actually reading.

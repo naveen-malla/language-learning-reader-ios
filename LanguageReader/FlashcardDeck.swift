@@ -156,8 +156,9 @@ enum FlashcardDeck {
         now: Date = Date(),
         limit: Int = defaultSessionWordLimit
     ) -> [FlashcardPrompt] {
-        dueEntries(from: entries, now: now, limit: limit)
-            .flatMap { prompts(for: $0.id) }
+        let sessionEntryIDs = dueEntries(from: entries, now: now, limit: limit)
+            .map(\.id)
+        return spacedSessionPrompts(for: sessionEntryIDs)
     }
 
     static func plannedSessionWordCount(
@@ -166,6 +167,33 @@ enum FlashcardDeck {
         limit: Int = defaultSessionWordLimit
     ) -> Int {
         dueEntries(from: entries, now: now, limit: limit).count
+    }
+
+    static func spacedSessionPrompts(for entryIDs: [UUID]) -> [FlashcardPrompt] {
+        guard entryIDs.isEmpty == false else { return [] }
+
+        let firstPass = entryIDs.map {
+            FlashcardPrompt(entryID: $0, direction: .wordToMeaning)
+        }
+        let secondPass = secondPassOrder(for: entryIDs).map {
+            FlashcardPrompt(entryID: $0, direction: .meaningToWord)
+        }
+
+        return firstPass + secondPass
+    }
+
+    private static func secondPassOrder(for entryIDs: [UUID]) -> [UUID] {
+        guard entryIDs.count > 1 else { return entryIDs }
+
+        // Keep the second direction in the same session but separated from the first
+        // by an entire pass, and rotate to avoid same-word adjacency at the pass boundary.
+        if entryIDs.count == 2 {
+            return entryIDs
+        }
+
+        let shift = max(1, entryIDs.count / 2)
+        let pivot = shift % entryIDs.count
+        return Array(entryIDs[pivot...]) + Array(entryIDs[..<pivot])
     }
 }
 

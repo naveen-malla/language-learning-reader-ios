@@ -36,6 +36,7 @@
 - Flashcard review deck includes only learning levels (`level1` through `level4`), excludes suspended cards, and is filtered by due date.
 - Flashcards intentionally use a simple LingQ-style binary flow (`Flip` -> `Wrong`/`Correct`) instead of multi-rating schedulers.
 - Flashcards test each due word in both directions in-session (`word -> meaning`, `meaning -> word`) before finalizing a level outcome.
+- Directional prompts are intentionally separated within a session (not immediate back-to-back for the same word when multiple words are queued).
 - Flashcard session intake is intentionally capped by a user-configurable `Words per session` setting (default `5`) to keep cognitive load controlled.
 - Level progression is conservative by design: promote by one level only after two perfect rounds in a row; cap auto-promotion at `level4`.
 - Demotion is lightweight: only rounds with two wrong answers demote one level (minimum `level1`); mixed rounds keep level unchanged.
@@ -55,6 +56,7 @@
 - Maintain a local TSV override file and missing-word log in Documents for quick corrections without re-bundling.
 - Store cloud-fetched missing meanings in `dictionary_cloud_cache.tsv` keyed by `language + normalized_key`.
 - Lookup priority is: override -> local dictionary candidates -> cloud cache -> optional remote fallback.
+- Settings quality metrics are computed from local app data (saved documents + saved vocab meanings) so the score reflects each user’s actual library, with fixture fallback only when local data is empty.
 
 ## Translation APIs
 - Optional only; no runtime dependency in MVP.

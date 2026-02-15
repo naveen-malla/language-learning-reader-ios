@@ -91,8 +91,8 @@ final class FlashcardDeckTests: XCTestCase {
 
         XCTAssertEqual(prompts.count, 4)
         XCTAssertEqual(prompts[0], FlashcardPrompt(entryID: first.id, direction: .wordToMeaning))
-        XCTAssertEqual(prompts[1], FlashcardPrompt(entryID: first.id, direction: .meaningToWord))
-        XCTAssertEqual(prompts[2], FlashcardPrompt(entryID: second.id, direction: .wordToMeaning))
+        XCTAssertEqual(prompts[1], FlashcardPrompt(entryID: second.id, direction: .wordToMeaning))
+        XCTAssertEqual(prompts[2], FlashcardPrompt(entryID: first.id, direction: .meaningToWord))
         XCTAssertEqual(prompts[3], FlashcardPrompt(entryID: second.id, direction: .meaningToWord))
     }
 
@@ -118,6 +118,30 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertTrue(grouped.values.allSatisfy { promptsForWord in
             Set(promptsForWord.map(\.direction)) == Set(FlashcardDirection.allCases)
         })
+    }
+
+    func testSessionPromptsAvoidImmediateDirectionSwitchForSameWordWhenMultipleWordsExist() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entries: [VocabEntry] = (0..<5).map { index in
+            VocabEntry(
+                word: "w\(index)",
+                normalizedKey: "w\(index)",
+                meaning: "",
+                status: .level1,
+                createdAt: now,
+                lastSeenAt: now,
+                dueAt: now.addingTimeInterval(TimeInterval(-index * 60))
+            )
+        }
+
+        let prompts = FlashcardDeck.sessionPrompts(from: entries, now: now, limit: 5)
+
+        XCTAssertEqual(prompts.count, 10)
+        XCTAssertFalse(
+            zip(prompts, prompts.dropFirst()).contains { lhs, rhs in
+                lhs.entryID == rhs.entryID
+            }
+        )
     }
 
     func testPlannedSessionWordCountRespectsWordLimit() {

@@ -31,7 +31,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - **Sentence support**: one-sentence paging with transliteration and translation fallback.
 
 ## Spaced Repetition (Words Only)
-- Each due word is tested in both directions in the same session (`word -> meaning`, `meaning -> word`).
+- Each due word is tested in both directions in the same session (`word -> meaning`, `meaning -> word`) using separated passes to avoid immediate back-to-back reversals.
 - Card feedback is binary (`Correct` / `Wrong`) with no `Again/Hard/Good/Easy` ratings.
 - Levels auto-progress only from `1` to `4` (promotion requires two fully-correct rounds in a row).
 - `Known` is manual only; the app never auto-promotes to `Known`.
@@ -80,7 +80,8 @@ Prerequisites:
   - gold accuracy
   - quality gate pass/fail and top unresolved words
 - Dictionary settings intentionally keep this area quality-focused to reduce noise in the reading workflow.
-- Quality fixtures are selected by source language code, with a baseline fallback fixture if no language-specific fixture exists yet.
+- Settings quality uses your saved documents for coverage and your saved vocab meanings for accuracy.
+- If you have no local documents/vocab yet, quality falls back to a built-in language fixture baseline.
 
 ## Optional Translation Setup
 Translation is optional and not required for core functionality.

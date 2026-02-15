@@ -38,8 +38,7 @@
 1. Open Settings -> Translation API.
 2. Enter endpoint, region, and Key 1 from Azure Translator.
 3. Save settings; key is stored in Keychain.
-4. In Settings -> Dictionary Quality, keep `Use cloud fallback for missing words` enabled (or disable to force offline-only word lookup).
-5. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
+4. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -88,6 +87,7 @@ Notes:
   - confirm flashcards show due-only queue (`Due`, `Queue`, `Accuracy`) with binary `Wrong/Correct` feedback after flip
   - confirm Settings -> Flashcards -> `Words per session` defaults to `5` and changes the next started session size
   - confirm each due word is tested in both directions in-session (`word -> meaning`, `meaning -> word`)
+  - confirm same-word reverse direction is not shown immediately back-to-back when multiple words are in the session
   - confirm one wrong answer in a round keeps level unchanged, while two wrong answers demote by one level
   - confirm two fully-correct rounds in a row promote a word by one level (cap at level 4)
   - confirm level-based due buckets remain fixed (`1d`, `3d`, `7d`, `15d`)
@@ -111,13 +111,13 @@ Dictionary quality notes:
 - Runtime lookup now includes broader Kannada suffix handling and light `-ುತ್ತ...` progressive verb fallback.
 - Runtime lookup path is language-profile based (`kn` has inflection rules; other languages use generic exact lookup by default).
 - Missing-word cloud fallback results are cached in `Documents/dictionary_cloud_cache.tsv`.
+- Settings -> Dictionary Quality evaluates your local saved documents (coverage) and saved vocab meanings (accuracy).
 - Re-run dictionary-focused tests after lookup changes:
   `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryManagerTests`
 
 ## Dictionary Overrides
 - Overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).
 - Missing list: `Documents/dictionary_missing.tsv`.
-- Use Settings -> Dictionary Quality to create the overrides file if needed.
 
 ## Simulator Notes
 - Use Simulator for all testing.
