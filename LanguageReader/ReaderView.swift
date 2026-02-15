@@ -5,6 +5,7 @@ import UIKit
 struct ReaderView: View {
     @Environment(\.modelContext) private var modelContext
 
+    @State private var isShowingDocuments = false
     @State private var titleText = ""
     @State private var bodyText = ""
     private let tokenizer = Tokenizer()
@@ -119,26 +120,25 @@ struct ReaderView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        DocumentsListView()
-                    } label: {
-                        Text("Documents")
-                            .font(.subheadline.weight(.semibold))
-                            .glassToolbarPillStyle()
+                    Button("Documents") {
+                        isShowingDocuments = true
                     }
-                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         saveDocument()
                     }
                     .font(.subheadline.weight(.semibold))
-                    .glassToolbarPillStyle()
-                    .buttonStyle(.plain)
                     .foregroundStyle(canSave ? Theme.accent : .secondary)
                     .disabled(!canSave)
                     .accessibilityLabel("Save document")
                     .accessibilityHint("Saves the pasted text as a new document")
+                }
+            }
+            .sheet(isPresented: $isShowingDocuments) {
+                NavigationStack {
+                    DocumentsListView()
                 }
             }
         }
