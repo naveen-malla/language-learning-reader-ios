@@ -89,6 +89,7 @@
 ## Flashcards UX
 - Session starts from due-only queue; non-due learning words are hidden.
 - Session size is configurable in Settings via `Words per session`; default is `5` due words.
+- Ready state shows both total due words and the selected session word count.
 - Each due word is tested twice in-session: `word -> meaning`, then `meaning -> word`.
 - Card flow is: front prompt -> flip -> `Wrong`/`Correct` -> advance.
 - Word transliteration is shown on word-facing prompts/reveals to support pronunciation memory.

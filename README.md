@@ -9,6 +9,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - Review only what is due with a simple right/wrong card flow.
 - Work fully offline by default; optional cloud translation/fallback is additive.
 - Tune flashcard session load from Settings with a subtle `Words per session` control (default: 5).
+- Flashcards show both `Due` total and current `Session` word count so session sizing is explicit.
 
 ## Screenshots
 

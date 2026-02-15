@@ -159,6 +159,14 @@ enum FlashcardDeck {
         dueEntries(from: entries, now: now, limit: limit)
             .flatMap { prompts(for: $0.id) }
     }
+
+    static func plannedSessionWordCount(
+        from entries: [VocabEntry],
+        now: Date = Date(),
+        limit: Int = defaultSessionWordLimit
+    ) -> Int {
+        dueEntries(from: entries, now: now, limit: limit).count
+    }
 }
 
 private extension VocabStatus {

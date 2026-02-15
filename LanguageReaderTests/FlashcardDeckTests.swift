@@ -120,6 +120,34 @@ final class FlashcardDeckTests: XCTestCase {
         })
     }
 
+    func testPlannedSessionWordCountRespectsWordLimit() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entries: [VocabEntry] = (0..<12).map { index in
+            VocabEntry(
+                word: "w\(index)",
+                normalizedKey: "w\(index)",
+                meaning: "",
+                status: .level1,
+                createdAt: now,
+                lastSeenAt: now,
+                dueAt: now.addingTimeInterval(TimeInterval(-index * 60))
+            )
+        }
+
+        XCTAssertEqual(
+            FlashcardDeck.plannedSessionWordCount(from: entries, now: now, limit: 5),
+            5
+        )
+        XCTAssertEqual(
+            FlashcardDeck.plannedSessionWordCount(from: entries, now: now, limit: 10),
+            10
+        )
+        XCTAssertEqual(
+            FlashcardDeck.plannedSessionWordCount(from: entries, now: now, limit: 20),
+            12
+        )
+    }
+
     func testRoundEvaluatorPromotesAfterTwoPerfectRounds() {
         let firstRound = FlashcardRoundEvaluator.evaluate(
             status: .level1,

@@ -63,6 +63,17 @@ struct FlashcardsView: View {
         Set(promptQueue.map(\.entryID)).count
     }
 
+    private var sessionWordTargetCount: Int {
+        FlashcardDeck.plannedSessionWordCount(
+            from: entries,
+            limit: normalizedSessionWordLimit
+        )
+    }
+
+    private var queueMetricWordCount: Int {
+        hasActiveSession ? remainingWordCount : sessionWordTargetCount
+    }
+
     private var normalizedSessionWordLimit: Int {
         FlashcardSettings.normalizedSessionWordLimit(sessionWordLimit)
     }
@@ -164,7 +175,7 @@ struct FlashcardsView: View {
     private var sessionMetrics: some View {
         HStack(spacing: 8) {
             metricPill(title: "Due", value: "\(dueEntries.count)")
-            metricPill(title: "Queue", value: "\(remainingWordCount)")
+            metricPill(title: hasActiveSession ? "Queue" : "Session", value: "\(queueMetricWordCount)")
             metricPill(title: "Accuracy", value: accuracyText)
         }
     }
@@ -413,7 +424,7 @@ struct FlashcardsView: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.white)
 
-            Text("\(dueEntries.count) due words will be tested in both directions with simple right/wrong feedback.")
+            Text("\(sessionWordTargetCount) words selected for this session (\(dueEntries.count) due total). Each word is tested in both directions with simple right/wrong feedback.")
                 .font(.body.weight(.medium))
                 .foregroundStyle(Color.white.opacity(0.8))
                 .lineSpacing(3)
