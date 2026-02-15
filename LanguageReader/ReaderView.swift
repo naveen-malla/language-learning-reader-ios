@@ -126,6 +126,7 @@ struct ReaderView: View {
                             .font(.subheadline.weight(.semibold))
                             .glassToolbarPillStyle()
                     }
+                    .buttonStyle(.plain)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -133,6 +134,7 @@ struct ReaderView: View {
                     }
                     .font(.subheadline.weight(.semibold))
                     .glassToolbarPillStyle()
+                    .buttonStyle(.plain)
                     .foregroundStyle(canSave ? Theme.accent : .secondary)
                     .disabled(!canSave)
                     .accessibilityLabel("Save document")
