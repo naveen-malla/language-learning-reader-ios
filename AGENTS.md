@@ -52,6 +52,8 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Boot simulator: `./scripts/boot_simulator.sh`
 - Select simulator: `./scripts/select_simulator.sh`
 - Build bundled dictionary: `./scripts/build_dictionary.py`
+- Evaluate dictionary quality (coverage/meaning fixtures): `./scripts/evaluate_dictionary.py`
+- Dictionary evaluation tests: `./scripts/test_evaluate_dictionary.py`
 - Install dictionary into simulator: `./scripts/install_dictionary.sh`
 - Repo hygiene guard (main-only check/cleanup): `./scripts/guard_main.sh`
 - Enforce cleanup to main-only state: `./scripts/guard_main.sh --cleanup`
