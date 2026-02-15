@@ -29,8 +29,8 @@ Completed:
 - Language-profile-based lookup (`generic` default + Kannada profile rules) to reduce re-engineering per language.
 - Optional cloud fallback for missing single-word meanings with persistent local cache.
 - Vocab statuses (`new`, `learning`, `known`) with color coding.
-- Flashcards upgraded to due-based spaced repetition with adaptive FSRS-style scheduling (SM-2 fallback), `Again/Hard/Good/Easy` ratings, and in-session re-queue for misses.
-- Flashcards visual polish pass: flip-style reveal, interval-aware answer rail, session summary state, and haptic feedback cues.
+- Flashcards upgraded to due-based spaced repetition with a simple LingQ-style binary flow (`Flip` -> `Wrong/Correct`) and bidirectional review (`word -> meaning`, `meaning -> word`) in the same session.
+- Flashcards visual redesign pass: noir-glass session surface, calm card motion, transliteration-aware prompts, and two-row action dock.
 - Hardening pass after flashcard rewrite: scheduler edge/failure tests expanded and full simulator test suite run clean.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
 
@@ -39,10 +39,10 @@ In progress:
 - Phase 1 expansion for multi-language-ready lookup architecture (language profiles + cloud cache path).
 - Dictionary quality evaluation pipeline (coverage + gold accuracy + thresholds) with first Kannada fixture.
 - Reader visual polish toward a cleaner LingQ-like reading experience.
-- Phase 3 learning loop refinement (advanced scheduler tuning + session analytics polish).
+- Phase 3 learning loop refinement (fixed-level schedule tuning + session analytics polish).
 
 Pending:
-- FSRS parameter calibration against real review logs and retention outcomes.
+- Fixed-level interval calibration against real retention outcomes and usage cadence.
 - Reader-library UX alignment and quality pass.
 
 ## Roadmap
@@ -111,7 +111,7 @@ Goals:
 
 Tasks:
 - Refine flashcard session logic (queue, revisit wrong items). (done)
-- Tune status transitions (`new` -> `learning` -> `known`). (ongoing)
+- Tune status transitions (`new` -> `learning` -> `known`). (ongoing; `known` remains manual-only)
 - Add lightweight stats for daily review and known ratio. (partially done: session `Due/Queue/Accuracy` + session completion summary)
 
 Acceptance criteria:

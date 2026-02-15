@@ -1,12 +1,12 @@
 # LanguageReader
 
-An iOS reading-first language learning app (initial scope: Kannada) with offline word lookup, vocabulary tracking, and adaptive spaced-repetition flashcards.
+An iOS reading-first language learning app (initial scope: Kannada) with offline word lookup, vocabulary tracking, and due-based spaced-repetition flashcards.
 
 ## Product Snapshot
 - Read saved documents in a distraction-light interface designed for long sessions.
 - Tap words to get instant meanings, pronunciation, and vocabulary actions.
 - Keep learning state unified across Reader, Vocab, and Flashcards.
-- Review only what is due with adaptive scheduling (`Again`, `Hard`, `Good`, `Easy`).
+- Review only what is due with a simple right/wrong card flow.
 - Work fully offline by default; optional cloud translation/fallback is additive.
 
 ## Screenshots
@@ -24,14 +24,15 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - **Liquid-glass interface layer**: thin/ultra-thin material cards, pills, and controls add depth while preserving contrast.
 - **Word-level intelligence**: dictionary lookup path tracking (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
 - **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with consistent color mapping.
-- **Session-focused flashcards**: due filtering, re-queue for misses, and interval previews.
+- **Session-focused flashcards**: due filtering, card flip recall, binary right/wrong feedback, and directional reinforcement.
 - **Sentence support**: one-sentence paging with transliteration and translation fallback.
 
 ## Spaced Repetition (Words Only)
-- Scheduler engine supports adaptive FSRS-style behavior with SM-2 fallback.
-- Review outcomes update interval, stability/difficulty signals, repetition count, lapses, and next due date.
-- `Known` and suspended cards are excluded from due queues.
-- Session metrics track `Due`, `Queue`, and `Accuracy` to keep review decisions fast.
+- Each due word is tested in both directions in the same session (`word -> meaning`, `meaning -> word`).
+- Card feedback is binary (`Correct` / `Wrong`) with no `Again/Hard/Good/Easy` ratings.
+- Levels auto-progress only from `1` to `4` (promotion requires two fully-correct rounds in a row).
+- `Known` is manual only; the app never auto-promotes to `Known`.
+- Fixed due buckets by level: `1 day`, `3 days`, `7 days`, `15 days`.
 
 ## Getting Started
 Prerequisites:

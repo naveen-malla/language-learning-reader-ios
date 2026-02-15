@@ -1,17 +1,21 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 import UIKit
 
 struct FlashcardsView: View {
     @Query(sort: \VocabEntry.createdAt) private var entries: [VocabEntry]
 
+    @AppStorage("flashcards_simple_mode_migrated_v1") private var simpleModeMigrationApplied = false
+
+    @State private var promptQueue: [FlashcardPrompt] = []
+    @State private var pendingAnswersByWordID: [UUID: [FlashcardBinaryAnswer]] = [:]
+    @State private var requeuedWordIDs: Set<UUID> = []
     @State private var isRevealed = false
-    @State private var sessionQueueIDs: [UUID] = []
-    @State private var revisitCounts: [UUID: Int] = [:]
     @State private var sessionReviewed = 0
     @State private var sessionCorrect = 0
+    @State private var isShowingSessionSettings = false
 
-    private let scheduler = SpacedRepetitionEngine(algorithm: .fsrs)
+    private let transliterator = Transliterator()
 
     private var entryByID: [UUID: VocabEntry] {
         Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
@@ -29,9 +33,13 @@ struct FlashcardsView: View {
         FlashcardDeck.nextDueDate(from: entries)
     }
 
+    private var currentPrompt: FlashcardPrompt? {
+        promptQueue.first
+    }
+
     private var currentEntry: VocabEntry? {
-        guard let id = sessionQueueIDs.first else { return nil }
-        return entryByID[id]
+        guard let prompt = currentPrompt else { return nil }
+        return entryByID[prompt.entryID]
     }
 
     private var accuracyText: String {
@@ -41,423 +49,670 @@ struct FlashcardsView: View {
     }
 
     private var progressFraction: Double {
-        let total = sessionReviewed + sessionQueueIDs.count
+        let total = sessionReviewed + promptQueue.count
         guard total > 0 else { return 0 }
         return Double(sessionReviewed) / Double(total)
+    }
+
+    private var hasActiveSession: Bool {
+        !promptQueue.isEmpty
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                AppBackground()
+                noirBackground
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        SectionCard("Review") {
-                            HStack(spacing: 10) {
-                                VocabMetricPill(title: "Due", value: "\(dueEntries.count)", tint: Theme.accent)
-                                VocabMetricPill(title: "Queue", value: "\(sessionQueueIDs.count)", tint: Theme.learningHighlight)
-                                VocabMetricPill(title: "Accuracy", value: accuracyText, tint: Theme.knownHighlight)
-                            }
-                        }
+                VStack(spacing: 14) {
+                    sessionTopBar
+                    sessionMetrics
 
-                        if let entry = currentEntry {
-                            cardContent(for: entry)
-                                .transition(.opacity.combined(with: .move(edge: .trailing)))
-                        } else if sessionReviewed > 0 {
-                            sessionSummaryContent
-                        } else if dueEntries.isEmpty {
-                            noDueContent
-                        } else {
-                            startSessionContent
-                        }
-                    }
-                    .padding(16)
-                }
-            }
-            .navigationTitle("Flashcards")
-            .navigationBarTitleDisplayMode(.large)
-            .animation(.spring(response: 0.35, dampingFraction: 0.88), value: sessionQueueIDs.first)
-        }
-    }
-
-    private func cardContent(for entry: VocabEntry) -> some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 12) {
-                ProgressView(value: progressFraction)
-                    .progressViewStyle(.linear)
-                Text("\(sessionReviewed) done")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 4)
-
-            ZStack {
-                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .background(
-                        RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Theme.accent.opacity(0.09),
-                                        Theme.accentSecondary.opacity(0.08),
-                                        Color.white.opacity(0.02)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-
-                Circle()
-                    .fill(Theme.accent.opacity(0.12))
-                    .frame(width: 160, height: 160)
-                    .offset(x: 130, y: -140)
-                    .blur(radius: 1)
-
-                Circle()
-                    .fill(Theme.accentSecondary.opacity(0.12))
-                    .frame(width: 190, height: 190)
-                    .offset(x: -140, y: 140)
-                    .blur(radius: 1)
-
-                VStack(spacing: 16) {
-                    HStack {
-                        Text(entry.status.levelBadgeLabel)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .foregroundStyle(.white)
-                            .background(Theme.statusTint(entry.status), in: Capsule())
-
-                        Spacer()
-
-                        Text("FSRS")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .foregroundStyle(.secondary)
-                            .background(.thinMaterial, in: Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                            )
-                    }
-
-                    flashcardFace(for: entry)
-                        .frame(maxWidth: .infinity, minHeight: 190)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            toggleReveal()
-                        }
-
-                    if isRevealed {
-                        reviewButtonRow(for: entry)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    if let prompt = currentPrompt, let entry = currentEntry {
+                        activeSessionContent(prompt: prompt, entry: entry)
+                            .frame(maxHeight: .infinity, alignment: .top)
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    } else if sessionReviewed > 0 {
+                        completedSessionContent
+                            .frame(maxHeight: .infinity, alignment: .top)
+                    } else if dueEntries.isEmpty {
+                        noDueContent
+                            .frame(maxHeight: .infinity, alignment: .top)
                     } else {
-                        Button {
-                            toggleReveal()
-                        } label: {
-                            Text("Reveal")
-                                .font(.headline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Theme.accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
+                        readyContent
+                            .frame(maxHeight: .infinity, alignment: .top)
                     }
-
-                    Button {
-                        markCurrentKnown()
-                    } label: {
-                        Label("Mark Known", systemImage: "checkmark.circle")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 20)
+                .padding(16)
             }
-            .frame(minHeight: 390)
+            .toolbar(.hidden, for: .navigationBar)
+            .animation(.easeInOut(duration: 0.24), value: currentPrompt?.id)
+            .sheet(isPresented: $isShowingSessionSettings) {
+                sessionSettingsSheet
+            }
+            .onAppear {
+                runSimpleModeMigrationIfNeeded()
+            }
+            .onChange(of: entries.count) { _, _ in
+                runSimpleModeMigrationIfNeeded()
+            }
         }
-        .animation(.easeInOut(duration: 0.2), value: isRevealed)
     }
 
-    private func flashcardFace(for entry: VocabEntry) -> some View {
-        ZStack {
-            VStack(spacing: 10) {
-                Text(entry.word)
-                    .font(.system(size: 38, weight: .semibold, design: .rounded))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-
-                if let dueAt = entry.dueAt {
-                    Text("Due \(dueAt, style: .relative)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Due now")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
+    private var sessionTopBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                closeSession()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.9))
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.08), in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
             }
-            .opacity(isRevealed ? 0 : 1)
+            .buttonStyle(.plain)
+            .opacity(hasActiveSession ? 1 : 0.45)
+            .disabled(!hasActiveSession)
 
-            VStack(spacing: 12) {
-                Text(entry.word)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.12))
+                    .frame(height: 4)
 
-                Text(entry.meaning.isEmpty ? "No meaning yet." : entry.meaning)
-                    .font(Theme.readingFont)
-                    .foregroundStyle(entry.meaning.isEmpty ? .secondary : .primary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.accent, Theme.accentSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: 4)
+                    .scaleEffect(x: max(0.03, progressFraction), y: 1, anchor: .leading)
             }
-            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-            .opacity(isRevealed ? 1 : 0)
+
+            Button {
+                isShowingSessionSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.9))
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.08), in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
         }
-        .frame(maxWidth: .infinity)
-        .rotation3DEffect(
-            .degrees(isRevealed ? 180 : 0),
-            axis: (x: 0, y: 1, z: 0),
-            perspective: 0.55
+    }
+
+    private var sessionMetrics: some View {
+        HStack(spacing: 8) {
+            metricPill(title: "Due", value: "\(dueEntries.count)")
+            metricPill(title: "Queue", value: "\(promptQueue.count)")
+            metricPill(title: "Accuracy", value: accuracyText)
+        }
+    }
+
+    private func metricPill(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.65))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
         )
     }
 
-    private var startSessionContent: some View {
-        SectionCard("Ready") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("\(dueEntries.count) words are due now.")
-                    .font(Theme.readingEmphasisFont)
+    private func activeSessionContent(prompt: FlashcardPrompt, entry: VocabEntry) -> some View {
+        VStack(spacing: 14) {
+            flashcardBody(prompt: prompt, entry: entry)
 
-                Text("Start a focused review session with adaptive spaced repetition scheduling.")
-                    .font(Theme.readingFont)
-                    .foregroundStyle(.secondary)
+            if isRevealed {
+                HStack(spacing: 10) {
+                    answerButton(title: "Wrong", tint: Color(red: 0.89, green: 0.35, blue: 0.35), icon: "xmark") {
+                        submitAnswer(.wrong)
+                    }
 
+                    answerButton(title: "Correct", tint: Color(red: 0.12, green: 0.72, blue: 0.44), icon: "checkmark") {
+                        submitAnswer(.correct)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            } else {
                 Button {
-                    startSession()
+                    flipCard()
                 } label: {
-                    Label("Start Session", systemImage: "play.fill")
+                    Label("Flip", systemImage: "arrow.triangle.2.circlepath")
                         .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Theme.accent.opacity(0.2), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.vertical, 14)
+                        .background(
+                            LinearGradient(
+                                colors: [Theme.accent.opacity(0.85), Theme.accentSecondary.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
                 }
                 .buttonStyle(.plain)
+                .transition(.opacity)
+            }
+
+            HStack(spacing: 10) {
+                secondaryDockButton(title: "Mark Known", icon: "checkmark.circle") {
+                    markCurrentKnown()
+                }
+
+                secondaryDockButton(title: "Skip", icon: "forward.fill") {
+                    skipCurrentPrompt()
+                }
             }
         }
     }
 
-    private var sessionSummaryContent: some View {
-        SectionCard("Session Complete") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Reviewed \(sessionReviewed) words")
-                    .font(Theme.readingEmphasisFont)
+    private func answerButton(title: String, tint: Color, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(tint.opacity(0.22), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(tint.opacity(0.75), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PressScaleButtonStyle())
+    }
 
-                HStack(spacing: 8) {
-                    Text("Accuracy \(accuracyText)")
-                        .subtleMetadataPillStyle()
-                    Text("Remaining due \(dueEntries.count)")
-                        .subtleMetadataPillStyle()
-                }
-                .foregroundStyle(.secondary)
+    private func secondaryDockButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 11)
+                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PressScaleButtonStyle())
+    }
 
-                if dueEntries.isEmpty {
-                    Text("No cards are currently due.")
-                        .font(Theme.readingFont)
-                        .foregroundStyle(.secondary)
+    private func flashcardBody(prompt: FlashcardPrompt, entry: VocabEntry) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .background(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(Color.black.opacity(0.26))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.35),
+                                    Color.white.opacity(0.08),
+                                    Theme.accent.opacity(0.2)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.35), radius: 24, y: 14)
+
+            VStack(spacing: 20) {
+                HStack {
+                    Text(entry.status.levelBadgeLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.statusTint(entry.status).opacity(0.65), in: Capsule())
+
+                    Spacer()
+
+                    Text(prompt.direction == .wordToMeaning ? "Word -> Meaning" : "Meaning -> Word")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
                 }
 
-                Button {
-                    startSession()
-                } label: {
-                    Label(dueEntries.isEmpty ? "Start New Session" : "Review Remaining", systemImage: "arrow.clockwise")
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Theme.accent.opacity(0.2), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                cardContent(prompt: prompt, entry: entry)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .padding(22)
+        }
+        .frame(minHeight: 430)
+        .contentShape(Rectangle())
+        .rotation3DEffect(
+            .degrees(isRevealed ? 180 : 0),
+            axis: (x: 0, y: 1, z: 0),
+            perspective: 0.58
+        )
+        .onTapGesture {
+            if !isRevealed {
+                flipCard()
             }
         }
+    }
+
+    private func cardContent(prompt: FlashcardPrompt, entry: VocabEntry) -> some View {
+        ZStack {
+            if isRevealed {
+                revealedContent(prompt: prompt, entry: entry)
+                    .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                    .transition(.opacity)
+            } else {
+                frontContent(prompt: prompt, entry: entry)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.24), value: isRevealed)
+    }
+
+    private func frontContent(prompt: FlashcardPrompt, entry: VocabEntry) -> some View {
+        VStack(spacing: 12) {
+            switch prompt.direction {
+            case .wordToMeaning:
+                Text(entry.word)
+                    .font(.system(size: 42, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+
+                if let transliteration = transliteration(for: entry.word) {
+                    Text(transliteration)
+                        .font(.system(size: 21, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color(red: 0.66, green: 0.83, blue: 0.92))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                }
+
+            case .meaningToWord:
+                Text(entry.meaning.isEmpty ? "No meaning available yet." : entry.meaning)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func revealedContent(prompt: FlashcardPrompt, entry: VocabEntry) -> some View {
+        VStack(spacing: 12) {
+            switch prompt.direction {
+            case .wordToMeaning:
+                Text(entry.meaning.isEmpty ? "No meaning available yet." : entry.meaning)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+
+            case .meaningToWord:
+                Text(entry.word)
+                    .font(.system(size: 40, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+
+                if let transliteration = transliteration(for: entry.word) {
+                    Text(transliteration)
+                        .font(.system(size: 21, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color(red: 0.66, green: 0.83, blue: 0.92))
+                        .multilineTextAlignment(.center)
+                }
+
+                if !entry.meaning.isEmpty {
+                    Text(entry.meaning)
+                        .font(.system(size: 18, weight: .regular, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var readyContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Ready to Review")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+
+            Text("\(dueEntries.count) due words will be tested in both directions with simple right/wrong feedback.")
+                .font(.body.weight(.medium))
+                .foregroundStyle(Color.white.opacity(0.8))
+                .lineSpacing(3)
+
+            Button {
+                startSession()
+            } label: {
+                Label("Start Session", systemImage: "play.fill")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [Theme.accent.opacity(0.85), Theme.accentSecondary.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+            }
+            .buttonStyle(PressScaleButtonStyle())
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private var completedSessionContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Session Complete")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+
+            Text("Reviewed \(sessionReviewed) cards · Accuracy \(accuracyText)")
+                .font(.body.weight(.medium))
+                .foregroundStyle(Color.white.opacity(0.8))
+
+            if dueEntries.isEmpty {
+                Text("No cards are due right now.")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.68))
+            } else {
+                Text("\(dueEntries.count) cards are still due.")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.68))
+            }
+
+            Button {
+                startSession()
+            } label: {
+                Label("Start Another Session", systemImage: "arrow.clockwise")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [Theme.accent.opacity(0.85), Theme.accentSecondary.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+            }
+            .buttonStyle(PressScaleButtonStyle())
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
     }
 
     private var noDueContent: some View {
-        SectionCard("No Cards Due") {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("You are caught up.")
-                    .font(Theme.readingEmphasisFont)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("No Cards Due")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
 
-                if let nextDueDate {
-                    Text("Next card is due \(nextDueDate, style: .relative).")
-                        .font(Theme.readingFont)
-                        .foregroundStyle(.secondary)
-                } else if learningEntries.isEmpty {
-                    Text("Add words from Reader to start building a review queue.")
-                        .font(Theme.readingFont)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("No cards are currently scheduled.")
-                        .font(Theme.readingFont)
-                        .foregroundStyle(.secondary)
+            if learningEntries.isEmpty {
+                Text("Add words from the reader to start building your flashcard queue.")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.8))
+            } else if let nextDueDate {
+                Text("Next card is due \(nextDueDate, style: .relative).")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.8))
+            } else {
+                Text("You are fully caught up.")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.8))
+            }
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private var sessionSettingsSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Flashcards") {
+                    HStack {
+                        Text("Mode")
+                        Spacer()
+                        Text("Simple")
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Text("Directions")
+                        Spacer()
+                        Text("Both")
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Text("Progression")
+                        Spacer()
+                        Text("2 perfect rounds")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Session Settings")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        isShowingSessionSettings = false
+                    }
                 }
             }
         }
     }
 
-    private func reviewButtonRow(for entry: VocabEntry) -> some View {
-        HStack(spacing: 8) {
-            reviewButton(for: .again, entry: entry)
-            reviewButton(for: .hard, entry: entry)
-            reviewButton(for: .good, entry: entry)
-            reviewButton(for: .easy, entry: entry)
-        }
-    }
+    private var noirBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.043, green: 0.063, blue: 0.125),
+                    Color(red: 0.071, green: 0.094, blue: 0.149),
+                    Color(red: 0.039, green: 0.051, blue: 0.078)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
-    private func reviewButton(for rating: ReviewRating, entry: VocabEntry) -> some View {
-        let interval = scheduler.previewInterval(for: entry, rating: rating)
-        return Button {
-            applyReview(rating)
-        } label: {
-            VStack(spacing: 2) {
-                Text(rating.title)
-                    .font(.caption.weight(.semibold))
-                Text(FlashcardDeck.intervalLabel(for: interval))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            .background(
-                .thinMaterial,
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RadialGradient(
+                colors: [Theme.accent.opacity(0.18), .clear],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 320
             )
-            .background(
-                ratingTint(rating).opacity(0.12),
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(ratingTint(rating).opacity(0.35), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
+            .blendMode(.screen)
 
-    private func ratingTint(_ rating: ReviewRating) -> Color {
-        switch rating {
-        case .again:
-            return Color(red: 0.91, green: 0.35, blue: 0.29)
-        case .hard:
-            return Color(red: 0.94, green: 0.65, blue: 0.24)
-        case .good:
-            return Color(red: 0.2, green: 0.78, blue: 0.56)
-        case .easy:
-            return Theme.accent
+            RadialGradient(
+                colors: [Theme.accentSecondary.opacity(0.16), .clear],
+                center: .bottomLeading,
+                startRadius: 20,
+                endRadius: 280
+            )
+            .blendMode(.screen)
         }
+        .ignoresSafeArea()
     }
 
     private func startSession() {
-        sessionQueueIDs = FlashcardDeck.sessionQueueIDs(from: entries)
-        revisitCounts = [:]
+        promptQueue = FlashcardDeck.sessionPrompts(from: entries)
+        pendingAnswersByWordID = [:]
+        requeuedWordIDs = []
         sessionReviewed = 0
         sessionCorrect = 0
         isRevealed = false
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
     }
 
-    private func toggleReveal() {
-        withAnimation(.easeInOut(duration: 0.25)) {
-            isRevealed.toggle()
+    private func closeSession() {
+        promptQueue = []
+        pendingAnswersByWordID = [:]
+        requeuedWordIDs = []
+        sessionReviewed = 0
+        sessionCorrect = 0
+        isRevealed = false
+    }
+
+    private func flipCard() {
+        withAnimation(.easeInOut(duration: 0.24)) {
+            isRevealed = true
         }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
-    private func markCurrentKnown() {
-        guard let entry = currentEntry else { return }
-        entry.status = .known
-        entry.lastSeenAt = Date()
-        entry.encounterCount += 1
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        advanceQueue(after: nil, for: entry.id)
-    }
+    private func submitAnswer(_ answer: FlashcardBinaryAnswer) {
+        guard let prompt = currentPrompt, let entry = currentEntry else { return }
 
-    private func applyReview(_ rating: ReviewRating) {
-        guard let entry = currentEntry else { return }
-
-        let now = Date()
-        scheduler.apply(rating: rating, to: entry, now: now)
-        entry.encounterCount += 1
-
+        promptQueue.removeFirst()
         sessionReviewed += 1
-        if rating != .again {
+        if answer == .correct {
             sessionCorrect += 1
         }
+        entry.encounterCount += 1
 
-        haptic(for: rating)
-        advanceQueue(after: rating, for: entry.id)
+        var roundAnswers = pendingAnswersByWordID[prompt.entryID, default: []]
+        roundAnswers.append(answer)
+
+        if roundAnswers.count == 2 {
+            let now = Date()
+            let currentStreak = max(0, entry.srsRepetition ?? 0)
+            let outcome = FlashcardRoundEvaluator.evaluate(
+                status: entry.status,
+                consecutiveSuccessRounds: currentStreak,
+                answers: roundAnswers
+            )
+
+            entry.status = outcome.status
+            entry.srsRepetition = outcome.nextConsecutiveSuccessRounds
+            entry.lastSeenAt = now
+            entry.dueAt = SimpleLevelScheduler.nextDueDate(for: outcome.status, now: now)
+            entry.srsIntervalDays = SimpleLevelScheduler.intervalDays(for: outcome.status).map(Double.init)
+            entry.srsAlgorithm = nil
+
+            pendingAnswersByWordID[prompt.entryID] = nil
+
+            if outcome.shouldRequeue,
+               outcome.status.isLearning,
+               requeuedWordIDs.contains(prompt.entryID) == false {
+                promptQueue.append(contentsOf: FlashcardDeck.prompts(for: prompt.entryID))
+                requeuedWordIDs.insert(prompt.entryID)
+            }
+        } else {
+            pendingAnswersByWordID[prompt.entryID] = roundAnswers
+        }
+
+        isRevealed = false
+        haptic(for: answer)
     }
 
-    private func haptic(for rating: ReviewRating) {
-        switch rating {
-        case .again:
+    private func haptic(for answer: FlashcardBinaryAnswer) {
+        switch answer {
+        case .wrong:
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
-        case .hard:
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-        case .good:
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        case .easy:
+        case .correct:
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
     }
 
-    private func advanceQueue(after rating: ReviewRating?, for currentID: UUID) {
-        if let first = sessionQueueIDs.first, first == currentID {
-            sessionQueueIDs.removeFirst()
-        } else if let index = sessionQueueIDs.firstIndex(of: currentID) {
-            sessionQueueIDs.remove(at: index)
-        }
+    private func markCurrentKnown() {
+        guard let entry = currentEntry else { return }
 
-        if let rating,
-           let entry = entryByID[currentID],
-           entry.status.isLearning,
-           shouldRequeue(currentID: currentID, rating: rating) {
-            sessionQueueIDs.append(currentID)
-        }
+        let now = Date()
+        entry.status = .known
+        entry.srsRepetition = 0
+        entry.lastSeenAt = now
+        entry.dueAt = nil
+        entry.srsIntervalDays = nil
+        entry.srsAlgorithm = nil
+        entry.encounterCount += 1
 
+        pendingAnswersByWordID[entry.id] = nil
+        requeuedWordIDs.remove(entry.id)
+        promptQueue.removeAll { $0.entryID == entry.id }
         isRevealed = false
+
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
-    private func shouldRequeue(currentID: UUID, rating: ReviewRating) -> Bool {
-        let revisitCap: Int
-        switch rating {
-        case .again:
-            revisitCap = 2
-        case .hard:
-            revisitCap = 1
-        case .good, .easy:
-            return false
+    private func skipCurrentPrompt() {
+        guard let prompt = currentPrompt else { return }
+        promptQueue.removeFirst()
+        promptQueue.append(prompt)
+        isRevealed = false
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+    }
+
+    private func runSimpleModeMigrationIfNeeded() {
+        guard simpleModeMigrationApplied == false else { return }
+        guard entries.isEmpty == false else { return }
+
+        for entry in FlashcardDeck.learningEntries(from: entries) {
+            let baseDate = max(entry.lastSeenAt, entry.createdAt)
+            entry.srsRepetition = 0
+            entry.dueAt = SimpleLevelScheduler.dueDate(for: entry.status, baseDate: baseDate)
+            entry.srsIntervalDays = SimpleLevelScheduler.intervalDays(for: entry.status).map(Double.init)
+            entry.srsAlgorithm = nil
         }
 
-        let current = revisitCounts[currentID, default: 0]
-        guard current < revisitCap else { return false }
-        revisitCounts[currentID] = current + 1
-        return true
+        simpleModeMigrationApplied = true
+    }
+
+    private func transliteration(for word: String) -> String? {
+        let value = transliterator.pronounce(word).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.isEmpty == false else { return nil }
+        guard value.caseInsensitiveCompare(word) != .orderedSame else { return nil }
+        return value
+    }
+}
+
+private struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 
