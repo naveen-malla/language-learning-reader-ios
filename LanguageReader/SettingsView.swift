@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     private let dictionaryManager = DictionaryManager.shared
     private let translationSettings = TranslationSettingsStore()
+    @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
     @State private var endpointText = ""
     @State private var regionText = ""
     @State private var sourceLanguageText = ""
@@ -21,6 +22,47 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        SectionCard("Appearance") {
+                            Text("Choose how the app should look.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                                ForEach(AppAppearanceMode.allCases) { mode in
+                                    Button {
+                                        appearanceModeRawValue = mode.rawValue
+                                    } label: {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(mode.title)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.primary)
+                                            Text(mode.subtitle)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(2)
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(10)
+                                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .fill(Theme.accent.opacity(selectedAppearanceMode == mode ? 0.22 : 0.04))
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .stroke(
+                                                    selectedAppearanceMode == mode
+                                                        ? Theme.accent.opacity(0.9)
+                                                        : Color.white.opacity(0.15),
+                                                    lineWidth: selectedAppearanceMode == mode ? 1.5 : 1
+                                                )
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+
                         SectionCard("System Status") {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
@@ -223,5 +265,9 @@ struct SettingsView: View {
 
     private func percentText(_ value: Double) -> String {
         String(format: "%.1f%%", value * 100)
+    }
+
+    private var selectedAppearanceMode: AppAppearanceMode {
+        AppAppearanceMode(rawValue: appearanceModeRawValue) ?? .defaultValue
     }
 }

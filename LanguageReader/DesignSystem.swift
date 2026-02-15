@@ -1,5 +1,69 @@
 import SwiftUI
 
+enum AppAppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+    case midnight
+
+    static let storageKey = "appearance.mode"
+    static let defaultValue: AppAppearanceMode = .dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system:
+            return "System"
+        case .light:
+            return "Light"
+        case .dark:
+            return "Dark"
+        case .midnight:
+            return "Midnight"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .system:
+            return "Follow iPhone setting"
+        case .light:
+            return "Bright glass surfaces"
+        case .dark:
+            return "Soft navy dark mode"
+        case .midnight:
+            return "Deep contrast night mode"
+        }
+    }
+
+    var preferredColorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return .light
+        case .dark, .midnight:
+            return .dark
+        }
+    }
+
+    var usesMidnightPalette: Bool {
+        self == .midnight
+    }
+}
+
+private struct AppAppearanceModeEnvironmentKey: EnvironmentKey {
+    static let defaultValue = AppAppearanceMode.defaultValue
+}
+
+extension EnvironmentValues {
+    var appAppearanceMode: AppAppearanceMode {
+        get { self[AppAppearanceModeEnvironmentKey.self] }
+        set { self[AppAppearanceModeEnvironmentKey.self] = newValue }
+    }
+}
+
 enum Theme {
     static let accent = Color(red: 0.13, green: 0.45, blue: 0.9)
     static let accentSecondary = Color(red: 0.12, green: 0.68, blue: 0.63)
@@ -78,18 +142,28 @@ enum Theme {
 
 struct AppBackground: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appAppearanceMode) private var appearanceMode
 
     var body: some View {
+        let useMidnightPalette = colorScheme == .dark && appearanceMode.usesMidnightPalette
         let top = colorScheme == .dark
-            ? Color(red: 0.10, green: 0.14, blue: 0.20)
+            ? (useMidnightPalette
+               ? Color(red: 0.06, green: 0.09, blue: 0.15)
+               : Color(red: 0.10, green: 0.14, blue: 0.20))
             : Color(red: 0.92, green: 0.95, blue: 1.0)
         let mid = colorScheme == .dark
-            ? Color(red: 0.07, green: 0.10, blue: 0.15)
+            ? (useMidnightPalette
+               ? Color(red: 0.04, green: 0.06, blue: 0.11)
+               : Color(red: 0.07, green: 0.10, blue: 0.15))
             : Color(red: 0.86, green: 0.92, blue: 0.98)
         let bottom = colorScheme == .dark
-            ? Color(red: 0.05, green: 0.07, blue: 0.11)
+            ? (useMidnightPalette
+               ? Color(red: 0.02, green: 0.03, blue: 0.08)
+               : Color(red: 0.05, green: 0.07, blue: 0.11))
             : Color(red: 0.95, green: 0.97, blue: 1.0)
-        let glow = colorScheme == .dark ? Theme.accent.opacity(0.28) : Theme.accent.opacity(0.18)
+        let glow = colorScheme == .dark
+            ? Theme.accent.opacity(useMidnightPalette ? 0.22 : 0.28)
+            : Theme.accent.opacity(0.18)
 
         ZStack {
             LinearGradient(colors: [top, mid, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -103,7 +177,14 @@ struct AppBackground: View {
             .blendMode(.plusLighter)
 
             RadialGradient(
-                colors: [Theme.accentSecondary.opacity(colorScheme == .dark ? 0.18 : 0.12), .clear],
+                colors: [
+                    Theme.accentSecondary.opacity(
+                        colorScheme == .dark
+                            ? (useMidnightPalette ? 0.14 : 0.18)
+                            : 0.12
+                    ),
+                    .clear
+                ],
                 center: .bottomLeading,
                 startRadius: 20,
                 endRadius: 300

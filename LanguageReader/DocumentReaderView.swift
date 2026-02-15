@@ -80,7 +80,6 @@ struct DocumentReaderView: View {
                 .padding(.horizontal, 16)
             }
         }
-        .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
@@ -469,20 +468,29 @@ private struct WordSelection: Identifiable {
 }
 
 private struct ReaderBackground: View {
+    @Environment(\.appAppearanceMode) private var appearanceMode
+
     var body: some View {
+        let useMidnightPalette = appearanceMode.usesMidnightPalette
+        let top = useMidnightPalette
+            ? Color(red: 0.05, green: 0.08, blue: 0.15)
+            : Color(red: 0.08, green: 0.11, blue: 0.18)
+        let mid = useMidnightPalette
+            ? Color(red: 0.03, green: 0.05, blue: 0.10)
+            : Color(red: 0.05, green: 0.07, blue: 0.12)
+        let bottom = useMidnightPalette
+            ? Color(red: 0.015, green: 0.025, blue: 0.065)
+            : Color(red: 0.03, green: 0.04, blue: 0.08)
+
         ZStack {
             LinearGradient(
-                colors: [
-                    Color(red: 0.08, green: 0.11, blue: 0.18),
-                    Color(red: 0.05, green: 0.07, blue: 0.12),
-                    Color(red: 0.03, green: 0.04, blue: 0.08)
-                ],
+                colors: [top, mid, bottom],
                 startPoint: .top,
                 endPoint: .bottom
             )
 
             RadialGradient(
-                colors: [Theme.accent.opacity(0.2), .clear],
+                colors: [Theme.accent.opacity(useMidnightPalette ? 0.14 : 0.2), .clear],
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 280
@@ -490,7 +498,7 @@ private struct ReaderBackground: View {
             .blendMode(.plusLighter)
 
             RadialGradient(
-                colors: [Theme.accentSecondary.opacity(0.16), .clear],
+                colors: [Theme.accentSecondary.opacity(useMidnightPalette ? 0.1 : 0.16), .clear],
                 center: .bottomLeading,
                 startRadius: 24,
                 endRadius: 260

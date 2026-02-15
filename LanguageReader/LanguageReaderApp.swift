@@ -5,6 +5,7 @@ import SwiftData
 @main
 struct LanguageReaderApp: App {
     private static let seedVersion = "sample_documents_seed_v1"
+    @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
     private let sharedModelContainer: ModelContainer
 
     init() {
@@ -51,9 +52,14 @@ struct LanguageReaderApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.dark)
+                .environment(\.appAppearanceMode, selectedAppearanceMode)
+                .preferredColorScheme(selectedAppearanceMode.preferredColorScheme)
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    private var selectedAppearanceMode: AppAppearanceMode {
+        AppAppearanceMode(rawValue: appearanceModeRawValue) ?? .defaultValue
     }
 
     private func seedInitialDocumentsIfNeeded(container: ModelContainer) {
