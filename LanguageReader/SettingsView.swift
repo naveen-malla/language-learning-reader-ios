@@ -3,16 +3,12 @@ import SwiftUI
 struct SettingsView: View {
     private let dictionaryManager = DictionaryManager.shared
     private let translationSettings = TranslationSettingsStore()
-    @AppStorage("dictionaryDiagnosticsEnabled") private var diagnosticsEnabled = false
-    @AppStorage(DictionaryManager.cloudFallbackEnabledKey) private var cloudFallbackEnabled = true
-    @AppStorage(DictionaryManager.cloudFallbackTargetLanguageKey) private var cloudFallbackTargetLanguage = "en"
     @State private var endpointText = ""
     @State private var regionText = ""
     @State private var sourceLanguageText = ""
     @State private var targetLanguageText = ""
     @State private var apiKeyInput = ""
     @State private var hasStoredAPIKey = false
-    @State private var cloudCacheCount = 0
     @State private var qualitySnapshot: DictionaryQualitySnapshot?
     @State private var isEvaluatingQuality = false
     @State private var qualityStatusMessage: String?
@@ -31,68 +27,11 @@ struct SettingsView: View {
                                     Text(hasStoredAPIKey ? "Translation Key Saved" : "Translation Key Missing")
                                         .subtleMetadataPillStyle()
                                         .foregroundStyle(hasStoredAPIKey ? Theme.learningHighlight : .secondary)
-
-                                    Text(diagnosticsEnabled ? "Diagnostics On" : "Diagnostics Off")
-                                        .subtleMetadataPillStyle()
-                                        .foregroundStyle(diagnosticsEnabled ? Theme.accent : .secondary)
-
-                                    Text(cloudFallbackEnabled ? "Cloud Fallback On" : "Cloud Fallback Off")
-                                        .subtleMetadataPillStyle()
-                                        .foregroundStyle(cloudFallbackEnabled ? Theme.accent : .secondary)
                                 }
                             }
-                        }
-
-                        SectionCard("Dictionary") {
-                            LabeledContent("Source", value: dictionaryManager.sourceDescription)
-
-                            Text("Alar Kannada–English dictionary (ODbL)")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-
-                            Text("The app prefers a local SQLite file in Documents. If none is present, it uses the bundled dictionary.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
                         }
 
                         SectionCard("Dictionary Quality") {
-                            Toggle("Show diagnostics", isOn: $diagnosticsEnabled)
-                            Toggle("Use cloud fallback for missing words", isOn: $cloudFallbackEnabled)
-
-                            TextField("Cloud fallback target language (e.g. en)", text: $cloudFallbackTargetLanguage)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .glassInputFieldStyle()
-
-                            HStack(spacing: 10) {
-                                Text("Cloud cache: \(cloudCacheCount) entries")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-
-                                Spacer()
-
-                                Button("Clear cache", role: .destructive) {
-                                    dictionaryManager.clearCloudCache()
-                                    cloudCacheCount = dictionaryManager.cloudCacheCount()
-                                }
-                                .buttonStyle(.bordered)
-                            }
-
-                            Button("Create overrides file") {
-                                dictionaryManager.ensureOverridesFile()
-                            }
-                            .buttonStyle(.bordered)
-
-                            Text("Overrides file: \(DictionaryPaths.overridesFileName) (Documents)")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-
-                            Text("Missing list: \(DictionaryPaths.missingFileName) (Documents)")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-
-                            Divider()
-
                             HStack {
                                 Text("Evaluation")
                                     .font(.subheadline.weight(.semibold))
@@ -113,20 +52,6 @@ struct SettingsView: View {
                                 }
                             } else if let qualitySnapshot {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("Language: \(qualitySnapshot.requestedLanguageCode.uppercased())")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-
-                                    Text("Fixture: \(qualitySnapshot.fixtureName) (\(qualitySnapshot.fixtureLanguageCode.uppercased()))")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-
-                                    if qualitySnapshot.usedFallbackFixture {
-                                        Text("No fixture exists for \(qualitySnapshot.requestedLanguageCode.uppercased()). Showing baseline \(qualitySnapshot.fixtureLanguageCode.uppercased()) metrics.")
-                                            .font(.footnote)
-                                            .foregroundStyle(.secondary)
-                                    }
-
                                     LabeledContent(
                                         "Token coverage",
                                         value: "\(percentText(qualitySnapshot.tokenCoverage)) (\(qualitySnapshot.tokenHits)/\(qualitySnapshot.tokenTotal))"
@@ -147,18 +72,6 @@ struct SettingsView: View {
                                     Text(qualitySnapshot.thresholdPassed ? "Quality gate: PASS" : "Quality gate: FAIL")
                                         .font(.footnote.weight(.semibold))
                                         .foregroundStyle(qualitySnapshot.thresholdPassed ? Theme.learningHighlight : .red)
-
-                                    ForEach(qualitySnapshot.thresholdChecks, id: \.metricName) { check in
-                                        HStack {
-                                            Text(check.metricName)
-                                                .font(.footnote)
-                                                .foregroundStyle(.secondary)
-                                            Spacer()
-                                            Text("\(percentText(check.actual)) / \(percentText(check.expectedMinimum))")
-                                                .font(.footnote.monospacedDigit())
-                                                .foregroundStyle(check.passed ? Theme.learningHighlight : .red)
-                                        }
-                                    }
 
                                     if !qualitySnapshot.unresolvedTop.isEmpty {
                                         let unresolved = qualitySnapshot.unresolvedTop
@@ -259,7 +172,6 @@ struct SettingsView: View {
         sourceLanguageText = translationSettings.sourceLanguage
         targetLanguageText = translationSettings.targetLanguage
         hasStoredAPIKey = translationSettings.hasAPIKey
-        cloudCacheCount = dictionaryManager.cloudCacheCount()
     }
 
     private func saveTranslationSettings() {
@@ -284,7 +196,6 @@ struct SettingsView: View {
         }
 
         hasStoredAPIKey = store.hasAPIKey
-        cloudCacheCount = dictionaryManager.cloudCacheCount()
     }
 
     private func clearAPIKey() {

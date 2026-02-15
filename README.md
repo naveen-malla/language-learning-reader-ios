@@ -69,6 +69,7 @@ Prerequisites:
   - gold hit rate
   - gold accuracy
   - quality gate pass/fail and top unresolved words
+- Dictionary settings intentionally keep this area quality-focused to reduce noise in the reading workflow.
 - Quality fixtures are selected by source language code, with a baseline fallback fixture if no language-specific fixture exists yet.
 
 ## Optional Translation Setup
