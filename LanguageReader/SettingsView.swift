@@ -1,8 +1,11 @@
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     private let dictionaryManager = DictionaryManager.shared
     private let translationSettings = TranslationSettingsStore()
+    @Query(sort: \Document.updatedAt, order: .reverse) private var documents: [Document]
+    @Query(sort: \VocabEntry.createdAt, order: .reverse) private var vocabEntries: [VocabEntry]
     @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
     @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
     @State private var endpointText = ""
@@ -104,6 +107,10 @@ struct SettingsView: View {
                                 .buttonStyle(.bordered)
                                 .disabled(isEvaluatingQuality)
                             }
+
+                            Text("Based on your saved documents and saved vocab meanings.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
 
                             if isEvaluatingQuality {
                                 HStack(spacing: 8) {
@@ -276,12 +283,61 @@ struct SettingsView: View {
         qualityStatusMessage = nil
 
         Task {
-            let snapshot = dictionaryManager.evaluateQuality()
+            let snapshot = dictionaryManager.evaluateQuality(fixture: makeLibraryQualityFixture())
             await MainActor.run {
                 qualitySnapshot = snapshot
                 isEvaluatingQuality = false
             }
         }
+    }
+
+    private func makeLibraryQualityFixture() -> DictionaryQualityFixture? {
+        let corpusSentences = documents
+            .map(\.body)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let goldEntries = vocabEntries.compactMap { entry -> DictionaryQualityGoldEntry? in
+            let key = entry.normalizedKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            let meaning = entry.meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty, !meaning.isEmpty else { return nil }
+
+            let acceptedMeanings = splitMeaningCandidates(meaning)
+            guard !acceptedMeanings.isEmpty else { return nil }
+
+            return DictionaryQualityGoldEntry(
+                word: key,
+                acceptedMeanings: acceptedMeanings,
+                matchMode: .contains
+            )
+        }
+
+        guard !corpusSentences.isEmpty || !goldEntries.isEmpty else {
+            return nil
+        }
+
+        let hasCorpus = !corpusSentences.isEmpty
+        let hasGold = !goldEntries.isEmpty
+
+        return DictionaryQualityFixture(
+            name: "Library Quality",
+            languageCode: normalizedSourceLanguageCode(),
+            corpusSentences: corpusSentences,
+            goldEntries: goldEntries,
+            thresholds: DictionaryQualityThresholds(
+                tokenCoverageMinimum: hasCorpus ? 0.70 : 0.0,
+                uniqueCoverageMinimum: hasCorpus ? 0.60 : 0.0,
+                goldHitRateMinimum: hasGold ? 0.80 : 0.0,
+                goldAccuracyMinimum: hasGold ? 0.60 : 0.0
+            )
+        )
+    }
+
+    private func splitMeaningCandidates(_ meaning: String) -> [String] {
+        meaning
+            .split(whereSeparator: { $0 == ";" || $0 == "," || $0 == "/" || $0 == "|" })
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
     }
 
     private func percentText(_ value: Double) -> String {
@@ -294,5 +350,10 @@ struct SettingsView: View {
 
     private var normalizedSessionWordLimit: Int {
         FlashcardSettings.normalizedSessionWordLimit(sessionWordLimit)
+    }
+
+    private func normalizedSourceLanguageCode() -> String {
+        let raw = sourceLanguageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return raw.isEmpty ? TranslationSettingsStore.defaultSourceLanguage : raw.lowercased()
     }
 }
