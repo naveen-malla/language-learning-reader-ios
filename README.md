@@ -21,6 +21,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 
 ## Core UX
 - **Reader-first flow**: minimal friction from paste/import to immersive reading.
+- **Liquid-glass interface layer**: thin/ultra-thin material cards, pills, and controls add depth while preserving contrast.
 - **Word-level intelligence**: dictionary lookup path tracking (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
 - **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with consistent color mapping.
 - **Session-focused flashcards**: due filtering, re-queue for misses, and interval previews.
@@ -62,6 +63,13 @@ Prerequisites:
   - `dictionary_overrides.tsv`
   - `dictionary_missing.tsv`
   - `dictionary_cloud_cache.tsv`
+- Settings now includes `Dictionary Quality` evaluation with:
+  - token coverage
+  - unique coverage
+  - gold hit rate
+  - gold accuracy
+  - quality gate pass/fail and top unresolved words
+- Quality fixtures are selected by source language code, with a baseline fallback fixture if no language-specific fixture exists yet.
 
 ## Optional Translation Setup
 Translation is optional and not required for core functionality.

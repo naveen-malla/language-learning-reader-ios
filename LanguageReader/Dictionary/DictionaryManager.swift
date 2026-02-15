@@ -131,6 +131,134 @@ final class DictionaryManager {
         cloudStore.clear()
     }
 
+    func evaluateQuality(
+        fixture: DictionaryQualityFixture? = nil,
+        tokenizer: Tokenizer = Tokenizer()
+    ) -> DictionaryQualitySnapshot {
+        let requestedLanguageCode: String
+        let selectedFixture: DictionaryQualityFixture
+        let usedFallbackFixture: Bool
+
+        if let fixture {
+            requestedLanguageCode = fixture.languageCode
+            selectedFixture = fixture
+            usedFallbackFixture = false
+        } else {
+            requestedLanguageCode = activeSourceLanguageCode
+            let selection = DictionaryQualityFixture.select(for: requestedLanguageCode)
+            selectedFixture = selection.fixture
+            usedFallbackFixture = selection.usedFallbackFixture
+        }
+
+        var tokenTotal = 0
+        var tokenHits = 0
+        var uniqueWords: Set<String> = []
+        var uniqueHitWords: Set<String> = []
+        var unresolvedByWord: [String: Int] = [:]
+
+        for sentence in selectedFixture.corpusSentences {
+            for token in tokenizer.tokenize(sentence) where token.isWord {
+                let normalized = normalizer.normalize(token.text)
+                guard !normalized.isEmpty else { continue }
+
+                tokenTotal += 1
+                uniqueWords.insert(normalized)
+
+                let lookup = lookupDetailed(
+                    token.text,
+                    includeCloudCache: true,
+                    languageCodeOverride: selectedFixture.languageCode
+                )
+                if let meaning = lookup.meaning, !meaning.isEmpty {
+                    tokenHits += 1
+                    uniqueHitWords.insert(normalized)
+                } else {
+                    unresolvedByWord[normalized, default: 0] += 1
+                }
+            }
+        }
+
+        let uniqueTotal = uniqueWords.count
+        let uniqueHits = uniqueHitWords.count
+
+        var goldHits = 0
+        var goldCorrect = 0
+        let goldTotal = selectedFixture.goldEntries.count
+
+        for goldEntry in selectedFixture.goldEntries {
+            let lookup = lookupDetailed(
+                goldEntry.word,
+                includeCloudCache: true,
+                languageCodeOverride: selectedFixture.languageCode
+            )
+            guard let meaning = lookup.meaning, !meaning.isEmpty else {
+                continue
+            }
+            goldHits += 1
+            if goldEntry.matches(actualMeaning: meaning) {
+                goldCorrect += 1
+            }
+        }
+
+        let tokenCoverage = ratio(tokenHits, tokenTotal)
+        let uniqueCoverage = ratio(uniqueHits, uniqueTotal)
+        let goldHitRate = ratio(goldHits, goldTotal)
+        let goldAccuracy = ratio(goldCorrect, goldTotal)
+
+        let thresholdChecks = [
+            DictionaryQualityThresholdCheck(
+                metricName: "Token Coverage",
+                actual: tokenCoverage,
+                expectedMinimum: selectedFixture.thresholds.tokenCoverageMinimum
+            ),
+            DictionaryQualityThresholdCheck(
+                metricName: "Unique Coverage",
+                actual: uniqueCoverage,
+                expectedMinimum: selectedFixture.thresholds.uniqueCoverageMinimum
+            ),
+            DictionaryQualityThresholdCheck(
+                metricName: "Gold Hit Rate",
+                actual: goldHitRate,
+                expectedMinimum: selectedFixture.thresholds.goldHitRateMinimum
+            ),
+            DictionaryQualityThresholdCheck(
+                metricName: "Gold Accuracy",
+                actual: goldAccuracy,
+                expectedMinimum: selectedFixture.thresholds.goldAccuracyMinimum
+            )
+        ]
+
+        let unresolvedTop = unresolvedByWord
+            .map { DictionaryQualityWordCount(word: $0.key, count: $0.value) }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.word < rhs.word
+            }
+            .prefix(8)
+
+        return DictionaryQualitySnapshot(
+            fixtureName: selectedFixture.name,
+            requestedLanguageCode: requestedLanguageCode,
+            fixtureLanguageCode: selectedFixture.languageCode,
+            usedFallbackFixture: usedFallbackFixture,
+            tokenCoverage: tokenCoverage,
+            tokenHits: tokenHits,
+            tokenTotal: tokenTotal,
+            uniqueCoverage: uniqueCoverage,
+            uniqueHits: uniqueHits,
+            uniqueTotal: uniqueTotal,
+            goldHitRate: goldHitRate,
+            goldHits: goldHits,
+            goldTotal: goldTotal,
+            goldAccuracy: goldAccuracy,
+            goldCorrect: goldCorrect,
+            thresholdChecks: thresholdChecks,
+            unresolvedTop: Array(unresolvedTop)
+        )
+    }
+
     var isCloudFallbackEnabled: Bool {
         if defaults.object(forKey: Self.cloudFallbackEnabledKey) == nil {
             return true
@@ -151,9 +279,14 @@ final class DictionaryManager {
         return normalized.isEmpty ? "en" : normalized
     }
 
-    private func lookupDetailed(_ word: String, includeCloudCache: Bool) -> DictionaryLookupResult {
+    private func lookupDetailed(
+        _ word: String,
+        includeCloudCache: Bool,
+        languageCodeOverride: String? = nil
+    ) -> DictionaryLookupResult {
         let normalized = normalizer.normalize(word)
-        let languageCode = activeSourceLanguageCode
+        let overrideLanguage = languageCodeOverride.map(normalizeLanguageCode) ?? ""
+        let languageCode = overrideLanguage.isEmpty ? activeSourceLanguageCode : overrideLanguage
         guard !normalized.isEmpty else {
             return DictionaryLookupResult(
                 word: word,
@@ -397,6 +530,225 @@ final class DictionaryManager {
     private func normalizeLanguageCode(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
+
+    private func ratio(_ numerator: Int, _ denominator: Int) -> Double {
+        guard denominator > 0 else { return 0 }
+        return Double(numerator) / Double(denominator)
+    }
+}
+
+struct DictionaryQualitySnapshot {
+    let fixtureName: String
+    let requestedLanguageCode: String
+    let fixtureLanguageCode: String
+    let usedFallbackFixture: Bool
+    let tokenCoverage: Double
+    let tokenHits: Int
+    let tokenTotal: Int
+    let uniqueCoverage: Double
+    let uniqueHits: Int
+    let uniqueTotal: Int
+    let goldHitRate: Double
+    let goldHits: Int
+    let goldTotal: Int
+    let goldAccuracy: Double
+    let goldCorrect: Int
+    let thresholdChecks: [DictionaryQualityThresholdCheck]
+    let unresolvedTop: [DictionaryQualityWordCount]
+
+    var thresholdPassed: Bool {
+        thresholdChecks.allSatisfy(\.passed)
+    }
+}
+
+struct DictionaryQualityWordCount: Hashable {
+    let word: String
+    let count: Int
+}
+
+struct DictionaryQualityThresholdCheck: Hashable {
+    let metricName: String
+    let actual: Double
+    let expectedMinimum: Double
+
+    var passed: Bool {
+        actual >= expectedMinimum
+    }
+}
+
+struct DictionaryQualityThresholds {
+    let tokenCoverageMinimum: Double
+    let uniqueCoverageMinimum: Double
+    let goldHitRateMinimum: Double
+    let goldAccuracyMinimum: Double
+
+    init(
+        tokenCoverageMinimum: Double,
+        uniqueCoverageMinimum: Double,
+        goldHitRateMinimum: Double,
+        goldAccuracyMinimum: Double
+    ) {
+        self.tokenCoverageMinimum = tokenCoverageMinimum
+        self.uniqueCoverageMinimum = uniqueCoverageMinimum
+        self.goldHitRateMinimum = goldHitRateMinimum
+        self.goldAccuracyMinimum = goldAccuracyMinimum
+    }
+}
+
+enum DictionaryQualityMatchMode {
+    case contains
+    case exact
+}
+
+struct DictionaryQualityGoldEntry {
+    let word: String
+    let acceptedMeanings: [String]
+    let matchMode: DictionaryQualityMatchMode
+
+    init(word: String, acceptedMeanings: [String], matchMode: DictionaryQualityMatchMode = .contains) {
+        self.word = word
+        self.acceptedMeanings = acceptedMeanings
+        self.matchMode = matchMode
+    }
+
+    func matches(actualMeaning: String) -> Bool {
+        let actual = actualMeaning.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !actual.isEmpty else { return false }
+
+        for accepted in acceptedMeanings {
+            let expected = accepted.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !expected.isEmpty else { continue }
+
+            switch matchMode {
+            case .contains:
+                if actual.contains(expected) { return true }
+            case .exact:
+                if actual == expected { return true }
+            }
+        }
+
+        return false
+    }
+}
+
+struct DictionaryQualityFixture {
+    let name: String
+    let languageCode: String
+    let corpusSentences: [String]
+    let goldEntries: [DictionaryQualityGoldEntry]
+    let thresholds: DictionaryQualityThresholds
+
+    init(
+        name: String,
+        languageCode: String,
+        corpusSentences: [String],
+        goldEntries: [DictionaryQualityGoldEntry],
+        thresholds: DictionaryQualityThresholds
+    ) {
+        self.name = name
+        self.languageCode = languageCode
+        self.corpusSentences = corpusSentences
+        self.goldEntries = goldEntries
+        self.thresholds = thresholds
+    }
+
+    static func select(for languageCode: String) -> (fixture: DictionaryQualityFixture, usedFallbackFixture: Bool) {
+        let canonical = canonicalLanguageCode(languageCode)
+        if let exact = fixturesByLanguage[canonical] {
+            return (exact, false)
+        }
+        return (englishCoreV1, true)
+    }
+
+    private static var fixturesByLanguage: [String: DictionaryQualityFixture] {
+        [
+            "kn": .kannadaCoreV1,
+            "en": .englishCoreV1
+        ]
+    }
+
+    private static func canonicalLanguageCode(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else { return "" }
+
+        if let separator = trimmed.firstIndex(where: { $0 == "-" || $0 == "_" }) {
+            return String(trimmed[..<separator])
+        }
+
+        return trimmed
+    }
+
+    static let kannadaCoreV1 = DictionaryQualityFixture(
+        name: "Kannada Core V1",
+        languageCode: "kn",
+        corpusSentences: [
+            "ನಮಸ್ಕಾರ, ಇದು ನನ್ನ ಮನೆ.",
+            "ಅವನು ಪುಸ್ತಕವನ್ನು ಓದುತ್ತಿದ್ದ.",
+            "ನಾನು ಶಾಲೆಗೆ ಹೋಗುತ್ತೇನೆ.",
+            "ಅವರು ಆಹಾರವನ್ನು ತಿನ್ನುತ್ತಿದ್ದರು.",
+            "ನೀರು ಸ್ವಚ್ಛವಾಗಿದೆ.",
+            "ಇದು ಒಂದು ಸುಂದರ ಕಥೆ.",
+            "ಮಗನು ಕಿಟಕಿಯನ್ನು ತೆರೆದನು.",
+            "ಅವಳು ಪತ್ರವನ್ನು ಬರೆದಳು.",
+            "ಬೆಳಿಗ್ಗೆ ನಾವು ಮಾರುಕಟ್ಟೆಗೆ ಹೋಗಿದ್ದೆವು.",
+            "ಭಾಷೆ ಕಲಿಯುವುದು ಸಮಯ ತೆಗೆದುಕೊಳ್ಳುತ್ತದೆ."
+        ],
+        goldEntries: [
+            .init(word: "ನಮಸ್ಕಾರ", acceptedMeanings: ["hello", "greeting"]),
+            .init(word: "ಮನೆ", acceptedMeanings: ["house", "home"]),
+            .init(word: "ಪುಸ್ತಕ", acceptedMeanings: ["book"]),
+            .init(word: "ಶಾಲೆ", acceptedMeanings: ["school"]),
+            .init(word: "ಆಹಾರ", acceptedMeanings: ["food"]),
+            .init(word: "ನೀರು", acceptedMeanings: ["water"]),
+            .init(word: "ಕಥೆ", acceptedMeanings: ["story"]),
+            .init(word: "ಭಾಷೆ", acceptedMeanings: ["language"]),
+            .init(word: "ಕಿಟಕಿ", acceptedMeanings: ["window"]),
+            .init(word: "ಪತ್ರ", acceptedMeanings: ["letter"]),
+            .init(word: "ಮಾರುಕಟ್ಟೆ", acceptedMeanings: ["market"])
+        ],
+        thresholds: DictionaryQualityThresholds(
+            tokenCoverageMinimum: 0.70,
+            uniqueCoverageMinimum: 0.60,
+            goldHitRateMinimum: 0.80,
+            goldAccuracyMinimum: 0.60
+        )
+    )
+
+    static let englishCoreV1 = DictionaryQualityFixture(
+        name: "English Core V1",
+        languageCode: "en",
+        corpusSentences: [
+            "Hello, this is my house.",
+            "He reads a book every day.",
+            "I go to school in the morning.",
+            "They ate food together.",
+            "Water is clean.",
+            "This is a short story.",
+            "The child opened the window.",
+            "She wrote a letter.",
+            "We went to the market in the morning.",
+            "Learning a language takes time."
+        ],
+        goldEntries: [
+            .init(word: "hello", acceptedMeanings: ["hello", "greeting"]),
+            .init(word: "house", acceptedMeanings: ["house", "home"]),
+            .init(word: "book", acceptedMeanings: ["book"]),
+            .init(word: "school", acceptedMeanings: ["school"]),
+            .init(word: "food", acceptedMeanings: ["food"]),
+            .init(word: "water", acceptedMeanings: ["water"]),
+            .init(word: "story", acceptedMeanings: ["story"]),
+            .init(word: "language", acceptedMeanings: ["language"]),
+            .init(word: "window", acceptedMeanings: ["window"]),
+            .init(word: "letter", acceptedMeanings: ["letter"]),
+            .init(word: "market", acceptedMeanings: ["market"])
+        ],
+        thresholds: DictionaryQualityThresholds(
+            tokenCoverageMinimum: 0.70,
+            uniqueCoverageMinimum: 0.60,
+            goldHitRateMinimum: 0.80,
+            goldAccuracyMinimum: 0.60
+        )
+    )
 }
 
 struct SentenceGlossToken: Identifiable {

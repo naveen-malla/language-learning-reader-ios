@@ -13,6 +13,9 @@ struct SettingsView: View {
     @State private var apiKeyInput = ""
     @State private var hasStoredAPIKey = false
     @State private var cloudCacheCount = 0
+    @State private var qualitySnapshot: DictionaryQualitySnapshot?
+    @State private var isEvaluatingQuality = false
+    @State private var qualityStatusMessage: String?
     @State private var translationStatusMessage: String?
 
     var body: some View {
@@ -23,18 +26,20 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         SectionCard("System Status") {
-                            HStack(spacing: 8) {
-                                Text(hasStoredAPIKey ? "Translation Key Saved" : "Translation Key Missing")
-                                    .subtleMetadataPillStyle()
-                                    .foregroundStyle(hasStoredAPIKey ? Theme.learningHighlight : .secondary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    Text(hasStoredAPIKey ? "Translation Key Saved" : "Translation Key Missing")
+                                        .subtleMetadataPillStyle()
+                                        .foregroundStyle(hasStoredAPIKey ? Theme.learningHighlight : .secondary)
 
-                                Text(diagnosticsEnabled ? "Diagnostics On" : "Diagnostics Off")
-                                    .subtleMetadataPillStyle()
-                                    .foregroundStyle(diagnosticsEnabled ? Theme.accent : .secondary)
+                                    Text(diagnosticsEnabled ? "Diagnostics On" : "Diagnostics Off")
+                                        .subtleMetadataPillStyle()
+                                        .foregroundStyle(diagnosticsEnabled ? Theme.accent : .secondary)
 
-                                Text(cloudFallbackEnabled ? "Cloud Fallback On" : "Cloud Fallback Off")
-                                    .subtleMetadataPillStyle()
-                                    .foregroundStyle(cloudFallbackEnabled ? Theme.accent : .secondary)
+                                    Text(cloudFallbackEnabled ? "Cloud Fallback On" : "Cloud Fallback Off")
+                                        .subtleMetadataPillStyle()
+                                        .foregroundStyle(cloudFallbackEnabled ? Theme.accent : .secondary)
+                                }
                             }
                         }
 
@@ -57,9 +62,7 @@ struct SettingsView: View {
                             TextField("Cloud fallback target language (e.g. en)", text: $cloudFallbackTargetLanguage)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             HStack(spacing: 10) {
                                 Text("Cloud cache: \(cloudCacheCount) entries")
@@ -87,6 +90,95 @@ struct SettingsView: View {
                             Text("Missing list: \(DictionaryPaths.missingFileName) (Documents)")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+
+                            Divider()
+
+                            HStack {
+                                Text("Evaluation")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Button(isEvaluatingQuality ? "Evaluating..." : "Refresh quality") {
+                                    evaluateDictionaryQuality()
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(isEvaluatingQuality)
+                            }
+
+                            if isEvaluatingQuality {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text("Running dictionary quality checks...")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else if let qualitySnapshot {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Language: \(qualitySnapshot.requestedLanguageCode.uppercased())")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+
+                                    Text("Fixture: \(qualitySnapshot.fixtureName) (\(qualitySnapshot.fixtureLanguageCode.uppercased()))")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+
+                                    if qualitySnapshot.usedFallbackFixture {
+                                        Text("No fixture exists for \(qualitySnapshot.requestedLanguageCode.uppercased()). Showing baseline \(qualitySnapshot.fixtureLanguageCode.uppercased()) metrics.")
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    LabeledContent(
+                                        "Token coverage",
+                                        value: "\(percentText(qualitySnapshot.tokenCoverage)) (\(qualitySnapshot.tokenHits)/\(qualitySnapshot.tokenTotal))"
+                                    )
+                                    LabeledContent(
+                                        "Unique coverage",
+                                        value: "\(percentText(qualitySnapshot.uniqueCoverage)) (\(qualitySnapshot.uniqueHits)/\(qualitySnapshot.uniqueTotal))"
+                                    )
+                                    LabeledContent(
+                                        "Gold hit rate",
+                                        value: "\(percentText(qualitySnapshot.goldHitRate)) (\(qualitySnapshot.goldHits)/\(qualitySnapshot.goldTotal))"
+                                    )
+                                    LabeledContent(
+                                        "Gold accuracy",
+                                        value: "\(percentText(qualitySnapshot.goldAccuracy)) (\(qualitySnapshot.goldCorrect)/\(qualitySnapshot.goldTotal))"
+                                    )
+
+                                    Text(qualitySnapshot.thresholdPassed ? "Quality gate: PASS" : "Quality gate: FAIL")
+                                        .font(.footnote.weight(.semibold))
+                                        .foregroundStyle(qualitySnapshot.thresholdPassed ? Theme.learningHighlight : .red)
+
+                                    ForEach(qualitySnapshot.thresholdChecks, id: \.metricName) { check in
+                                        HStack {
+                                            Text(check.metricName)
+                                                .font(.footnote)
+                                                .foregroundStyle(.secondary)
+                                            Spacer()
+                                            Text("\(percentText(check.actual)) / \(percentText(check.expectedMinimum))")
+                                                .font(.footnote.monospacedDigit())
+                                                .foregroundStyle(check.passed ? Theme.learningHighlight : .red)
+                                        }
+                                    }
+
+                                    if !qualitySnapshot.unresolvedTop.isEmpty {
+                                        let unresolved = qualitySnapshot.unresolvedTop
+                                            .prefix(6)
+                                            .map { "\($0.word)(\($0.count))" }
+                                            .joined(separator: ", ")
+                                        Text("Top unresolved: \(unresolved)")
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            } else if let qualityStatusMessage {
+                                Text(qualityStatusMessage)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("No quality evaluation available yet.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
 
                         SectionCard("Translation API") {
@@ -95,35 +187,25 @@ struct SettingsView: View {
                             TextField("Endpoint", text: $endpointText)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             TextField("Region", text: $regionText)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             TextField("Source language (ISO code)", text: $sourceLanguageText)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             TextField("Target language (ISO code)", text: $targetLanguageText)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             SecureField("Key 1 (only needed to set/update)", text: $apiKeyInput)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             HStack(spacing: 10) {
                                 Button("Save Translation Settings") {
@@ -147,7 +229,11 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
-                                    .background(Color.primary.opacity(0.08), in: Capsule())
+                                    .background(.thinMaterial, in: Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                                    )
                             }
 
                             Text("Cloud fallback translates missing words using your configured source and target language, then stores the result in local cache.")
@@ -162,6 +248,7 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 loadTranslationSettings()
+                evaluateDictionaryQuality()
             }
         }
     }
@@ -208,5 +295,22 @@ struct SettingsView: View {
         } catch {
             translationStatusMessage = "Failed to remove API key."
         }
+    }
+
+    private func evaluateDictionaryQuality() {
+        isEvaluatingQuality = true
+        qualityStatusMessage = nil
+
+        Task {
+            let snapshot = dictionaryManager.evaluateQuality()
+            await MainActor.run {
+                qualitySnapshot = snapshot
+                isEvaluatingQuality = false
+            }
+        }
+    }
+
+    private func percentText(_ value: Double) -> String {
+        String(format: "%.1f%%", value * 100)
     }
 }
