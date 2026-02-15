@@ -473,9 +473,9 @@ private struct ReaderBackground: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.04, green: 0.07, blue: 0.12),
-                    Color(red: 0.01, green: 0.02, blue: 0.05),
-                    Color.black
+                    Color(red: 0.08, green: 0.11, blue: 0.18),
+                    Color(red: 0.05, green: 0.07, blue: 0.12),
+                    Color(red: 0.03, green: 0.04, blue: 0.08)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -488,6 +488,14 @@ private struct ReaderBackground: View {
                 endRadius: 280
             )
             .blendMode(.plusLighter)
+
+            RadialGradient(
+                colors: [Theme.accentSecondary.opacity(0.16), .clear],
+                center: .bottomLeading,
+                startRadius: 24,
+                endRadius: 260
+            )
+            .blendMode(.screen)
         }
         .ignoresSafeArea()
     }

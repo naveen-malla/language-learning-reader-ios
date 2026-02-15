@@ -81,13 +81,13 @@ struct AppBackground: View {
 
     var body: some View {
         let top = colorScheme == .dark
-            ? Color(red: 0.08, green: 0.11, blue: 0.16)
+            ? Color(red: 0.10, green: 0.14, blue: 0.20)
             : Color(red: 0.92, green: 0.95, blue: 1.0)
         let mid = colorScheme == .dark
-            ? Color(red: 0.05, green: 0.07, blue: 0.11)
+            ? Color(red: 0.07, green: 0.10, blue: 0.15)
             : Color(red: 0.86, green: 0.92, blue: 0.98)
         let bottom = colorScheme == .dark
-            ? Color(red: 0.03, green: 0.04, blue: 0.07)
+            ? Color(red: 0.05, green: 0.07, blue: 0.11)
             : Color(red: 0.95, green: 0.97, blue: 1.0)
         let glow = colorScheme == .dark ? Theme.accent.opacity(0.28) : Theme.accent.opacity(0.18)
 
