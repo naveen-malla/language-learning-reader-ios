@@ -23,8 +23,8 @@ struct DocumentsListView: View {
                 ScrollView {
                     VStack(spacing: 14) {
                         SectionCard("Saved Documents") {
-                            VStack(spacing: 0) {
-                                ForEach(Array(documents.enumerated()), id: \.element.id) { index, document in
+                            VStack(spacing: 10) {
+                                ForEach(documents) { document in
                                     NavigationLink {
                                         DocumentReaderView(document: document)
                                     } label: {
@@ -60,15 +60,15 @@ struct DocumentsListView: View {
                                                 .foregroundStyle(.tertiary)
                                                 .padding(.top, 8)
                                         }
+                                        .padding(10)
                                         .contentShape(Rectangle())
+                                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                                        )
                                     }
                                     .buttonStyle(.plain)
-
-                                    if index < documents.count - 1 {
-                                        Divider()
-                                            .overlay(Color.primary.opacity(0.1))
-                                            .padding(.vertical, 12)
-                                    }
                                 }
                             }
                         }

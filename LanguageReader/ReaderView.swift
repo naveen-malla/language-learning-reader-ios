@@ -38,12 +38,7 @@ struct ReaderView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 TextField("Title (optional)", text: $titleText)
                                     .textInputAutocapitalization(.sentences)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(Color.primary.opacity(0.06))
-                                    )
+                                    .glassInputFieldStyle()
 
                                 Divider()
                                     .overlay(Color.primary.opacity(0.1))
@@ -66,7 +61,11 @@ struct ReaderView: View {
                                 }
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 2)
-                                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                                )
 
                                 Divider()
                                     .overlay(Color.primary.opacity(0.1))
@@ -125,9 +124,7 @@ struct ReaderView: View {
                     } label: {
                         Text("Documents")
                             .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(.ultraThinMaterial, in: Capsule())
+                            .glassToolbarPillStyle()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -135,9 +132,7 @@ struct ReaderView: View {
                         saveDocument()
                     }
                     .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .glassToolbarPillStyle()
                     .foregroundStyle(canSave ? Theme.accent : .secondary)
                     .disabled(!canSave)
                     .accessibilityLabel("Save document")

@@ -36,9 +36,10 @@ struct LanguageReaderApp: App {
 
         let appearance = UITabBarAppearance()
         appearance.configureWithTransparentBackground()
-        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.7)
+        appearance.backgroundEffect = UIBlurEffect(style: .systemThinMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.45)
         appearance.shadowColor = UIColor.clear
+        appearance.selectionIndicatorTintColor = selectedColor.withAlphaComponent(0.16)
         appearance.stackedLayoutAppearance = itemAppearance
         appearance.inlineLayoutAppearance = itemAppearance
         appearance.compactInlineLayoutAppearance = itemAppearance

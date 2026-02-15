@@ -96,7 +96,12 @@ struct VocabMetricPill: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+        )
     }
 }
 
@@ -117,6 +122,10 @@ private struct VocabRow: View {
                     .padding(.vertical, 4)
                     .foregroundStyle(.white)
                     .background(Theme.statusTint(entry.status), in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
             }
 
             if !entry.meaning.isEmpty {

@@ -94,20 +94,24 @@ struct FlashcardsView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Theme.cardBackground,
-                                Theme.cardBackground.opacity(0.98),
-                                Theme.accent.opacity(0.07)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                    .fill(.ultraThinMaterial)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Theme.accent.opacity(0.09),
+                                        Theme.accentSecondary.opacity(0.08),
+                                        Color.white.opacity(0.02)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                            .stroke(Theme.surfaceStroke, lineWidth: 1)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
                     )
 
                 Circle()
@@ -138,7 +142,11 @@ struct FlashcardsView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
                             .foregroundStyle(.secondary)
-                            .background(Color.primary.opacity(0.08), in: Capsule())
+                            .background(.thinMaterial, in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                            )
                     }
 
                     flashcardFace(for: entry)
@@ -171,7 +179,11 @@ struct FlashcardsView: View {
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
-                            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                            )
                     }
                     .buttonStyle(.plain)
                 }
@@ -332,14 +344,11 @@ struct FlashcardsView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
             .background(
-                LinearGradient(
-                    colors: [
-                        ratingTint(rating).opacity(0.23),
-                        ratingTint(rating).opacity(0.14)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
+                .thinMaterial,
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .background(
+                ratingTint(rating).opacity(0.12),
                 in: RoundedRectangle(cornerRadius: 10, style: .continuous)
             )
             .overlay(

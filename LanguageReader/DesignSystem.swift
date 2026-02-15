@@ -13,6 +13,8 @@ enum Theme {
     static let newHighlight = Color(red: 0.28, green: 0.64, blue: 1.0)
     static let learningHighlight = Color(red: 0.2, green: 0.78, blue: 0.56)
     static let knownHighlight = Color(uiColor: .systemGray2)
+    static let glassTint = Color.white.opacity(0.18)
+    static let glassShadow = Color.black.opacity(0.24)
 
     static var readingFont: Font {
         .system(size: readingTextSize, weight: .regular, design: .rounded)
@@ -99,6 +101,14 @@ struct AppBackground: View {
                 endRadius: 340
             )
             .blendMode(.plusLighter)
+
+            RadialGradient(
+                colors: [Theme.accentSecondary.opacity(colorScheme == .dark ? 0.18 : 0.12), .clear],
+                center: .bottomLeading,
+                startRadius: 20,
+                endRadius: 300
+            )
+            .blendMode(.screen)
         }
         .ignoresSafeArea()
     }
@@ -121,12 +131,23 @@ struct SectionCard<Content: View>: View {
             content
         }
         .padding(16)
-        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                .fill(Theme.accent.opacity(0.06))
+        )
         .overlay(
             RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                .stroke(Theme.surfaceStroke, lineWidth: 1)
+                .stroke(
+                    LinearGradient(
+                        colors: [Theme.glassTint, Theme.surfaceStroke, Color.white.opacity(0.05)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
         )
-        .shadow(color: Theme.shadow.opacity(0.7), radius: 12, y: 6)
+        .shadow(color: Theme.glassShadow, radius: 14, y: 8)
     }
 }
 
@@ -189,12 +210,23 @@ extension View {
     func cardStyle() -> some View {
         self
             .padding(16)
-            .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                    .fill(Theme.accent.opacity(0.06))
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-                    .stroke(Theme.surfaceStroke, lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Theme.glassTint, Theme.surfaceStroke, Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .shadow(color: Theme.shadow.opacity(0.7), radius: 12, y: 6)
+            .shadow(color: Theme.glassShadow, radius: 14, y: 8)
     }
 
     func readerUtilityButtonStyle() -> some View {
@@ -202,7 +234,11 @@ extension View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            )
     }
 
     func subtleMetadataPillStyle() -> some View {
@@ -210,6 +246,32 @@ extension View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
-            .background(Color.primary.opacity(0.07), in: Capsule())
+            .background(.thinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
+    }
+
+    func glassInputFieldStyle() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            )
+    }
+
+    func glassToolbarPillStyle() -> some View {
+        self
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
     }
 }

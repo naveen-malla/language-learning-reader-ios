@@ -95,9 +95,7 @@ struct WordDetailSheet: View {
 
                             TextField("Enter override meaning", text: $overrideText)
                                 .textInputAutocapitalization(.sentences)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .glassInputFieldStyle()
 
                             Button("Save Override") {
                                 let trimmed = overrideText.trimmingCharacters(in: .whitespacesAndNewlines)
