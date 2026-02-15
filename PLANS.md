@@ -13,7 +13,7 @@ Use this file as the first read in a new chat, then read:
 3. `DESIGN.md`
 4. `DECISIONS.md`
 
-## Status Snapshot (2026-02-14)
+## Status Snapshot (2026-02-15)
 Completed:
 - iOS SwiftUI app scaffold with SwiftData models.
 - Tabs: Reader, Vocab, Flashcards, Settings.
@@ -33,17 +33,33 @@ Completed:
 - Flashcards visual redesign pass: noir-glass session surface, calm card motion, transliteration-aware prompts, and two-row action dock.
 - Hardening pass after flashcard rewrite: scheduler edge/failure tests expanded and full simulator test suite run clean.
 - Unit tests for tokenization, vocab status logic, dictionary lookup, and transliteration.
+- Main landing tab is now `Library` (replacing paste-first Reader home).
+- Library home now includes:
+  - `Import Content` quick actions (`Paste Text`, `YouTube URL`)
+  - `Continue Reading` shelf (only lessons opened at least once)
+  - `Suggested for Beginners` YouTube shelf with thumbnails
+  - `My Library` mixed-source lesson list
+- Added YouTube transcript import pipeline (no user API key required):
+  - parse URL -> video ID
+  - fetch metadata/caption tracks through YouTube innertube player endpoint
+  - require Kannada subtitle tracks (`kn*`, auto-generated allowed)
+  - fetch and normalize subtitle XML into reader-ready text
+- Added subtitle-verified beginner suggestion catalog (grammar/basics/stories) with runtime validation.
+- Extended `Document` persistence with source metadata (type/url/video/channel/category/duration/thumbnail) and open-state timestamps.
+- Added parser-level regression tests for YouTube URL parsing and transcript XML normalization.
 
 In progress:
 - Dictionary quality for inflected forms and coverage gaps (Phase 1 ongoing).
 - Phase 1 expansion for multi-language-ready lookup architecture (language profiles + cloud cache path).
 - Dictionary quality evaluation pipeline (coverage + gold accuracy + thresholds) with first Kannada fixture.
-- Reader visual polish toward a cleaner LingQ-like reading experience.
+- Reader visual polish toward a cleaner library-to-reader handoff.
 - Phase 3 learning loop refinement (fixed-level schedule tuning + session analytics polish).
+- Dynamic recommendation expansion beyond curated seed videos while preserving subtitle validation and beginner difficulty guards.
 
 Pending:
 - Fixed-level interval calibration against real retention outcomes and usage cadence.
-- Reader-library UX alignment and quality pass.
+- Followed-channel and preference-based ranking for suggestions.
+- Additional import sources after text + YouTube stabilization.
 
 ## Roadmap
 
@@ -92,10 +108,14 @@ Acceptance criteria:
 Goals:
 - Reading-first screen that uses full height cleanly.
 - Stable spacing and flow in long documents.
+- Fast library-to-reader entry with low-friction import.
 
 Tasks:
 - Keep reader full-screen with a minimal top control bar only.
-- Ensure library -> document -> reader transition is smooth.
+- Ensure library -> document -> reader transition is smooth. (done)
+- Replace paste-first home with a mixed-content Library shell. (done)
+- Add in-app import actions for text and YouTube URL. (done)
+- Add beginner suggestion shelf with subtitle-verified YouTube cards + thumbnails. (done)
 - Keep sentence mode as one sentence per horizontal page (stable pager behavior).
 - Improve typography, vertical rhythm, and token spacing.
 - Validate light/dark mode readability.

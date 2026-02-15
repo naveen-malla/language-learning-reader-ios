@@ -84,6 +84,7 @@ struct DocumentReaderView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .onAppear {
+            markDocumentOpened()
             refreshSentenceBlocks()
             refreshStatusMap()
             refreshIgnoredKeys()
@@ -420,6 +421,15 @@ struct DocumentReaderView: View {
 
     private func refreshIgnoredKeys() {
         ignoredKeys = ignoredWordsStore.allKeys()
+    }
+
+    private func markDocumentOpened() {
+        let now = Date()
+        if document.firstOpenedAt == nil {
+            document.firstOpenedAt = now
+        }
+        document.lastOpenedAt = now
+        document.updatedAt = now
     }
 }
 

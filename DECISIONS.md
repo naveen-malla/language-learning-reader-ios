@@ -4,6 +4,18 @@
 - SwiftData for local persistence (documents + vocabulary). Simple, native, and testable.
 - Reader maintains a cached normalized-key status map and refreshes it on lifecycle/save events instead of rebuilding per render.
 - Ignored words are persisted separately in `UserDefaults` as normalized keys for lightweight filtering without schema migration.
+- `Document` stores source metadata so one model can represent text imports and YouTube imports:
+  - `sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`
+  - `firstOpenedAt`, `lastOpenedAt` for behavior-based shelves (`Continue Reading`).
+
+## Home IA
+- Main app entry is `Library`, not the old paste-first Reader composer.
+- Library prioritizes import + shelf behavior:
+  - quick import (`Paste Text`, `YouTube URL`)
+  - subtitle-verified beginner suggestions
+  - full mixed-source library list
+  - continue shelf based on actual open behavior.
+- New lessons should remain labeled as new until first reader open (`firstOpenedAt == nil`).
 
 ## Tokenization
 - NaturalLanguage when available for better word boundaries.
@@ -25,6 +37,7 @@
 - Keep a deliberate contrast split: light app shell for management screens, dark reader canvas for immersion and longer reading sessions.
 - Prefer rounded card surfaces and capsule controls over dense form rows to reduce interaction friction during repeated vocab updates.
 - Keep micro-interactions subtle and functional: shared press states for token taps and icon actions are preferred over heavy animation.
+- YouTube suggestion cards intentionally include thumbnails, compact metadata chips, and explicit import actions to reduce choice friction.
 
 ## Learning State Model
 - Canonical tracked vocab states are `level1`, `level2`, `level3`, `level4`, and `known`.
@@ -66,6 +79,15 @@
 - Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
 - If network translation is unavailable, reader falls back to the existing offline dictionary gloss.
 - For missing single-word meanings, optional Azure-backed fallback is used and persisted locally so repeated lookups stay offline after first fetch.
+
+## YouTube Import Architecture
+- V1 import avoids requiring user API keys by using public YouTube web endpoints:
+  - extract innertube API key from watch HTML
+  - call `youtubei/v1/player` for metadata and caption tracks
+  - select Kannada subtitle tracks (`kn*`), including auto-generated `asr` tracks.
+- Transcript extraction uses subtitle XML parsing and normalization into one newline-delimited lesson body.
+- Suggestion shelf uses a vetted seed catalog and performs runtime subtitle validation so the UI only shows currently importable entries.
+- Beginner feed currently enforces short-form duration guardrails (max 12 minutes) to prevent overload for new learners.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.

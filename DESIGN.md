@@ -1,7 +1,8 @@
 # Design
 
 ## Screens
-- Reader: create and open documents, read text, tap words.
+- Library: import content, browse suggested lessons, continue reading, and open saved lessons.
+- Reader: read text and tap words.
 - Vocab: list/search vocabulary, adjust status.
 - Flashcards: due-based spaced repetition review flow.
 - Settings: optional Azure translation config + key management, appearance + flashcard preferences, and a compact dictionary quality panel.
@@ -14,11 +15,22 @@
 - Tab bar uses translucent material treatment so navigation feels persistent but unobtrusive.
 
 ## Core Flow
-1. Paste text into Reader (or use `Paste from Clipboard`) and save a document.
-2. Read with tappable word tokens.
-3. Tap a word to see meaning and add to vocab.
-4. Classify words by tapping their level badge and selecting `1 2 3 4 Known` in a shared status picker, then review due words in Flashcards with card flip + `Wrong/Correct`.
-5. Re-open saved documents faster using list previews and word-count metadata.
+1. Open Library and choose one of three entry points:
+   - import text (`Paste Text`)
+   - import YouTube by URL
+   - open a suggested beginner video card and import in one tap
+2. Imported lesson opens directly in Reader.
+3. Read with tappable word tokens.
+4. Tap a word to see meaning and add to vocab.
+5. Classify words by tapping their level badge and selecting `1 2 3 4 Known` in a shared status picker, then review due words in Flashcards with card flip + `Wrong/Correct`.
+6. Re-open saved documents from Library; `Continue Reading` includes only previously opened lessons.
+
+## Library Home UX
+- `Import Content` card exposes `Paste Text` and `YouTube URL`.
+- `Suggested for Beginners` uses thumbnail cards and hides videos that fail live Kannada subtitle validation.
+- Suggested categories are mixed beginner-safe topics (`Basics`, `Grammar`, `Conversation`, `Short Stories`).
+- `My Library` merges text and YouTube lessons with source metadata.
+- `Continue Reading` is behavior-driven: item appears only after first open.
 
 ## Bootstrap Data
 - On first launch, seed two large Kannada sample documents so reader behavior can be tested immediately.
@@ -28,7 +40,6 @@
 - Top overlay: close button + read-only progress slider in a compact material bar pinned close to the safe-area top.
 - Bottom-center mode button toggles between Word mode and Sentence mode.
 - Hide the app tab bar while reading to keep focus.
-- Reader composer in the main tab shows lightweight live stats (word/sentence/read-time estimate) to reduce ambiguity before saving.
 
 ## Sentence Mode UX
 - Sentence mode is a horizontal pager with one sentence per page.
@@ -99,7 +110,7 @@
 - Session chrome is a full-height noir-glass layout with a top progress rail, center glass card, and two-row action dock.
 
 ## Data Model (V1)
-- Document: id, title, body, createdAt, updatedAt.
+- Document: id, title, body, createdAt, updatedAt, source metadata (`sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`) and open-state timestamps (`firstOpenedAt`, `lastOpenedAt`).
 - VocabEntry: id, surface, normalizedKey, meaning, status (`level1`,`level2`,`level3`,`level4`,`known`), createdAt, lastSeenAt, encounterCount.
 - IgnoredWordsStore: persistent normalized-word key set in `UserDefaults` used by sentence filtering and highlight resolution.
 

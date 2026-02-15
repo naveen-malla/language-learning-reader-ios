@@ -17,7 +17,7 @@ struct DocumentsListView: View {
                 ContentUnavailableView {
                     Label("No documents yet", systemImage: "doc.text")
                 } description: {
-                    Text("Create a document from the Reader tab.")
+                    Text("Import content from the Library tab.")
                 }
             } else {
                 ScrollView {

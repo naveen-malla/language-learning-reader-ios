@@ -75,7 +75,13 @@ struct LanguageReaderApp: App {
 
         let now = Date()
         for seed in SampleDocuments.initial {
-            let document = Document(title: seed.title, body: seed.body, createdAt: now, updatedAt: now)
+            let document = Document(
+                title: seed.title,
+                body: seed.body,
+                createdAt: now,
+                updatedAt: now,
+                sourceType: .sample
+            )
             context.insert(document)
         }
 

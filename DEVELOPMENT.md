@@ -15,8 +15,14 @@
 3. Build and run.
 
 ## Reader Input Notes
-- If simulator keyboard paste is unreliable, use `Paste from Clipboard` in Reader.
-- Two large sample documents are seeded on first launch; open them via Reader -> Documents.
+- App now opens on `Library` (not the old paste-first Reader tab).
+- `Library -> Import Content` includes:
+  - `Paste Text` for manual text lessons
+  - `YouTube URL` for subtitle-based lesson import
+- `Continue Reading` only shows lessons that have been opened at least once.
+- `Suggested for Beginners` shows only subtitle-validated Kannada YouTube entries.
+- If simulator keyboard paste is unreliable, use `Paste from Clipboard` inside `Library -> Paste Text`.
+- Two large sample documents are seeded on first launch and appear in `Library -> My Library`.
 - In sentence mode, swipe horizontally to move one sentence at a time.
 - Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
 - Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
@@ -30,9 +36,6 @@
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
 - Tapping an unknown word now triggers optional cloud fallback (if enabled) and stores resolved meaning in local cloud cache.
 - Main tabs now share one visual system: pastel canvas, rounded surfaces, translucent tab bar, and status chips.
-- Reader entry view now uses a card composer layout (title/input/actions grouped together) instead of a plain form section.
-- Reader composer now exposes live stats (`words`, `sentences`, `min read`) so save decisions are immediate.
-- Documents list now includes a quick text preview and word-count metadata chip per row.
 
 ## Translation API Setup
 1. Open Settings -> Translation API.
@@ -94,6 +97,13 @@ Notes:
   - confirm missed words are re-queued once for same-session reinforcement
   - confirm flashcard review pool excludes `Known`
   - confirm Reader/Vocab/Flashcards/Settings all render with the shared card + chip styling (no mixed legacy controls)
+- Manual library/import checks after home/import changes:
+  - confirm app lands on `Library` tab at launch
+  - confirm `Paste Text` import creates a new library item
+  - confirm `YouTube URL` import rejects links without Kannada subtitles
+  - confirm importing a suggested video opens reader immediately after save
+  - confirm imported YouTube rows show thumbnail, source badge, and channel metadata
+  - confirm imported item appears in `Continue Reading` only after the first reader open
 
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.

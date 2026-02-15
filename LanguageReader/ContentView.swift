@@ -3,9 +3,9 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         TabView {
-            ReaderView()
+            LibraryView()
                 .tabItem {
-                    Label("Reader", systemImage: "doc.text")
+                    Label("Library", systemImage: "books.vertical")
                 }
 
             VocabView()

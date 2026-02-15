@@ -3,7 +3,9 @@
 An iOS reading-first language learning app (initial scope: Kannada) with offline word lookup, vocabulary tracking, and due-based spaced-repetition flashcards.
 
 ## Product Snapshot
-- Read saved documents in a distraction-light interface designed for long sessions.
+- Start from a Library-first home with import actions, beginner suggestions, and continue-reading shelves.
+- Import from in-app text paste or YouTube URL (Kannada subtitles required for YouTube import).
+- Read saved lessons in a distraction-light interface designed for long sessions.
 - Tap words to get instant meanings, pronunciation, and vocabulary actions.
 - Keep learning state unified across Reader, Vocab, and Flashcards.
 - Review only what is due with a simple right/wrong card flow.
@@ -22,7 +24,9 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 | ![Flashcards tab](docs/screenshots/flashcards.jpg) | ![Settings tab](docs/screenshots/settings.jpg) |
 
 ## Core UX
-- **Reader-first flow**: minimal friction from paste/import to immersive reading.
+- **Library-first flow**: open to a mixed content home (`Continue Reading`, `Suggested for Beginners`, `My Library`).
+- **One-tap importing**: `Paste Text` and `YouTube URL` import are both available directly on the home screen.
+- **Subtitle-gated YouTube import**: only videos with Kannada subtitle tracks are imported.
 - **Liquid-glass interface layer**: thin/ultra-thin material cards, pills, and controls add depth while preserving contrast.
 - **Word-level intelligence**: dictionary lookup path tracking (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
 - **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with one shared definition source.
@@ -59,6 +63,12 @@ Prerequisites:
 - Run (build + install + launch): `./scripts/run.sh`
 - Test: `./scripts/test.sh`
 - List simulators: `xcrun simctl list`
+
+## YouTube Import Notes
+- Paste a full YouTube URL in `Library -> Import Content -> YouTube URL`.
+- Import currently accepts videos only when a Kannada subtitle track is available (`kn*`, including auto-generated tracks).
+- Beginner suggestions are pre-seeded and validated at runtime, and each card is kept only if subtitles are currently importable.
+- Imported YouTube lessons persist on-device like any other library item.
 
 ## Dictionary Pipeline
 - Bundled SQLite dictionary powers offline lookup.
