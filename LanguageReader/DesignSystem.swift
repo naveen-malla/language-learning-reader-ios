@@ -258,6 +258,59 @@ struct StatusLevelChip: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Set level \(status.displayName)")
+        .accessibilityHint(status.meaningLabel)
+    }
+}
+
+struct VocabStatusPickerMenu<Label: View>: View {
+    let selectedStatus: VocabStatus
+    let onSelect: (VocabStatus) -> Void
+    @ViewBuilder let label: () -> Label
+
+    var body: some View {
+        Menu {
+            ForEach(VocabStatus.progression, id: \.rawValue) { status in
+                Button {
+                    onSelect(status)
+                } label: {
+                    VocabStatusPickerOptionLabel(
+                        status: status,
+                        isSelected: status == selectedStatus
+                    )
+                }
+                .accessibilityLabel("\(status.displayName). \(status.meaningLabel)")
+            }
+        } label: {
+            label()
+        }
+    }
+}
+
+private struct VocabStatusPickerOptionLabel: View {
+    let status: VocabStatus
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(status.shortLabel)
+                .font(.subheadline.weight(.semibold))
+                .frame(minWidth: 48, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(status.displayName)
+                    .font(.subheadline.weight(.semibold))
+                Text(status.meaningLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 10)
+
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.caption.weight(.bold))
+            }
+        }
     }
 }
 

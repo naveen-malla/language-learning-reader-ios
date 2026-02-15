@@ -3,20 +3,21 @@
 ## Screens
 - Reader: create and open documents, read text, tap words.
 - Vocab: list/search vocabulary, adjust status.
-- Flashcards: simple review flow.
+- Flashcards: due-based spaced repetition review flow.
 - Settings: optional Azure translation config + key management, dictionary info/license, diagnostics, and cloud fallback controls.
 
 ## Visual Language
 - Non-reader screens use a light pastel canvas and elevated rounded cards to reduce harsh contrast in management flows.
 - Reader remains intentionally dark and high-contrast to prioritize text focus and vocabulary color cues.
-- Status controls use consistent capsule chips (`1 2 3 4 Known`) across vocab rows and flashcards.
+- Status controls use a consistent badge-triggered picker (`1 2 3 4 Known`) with level meanings and a checkmark for the current selection.
+- Flashcards use a custom noir-glass surface with binary recall actions (`Wrong`, `Correct`) after card flip.
 - Tab bar uses translucent material treatment so navigation feels persistent but unobtrusive.
 
 ## Core Flow
 1. Paste text into Reader (or use `Paste from Clipboard`) and save a document.
 2. Read with tappable word tokens.
 3. Tap a word to see meaning and add to vocab.
-4. Classify and review words with direct `1 2 3 4 Known` controls in Vocab and Flashcards.
+4. Classify words by tapping their level badge and selecting `1 2 3 4 Known` in a shared status picker, then review due words in Flashcards with card flip + `Wrong/Correct`.
 5. Re-open saved documents faster using list previews and word-count metadata.
 
 ## Bootstrap Data
@@ -40,12 +41,18 @@
   - per-word meaning + pronunciation list for unresolved words
 - Sentence, transliteration, and translation now use one unified reading size (`17pt`) to reduce visual jumps.
 - Header region is one scrollable canvas; sentence/transliteration/translation are not split into separate scroll panes.
-- Header region keeps a stable centered anchor so translation reveal does not cause a large vertical jump.
+- Header region keeps a stable upper-center anchor: translation is usually visible without scrolling, and vertical shift stays minimal when overflow requires it.
 - Header region height is capped so long sentences do not squeeze the unresolved-words list.
 - Sentence page no longer uses a floating card container; content spans more of the screen width to reduce unused margins.
 - Known and ignored words are intentionally hidden in the in-page sentence word list.
 - New rows expose direct actions: `+` (add Level 1), `✓` (mark Known), and `delete` (ignore).
-- Learning rows show compact `L1/L2/L3/L4` badges.
+- Learning rows show compact level badges (`1/2/3/4`) that open the same status picker used in Vocab.
+- Status picker options include standardized meanings:
+  - `1`: Just added, review often.
+  - `2`: Recognize in context with light effort.
+  - `3`: Mostly familiar, occasional review.
+  - `4`: Confident recall, rare review.
+  - `Known`: Fully known, hide from practice lists.
 - Tapping a word in the sentence word list opens the word detail sheet.
 - Sentence details refresh when the selected sentence or document text changes.
 
@@ -74,9 +81,21 @@
 
 ## Color Coding
 - New (untracked): blue highlight.
-- Learning (`L1-L4`): green highlight.
+- Learning token highlight: green.
+- Learning level badges (`1-4`): level-specific tint for faster scanning.
 - Known: primary text color (no highlight).
 - Ignored: hidden from sentence unresolved list and treated as non-highlighted.
+
+## Flashcards UX
+- Session starts from due-only queue; non-due learning words are hidden.
+- Session size is configurable in Settings via `Words per session`; default is `5` due words.
+- Each due word is tested twice in-session: `word -> meaning`, then `meaning -> word`.
+- Card flow is: front prompt -> flip -> `Wrong`/`Correct` -> advance.
+- Word transliteration is shown on word-facing prompts/reveals to support pronunciation memory.
+- Level changes are resolved only after both directional answers are submitted.
+- Missed words are re-queued once per session for immediate reinforcement.
+- `Mark Known` is kept as a manual override action.
+- Session chrome is a full-height noir-glass layout with a top progress rail, center glass card, and two-row action dock.
 
 ## Data Model (V1)
 - Document: id, title, body, createdAt, updatedAt.

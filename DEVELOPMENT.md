@@ -23,7 +23,7 @@
 - Sentence content uses one unified reading size (`17pt`) across sentence, transliteration, and translation.
 - Sentence header now includes a transliterated pronunciation line under the sentence.
 - Translation text appears inline in the same top canvas (no separate translation scroll box).
-- Top canvas keeps a stable center anchor when translation appears.
+- Top canvas uses a stable upper-center anchor so translation stays visible more often (minimal shift only when overflowed).
 - Sentence translate action uses Azure Translator when configured in Settings; otherwise it falls back to offline gloss.
 - Sentence page now uses reduced side insets and no floating card container so more of the screen is usable.
 - Reader top bar is compact and pinned higher to reduce dead space above the progress slider.
@@ -82,8 +82,16 @@ Notes:
   - confirm tapping a listed word still opens the word detail sheet
   - confirm the same word uses the same highlight state in text view and sentence view
   - confirm new-word quick actions exist (`+`, `✓`, `delete`) and apply immediately
-  - confirm learning rows show `L1-L4` badges
-  - confirm vocab and flashcards expose direct one-tap controls (`1 2 3 4 Known`) with no dropdowns
+  - confirm learning rows show tappable `1-4` level badges in sentence mode
+  - confirm tapping a level badge opens the shared `1 2 3 4 Known` menu with checkmark + meaning text
+  - confirm vocab rows use the same badge-triggered status picker and status meanings as sentence rows
+  - confirm flashcards show due-only queue (`Due`, `Queue`, `Accuracy`) with binary `Wrong/Correct` feedback after flip
+  - confirm Settings -> Flashcards -> `Words per session` defaults to `5` and changes the next started session size
+  - confirm each due word is tested in both directions in-session (`word -> meaning`, `meaning -> word`)
+  - confirm one wrong answer in a round keeps level unchanged, while two wrong answers demote by one level
+  - confirm two fully-correct rounds in a row promote a word by one level (cap at level 4)
+  - confirm level-based due buckets remain fixed (`1d`, `3d`, `7d`, `15d`)
+  - confirm missed words are re-queued once for same-session reinforcement
   - confirm flashcard review pool excludes `Known`
   - confirm Reader/Vocab/Flashcards/Settings all render with the shared card + chip styling (no mixed legacy controls)
 

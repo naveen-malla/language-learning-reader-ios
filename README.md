@@ -8,6 +8,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - Keep learning state unified across Reader, Vocab, and Flashcards.
 - Review only what is due with a simple right/wrong card flow.
 - Work fully offline by default; optional cloud translation/fallback is additive.
+- Tune flashcard session load from Settings with a subtle `Words per session` control (default: 5).
 
 ## Screenshots
 
@@ -23,7 +24,8 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - **Reader-first flow**: minimal friction from paste/import to immersive reading.
 - **Liquid-glass interface layer**: thin/ultra-thin material cards, pills, and controls add depth while preserving contrast.
 - **Word-level intelligence**: dictionary lookup path tracking (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
-- **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with consistent color mapping.
+- **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with one shared definition source.
+- **Status picker on badges**: tap a word’s level badge to open `1/2/3/4/Known` options with meanings and a selected checkmark.
 - **Session-focused flashcards**: due filtering, card flip recall, binary right/wrong feedback, and directional reinforcement.
 - **Sentence support**: one-sentence paging with transliteration and translation fallback.
 
@@ -33,6 +35,12 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - Levels auto-progress only from `1` to `4` (promotion requires two fully-correct rounds in a row).
 - `Known` is manual only; the app never auto-promotes to `Known`.
 - Fixed due buckets by level: `1 day`, `3 days`, `7 days`, `15 days`.
+- Standardized status meanings:
+  - `1`: Just added, review often.
+  - `2`: Recognize in context with light effort.
+  - `3`: Mostly familiar, occasional review.
+  - `4`: Confident recall, rare review.
+  - `Known`: Fully known, hidden from practice lists.
 
 ## Getting Started
 Prerequisites:

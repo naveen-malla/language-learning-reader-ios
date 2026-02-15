@@ -195,6 +195,9 @@ struct DocumentReaderView: View {
             onAddLevel1: { insight in
                 addToVocab(word: insight.word, meaning: insight.meaning, status: .level1)
             },
+            onSetStatus: { insight, status in
+                addToVocab(word: insight.word, meaning: insight.meaning, status: status)
+            },
             onMarkKnown: { insight in
                 addToVocab(word: insight.word, meaning: insight.meaning, status: .known)
             },
@@ -239,8 +242,12 @@ struct DocumentReaderView: View {
                 guard sentenceIndex == expectedIndex else { return }
                 guard self.selectedSentenceBlock?.text == sentence else { return }
 
-                translatedSentence = translated
-                isTranslatingSentence = false
+                var transaction = Transaction()
+                transaction.animation = nil
+                withTransaction(transaction) {
+                    translatedSentence = translated
+                    isTranslatingSentence = false
+                }
             }
         }
     }
@@ -520,6 +527,7 @@ private struct SentencePagerView: View {
     let onTranslate: () -> Void
     let onWordTap: (String) -> Void
     let onAddLevel1: (SentenceWordInsight) -> Void
+    let onSetStatus: (SentenceWordInsight, VocabStatus) -> Void
     let onMarkKnown: (SentenceWordInsight) -> Void
     let onIgnore: (SentenceWordInsight) -> Void
     let topInset: CGFloat
@@ -547,6 +555,7 @@ private struct SentencePagerView: View {
                         onTranslate: onTranslate,
                         onWordTap: onWordTap,
                         onAddLevel1: onAddLevel1,
+                        onSetStatus: onSetStatus,
                         onMarkKnown: onMarkKnown,
                         onIgnore: onIgnore
                     )
@@ -572,50 +581,70 @@ private struct SentenceIntegratedPage: View {
     let onTranslate: () -> Void
     let onWordTap: (String) -> Void
     let onAddLevel1: (SentenceWordInsight) -> Void
+    let onSetStatus: (SentenceWordInsight, VocabStatus) -> Void
     let onMarkKnown: (SentenceWordInsight) -> Void
     let onIgnore: (SentenceWordInsight) -> Void
     private let transliterator = Transliterator()
+    @State private var baseCanvasContentHeight: CGFloat = 0
+    @State private var translationCanvasContentHeight: CGFloat = 0
 
     private var sentencePronunciation: String {
         transliterator.pronounce(sentence)
+    }
+
+    private var hasTranslation: Bool {
+        guard let translatedSentence else { return false }
+        return !translatedSentence.isEmpty
     }
 
     var body: some View {
         GeometryReader { proxy in
             let wordsSectionHeight = ReaderLayoutMetrics.sentenceWordsSectionHeight(for: proxy.size.height)
             let topSectionHeight = max(proxy.size.height - wordsSectionHeight, 0)
+            let contentCanvasHeight = max(topSectionHeight - 22, 0)
+            let dynamicTopPadding = ReaderLayoutMetrics.sentenceTopCanvasStableTopPadding(
+                containerHeight: contentCanvasHeight,
+                baseContentHeight: baseCanvasContentHeight,
+                extraContentHeight: hasTranslation ? translationCanvasContentHeight : 0
+            )
 
             VStack(spacing: 0) {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 12) {
-                        SentenceTokenizedHeader(
-                            sentence: sentence,
-                            learningStateForWord: learningStateForWord,
-                            onWordTap: onWordTap
-                        )
+                    VStack(spacing: 0) {
+                        VStack(spacing: 12) {
+                            SentenceTokenizedHeader(
+                                sentence: sentence,
+                                learningStateForWord: learningStateForWord,
+                                onWordTap: onWordTap
+                            )
 
-                        SentencePronunciationView(pronunciation: sentencePronunciation)
+                            SentencePronunciationView(pronunciation: sentencePronunciation)
 
-                        Button(action: onTranslate) {
-                            Group {
-                                if isTranslatingSentence {
-                                    HStack(spacing: 8) {
-                                        ProgressView()
-                                            .tint(Theme.accent)
-                                        Text("Translating...")
+                            Button(action: onTranslate) {
+                                Group {
+                                    if isTranslatingSentence {
+                                        HStack(spacing: 8) {
+                                            ProgressView()
+                                                .tint(Theme.accent)
+                                            Text("Translating...")
+                                        }
+                                    } else {
+                                        Label("Translate sentence", systemImage: "character.bubble")
                                     }
-                                } else {
-                                    Label("Translate sentence", systemImage: "character.bubble")
                                 }
+                                .font(Theme.readingEmphasisFont)
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.white.opacity(0.05), in: Capsule())
                             }
-                            .font(Theme.readingEmphasisFont)
-                            .foregroundStyle(Theme.accent)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Color.white.opacity(0.05), in: Capsule())
+                            .disabled(isTranslatingSentence)
+                            .padding(.top, 2)
                         }
-                        .disabled(isTranslatingSentence)
-                        .padding(.top, 2)
+                        .measureHeight { height in
+                            guard abs(baseCanvasContentHeight - height) > 0.5 else { return }
+                            baseCanvasContentHeight = height
+                        }
 
                         if let translatedSentence, !translatedSentence.isEmpty {
                             Text(translatedSentence)
@@ -624,13 +653,21 @@ private struct SentenceIntegratedPage: View {
                                 .multilineTextAlignment(.leading)
                                 .lineSpacing(4)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 12)
+                                .measureHeight { height in
+                                    guard abs(translationCanvasContentHeight - height) > 0.5 else { return }
+                                    translationCanvasContentHeight = height
+                                }
                         }
                     }
                     .padding(.horizontal, 8)
-                    .padding(.top, 8)
+                    .padding(.top, 8 + dynamicTopPadding)
                     .padding(.bottom, 14)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: max(topSectionHeight - 12, 0), alignment: .center)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: topSectionHeight, alignment: .top)
+                }
+                .transaction { transaction in
+                    transaction.animation = nil
                 }
                 .frame(height: topSectionHeight, alignment: .top)
 
@@ -642,6 +679,7 @@ private struct SentenceIntegratedPage: View {
                     learningStateForKey: learningStateForKey,
                     onWordTap: onWordTap,
                     onAddLevel1: onAddLevel1,
+                    onSetStatus: onSetStatus,
                     onMarkKnown: onMarkKnown,
                     onIgnore: onIgnore
                 )
@@ -786,6 +824,7 @@ private struct SentenceWordsSection: View {
     let learningStateForKey: (String) -> WordLearningVisualState
     let onWordTap: (String) -> Void
     let onAddLevel1: (SentenceWordInsight) -> Void
+    let onSetStatus: (SentenceWordInsight, VocabStatus) -> Void
     let onMarkKnown: (SentenceWordInsight) -> Void
     let onIgnore: (SentenceWordInsight) -> Void
 
@@ -810,6 +849,9 @@ private struct SentenceWordsSection: View {
                             },
                             onAddLevel1: {
                                 onAddLevel1(insight)
+                            },
+                            onSetStatus: { status in
+                                onSetStatus(insight, status)
                             },
                             onMarkKnown: {
                                 onMarkKnown(insight)
@@ -838,6 +880,7 @@ private struct SentenceWordRow: View {
     let state: WordLearningVisualState
     let onTap: () -> Void
     let onAddLevel1: () -> Void
+    let onSetStatus: (VocabStatus) -> Void
     let onMarkKnown: () -> Void
     let onIgnore: () -> Void
 
@@ -868,13 +911,28 @@ private struct SentenceWordRow: View {
                     }
                     .buttonStyle(.plain)
 
-                    if let badge = state.levelBadge {
-                        Text(badge)
-                            .font(.caption.weight(.semibold))
+                    if case .learning(let level) = state {
+                        VocabStatusPickerMenu(
+                            selectedStatus: level,
+                            onSelect: onSetStatus
+                        ) {
+                            HStack(spacing: 4) {
+                                Text(level.shortLabel)
+                                    .font(.caption.weight(.semibold))
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2.weight(.bold))
+                            }
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Theme.learningHighlight.opacity(0.85), in: Capsule())
+                            .background(Theme.statusTint(level).opacity(0.9), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                        .accessibilityLabel("Set level for \(insight.word)")
+                        .accessibilityHint("\(level.displayName). \(level.meaningLabel)")
                     }
                 }
 
@@ -934,6 +992,28 @@ private struct ReaderContentHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 1
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+private struct ReaderMeasuredHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private extension View {
+    func measureHeight(_ onChange: @escaping (CGFloat) -> Void) -> some View {
+        background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: ReaderMeasuredHeightKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(ReaderMeasuredHeightKey.self) { height in
+            guard height > 0 else { return }
+            onChange(height)
+        }
     }
 }
 

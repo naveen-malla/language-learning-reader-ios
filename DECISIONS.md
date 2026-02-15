@@ -15,7 +15,7 @@
 - Sentence mode uses a horizontal one-sentence pager for focused review.
 - Sentence detail content is integrated directly into each sentence page (no extra overlay panel).
 - Sentence page layout favors screen usage over card chrome: reduced horizontal inset, compact top bar, and a capped/scrollable sentence header region.
-- Sentence header keeps a stable centered anchor to avoid disruptive jumps when translation appears.
+- Sentence header uses a stable upper-center anchor so translated lines are visible more often, with only overflow-driven upward adjustment.
 - Sentence pages show pronunciation in Latin script using the same `Transliterator` used for word-level pronunciation, keeping pronunciation rules consistent.
 - Sentence word list omits `known` and ignored words to reduce noise and emphasize unresolved vocabulary.
 - Sentence paging/progress/filter logic lives in a small model (`SentenceReaderModel`) so it can be tested without UI harnesses.
@@ -28,10 +28,19 @@
 
 ## Learning State Model
 - Canonical tracked vocab states are `level1`, `level2`, `level3`, `level4`, and `known`.
+- Status display labels and learning-stage meanings are centralized on `VocabStatus` so Reader, Vocab, and Flashcards stay aligned.
 - `New` is intentionally not stored in vocab; it is derived when no vocab entry and no ignore flag exists for a normalized key.
 - One shared resolver determines word visual state across reader text view, sentence view, vocab, and flashcard flows.
+- Level selection UI is standardized around a badge-triggered status picker (`1/2/3/4/Known`) with explicit meaning text and current-selection checkmark.
 - Backward compatibility is preserved for stored legacy values (`new -> level1`, `learning -> level2`, `known -> known`).
-- Flashcard review deck includes only learning levels (`level1` through `level4`); `known` is excluded.
+- Flashcard review deck includes only learning levels (`level1` through `level4`), excludes suspended cards, and is filtered by due date.
+- Flashcards intentionally use a simple LingQ-style binary flow (`Flip` -> `Wrong`/`Correct`) instead of multi-rating schedulers.
+- Flashcards test each due word in both directions in-session (`word -> meaning`, `meaning -> word`) before finalizing a level outcome.
+- Flashcard session intake is intentionally capped by a user-configurable `Words per session` setting (default `5`) to keep cognitive load controlled.
+- Level progression is conservative by design: promote by one level only after two perfect rounds in a row; cap auto-promotion at `level4`.
+- Demotion is lightweight: only rounds with two wrong answers demote one level (minimum `level1`); mixed rounds keep level unchanged.
+- `known` remains a manual-only state change and is never auto-assigned by flashcards.
+- Due intervals are fixed by level (`1`, `3`, `7`, `15` days), and a one-time migration normalizes old minute/hour schedules into this model.
 
 ## Dictionary
 - Offline dictionary with indexed lookup for fast taps.

@@ -116,16 +116,32 @@ private struct VocabRow: View {
 
                 Spacer()
 
-                Text(entry.status.levelBadgeLabel)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .foregroundStyle(.white)
-                    .background(Theme.statusTint(entry.status), in: Capsule())
+                VocabStatusPickerMenu(
+                    selectedStatus: entry.status,
+                    onSelect: { selected in
+                        setStatus(selected)
+                    }
+                ) {
+                    HStack(spacing: 6) {
+                        Text(entry.status.levelBadgeLabel)
+                            .font(.caption.weight(.semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .foregroundStyle(entry.status.isKnown ? Color.primary : .white)
+                    .background(
+                        entry.status.isKnown ? Theme.statusTint(entry.status).opacity(0.25) : Theme.statusTint(entry.status),
+                        in: Capsule()
+                    )
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            .stroke(Color.white.opacity(entry.status.isKnown ? 0.16 : 0.24), lineWidth: 1)
                     )
+                }
+                .accessibilityLabel("Set status for \(entry.word)")
+                .accessibilityHint("\(entry.status.displayName). \(entry.status.meaningLabel)")
             }
 
             if !entry.meaning.isEmpty {
@@ -148,24 +164,15 @@ private struct VocabRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(VocabStatus.progression, id: \.rawValue) { status in
-                        StatusLevelChip(
-                            status: status,
-                            selectedStatus: entry.status,
-                            onSelect: { selected in
-                                setStatus(selected)
-                            }
-                        )
-                    }
-                }
-            }
+            Text(entry.status.meaningLabel)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .cardStyle()
     }
 
     private func setStatus(_ status: VocabStatus) {
+        guard status != entry.status else { return }
         entry.status = status
         entry.lastSeenAt = Date()
         entry.encounterCount += 1

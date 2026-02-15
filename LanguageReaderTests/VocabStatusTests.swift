@@ -18,6 +18,22 @@ final class VocabStatusTests: XCTestCase {
         XCTAssertEqual(VocabStatus.known.shortLabel, "Known")
     }
 
+    func testBadgeLabelsMatchShortLabels() {
+        XCTAssertEqual(VocabStatus.level1.levelBadgeLabel, "1")
+        XCTAssertEqual(VocabStatus.level2.levelBadgeLabel, "2")
+        XCTAssertEqual(VocabStatus.level3.levelBadgeLabel, "3")
+        XCTAssertEqual(VocabStatus.level4.levelBadgeLabel, "4")
+        XCTAssertEqual(VocabStatus.known.levelBadgeLabel, "Known")
+    }
+
+    func testMeaningLabels() {
+        XCTAssertEqual(VocabStatus.level1.meaningLabel, "Just added, review often.")
+        XCTAssertEqual(VocabStatus.level2.meaningLabel, "Recognize in context with light effort.")
+        XCTAssertEqual(VocabStatus.level3.meaningLabel, "Mostly familiar, occasional review.")
+        XCTAssertEqual(VocabStatus.level4.meaningLabel, "Confident recall, rare review.")
+        XCTAssertEqual(VocabStatus.known.meaningLabel, "Fully known, hide from practice lists.")
+    }
+
     func testColorNames() {
         XCTAssertEqual(VocabStatus.level1.colorName, "green")
         XCTAssertEqual(VocabStatus.level2.colorName, "green")

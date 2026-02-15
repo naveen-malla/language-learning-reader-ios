@@ -38,13 +38,23 @@ enum VocabStatus: String, Codable, CaseIterable {
         }
     }
 
-    var levelBadgeLabel: String {
+    var meaningLabel: String {
         switch self {
+        case .level1:
+            return "Just added, review often."
+        case .level2:
+            return "Recognize in context with light effort."
+        case .level3:
+            return "Mostly familiar, occasional review."
+        case .level4:
+            return "Confident recall, rare review."
         case .known:
-            return "Known"
-        case .level1, .level2, .level3, .level4:
-            return "L\(shortLabel)"
+            return "Fully known, hide from practice lists."
         }
+    }
+
+    var levelBadgeLabel: String {
+        shortLabel
     }
 
     var colorName: String {
