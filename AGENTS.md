@@ -44,6 +44,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Boot simulator: `open -a Simulator`
 - Build (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
 - Test (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
+- Target a single test: `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryManagerTests`
 
 ## Local Scripts
 - Build (simulator): `./scripts/build.sh`
