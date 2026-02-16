@@ -12,7 +12,7 @@ final class ReaderLayoutMetricsTests: XCTestCase {
         let large = ReaderLayoutMetrics.sentenceWordsSectionHeight(for: 2000)
 
         XCTAssertEqual(small, ReaderLayoutMetrics.sentenceWordsSectionMinHeight)
-        XCTAssertEqual(medium, 266, accuracy: 0.001)
+        XCTAssertEqual(medium, 238, accuracy: 0.001)
         XCTAssertEqual(large, ReaderLayoutMetrics.sentenceWordsSectionMaxHeight)
     }
 
@@ -35,11 +35,15 @@ final class ReaderLayoutMetricsTests: XCTestCase {
         XCTAssertEqual(ReaderLayoutMetrics.sentenceTopCanvasPlacement, .centered)
     }
 
-    func testStableTopPaddingStaysCenteredWhenExtraContentFits() {
+    func testStableTopPaddingUsesUpperCenterAnchorWhenExtraContentFits() {
         let containerHeight: CGFloat = 420
         let baseHeight: CGFloat = 140
         let extraHeight: CGFloat = 70
 
+        let anchored = max(
+            (containerHeight - baseHeight) * ReaderLayoutMetrics.sentenceTopCanvasAnchorRatio,
+            ReaderLayoutMetrics.sentenceTopCanvasMinTopPadding
+        )
         let centered = max(
             (containerHeight - baseHeight) / 2,
             ReaderLayoutMetrics.sentenceTopCanvasMinTopPadding
@@ -50,7 +54,8 @@ final class ReaderLayoutMetricsTests: XCTestCase {
             extraContentHeight: extraHeight
         )
 
-        XCTAssertEqual(result, centered, accuracy: 0.001)
+        XCTAssertEqual(result, anchored, accuracy: 0.001)
+        XCTAssertLessThan(result, centered)
     }
 
     func testStableTopPaddingOnlyMovesForOverflowAmount() {
@@ -58,13 +63,13 @@ final class ReaderLayoutMetricsTests: XCTestCase {
         let baseHeight: CGFloat = 140
         let extraHeight: CGFloat = 160
 
-        let centered = max(
-            (containerHeight - baseHeight) / 2,
+        let anchored = max(
+            (containerHeight - baseHeight) * ReaderLayoutMetrics.sentenceTopCanvasAnchorRatio,
             ReaderLayoutMetrics.sentenceTopCanvasMinTopPadding
         )
-        let freeSpaceBelowBase = containerHeight - centered - baseHeight
+        let freeSpaceBelowBase = containerHeight - anchored - baseHeight
         let overflow = max(extraHeight - freeSpaceBelowBase, 0)
-        let expected = max(ReaderLayoutMetrics.sentenceTopCanvasMinTopPadding, centered - overflow)
+        let expected = max(ReaderLayoutMetrics.sentenceTopCanvasMinTopPadding, anchored - overflow)
 
         let result = ReaderLayoutMetrics.sentenceTopCanvasStableTopPadding(
             containerHeight: containerHeight,
@@ -73,7 +78,7 @@ final class ReaderLayoutMetricsTests: XCTestCase {
         )
 
         XCTAssertEqual(result, expected, accuracy: 0.001)
-        XCTAssertLessThan(result, centered)
+        XCTAssertLessThan(result, anchored)
     }
 
     func testStableTopPaddingFallsBackToMinimumForNonPositiveContainer() {
