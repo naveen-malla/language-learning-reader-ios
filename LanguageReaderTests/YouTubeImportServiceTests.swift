@@ -17,6 +17,20 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(YouTubeVideoIDParser.parse(input), "RpJ-qH_vfD8")
     }
 
+    func testVideoIDParserAcceptsEmbedURL() {
+        let input = "https://www.youtube.com/embed/UKWBtAYAo5I?start=30"
+        XCTAssertEqual(YouTubeVideoIDParser.parse(input), "UKWBtAYAo5I")
+    }
+
+    func testVideoIDParserAcceptsRawID() {
+        XCTAssertEqual(YouTubeVideoIDParser.parse("KaBYEZ6q2tY"), "KaBYEZ6q2tY")
+    }
+
+    func testVideoIDParserRejectsInvalidVideoIDLength() {
+        XCTAssertNil(YouTubeVideoIDParser.parse("KaBYEZ6q2t"))
+        XCTAssertNil(YouTubeVideoIDParser.parse("KaBYEZ6q2tYx"))
+    }
+
     func testVideoIDParserRejectsInvalidInput() {
         XCTAssertNil(YouTubeVideoIDParser.parse("https://example.com/not-youtube"))
         XCTAssertNil(YouTubeVideoIDParser.parse(" "))
@@ -35,5 +49,29 @@ final class YouTubeImportServiceTests: XCTestCase {
 
         let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
         XCTAssertEqual(parsed, "ಹಲೋ\nಎಲ್ಲರಿಗೆ ಸ್ವಾಗತ\nಶುಭೋದಯ & ಧನ್ಯವಾದಗಳು")
+    }
+
+    func testTranscriptXMLParserPreservesNonConsecutiveDuplicates() {
+        let xml = """
+        <transcript>
+            <text start="0.1" dur="1.0">ಹಲೋ</text>
+            <text start="1.1" dur="1.0">ಮತ್ತೆ</text>
+            <text start="2.2" dur="1.0">ಹಲೋ</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed, "ಹಲೋ\nಮತ್ತೆ\nಹಲೋ")
+    }
+
+    func testTranscriptXMLParserReturnsEmptyWhenNoTextElements() {
+        let xml = """
+        <transcript>
+            <meta />
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed, "")
     }
 }
