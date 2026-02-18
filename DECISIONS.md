@@ -76,6 +76,7 @@
 - API key stored in Keychain.
 - Azure Translator is the first network provider for sentence translation (`kn -> en`) when configured.
 - Endpoint + region are stored in `UserDefaults`; API key remains in Keychain.
+- Translator endpoint must be an absolute `http/https` URL with a host to avoid invalid runtime configurations.
 - Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
 - If network translation is unavailable, reader falls back to the existing offline dictionary gloss.
 - For missing single-word meanings, optional Azure-backed fallback is used and persisted locally so repeated lookups stay offline after first fetch.

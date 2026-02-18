@@ -75,7 +75,16 @@ final class TranslationSettingsStoreTests: XCTestCase {
 
     func testConfigurationRequiresValidEndpointURL() throws {
         let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
-        store.endpointText = "http://[invalid]"
+        store.endpointText = "https://"
+        store.regionText = "eastus"
+        try store.saveAPIKey("secret")
+
+        XCTAssertNil(store.configuration())
+    }
+
+    func testConfigurationRejectsNonHTTPSchemes() throws {
+        let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        store.endpointText = "ftp://api.cognitive.microsofttranslator.com"
         store.regionText = "eastus"
         try store.saveAPIKey("secret")
 

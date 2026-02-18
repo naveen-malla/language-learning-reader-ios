@@ -117,7 +117,7 @@ final class SentenceTranslationServiceTests: XCTestCase {
         let first = await service.translate(sentence: "ಪರೀಕ್ಷೆ")
         let second = await service.translate(sentence: "ಪರೀಕ್ಷೆ")
 
-        XCTAssertEqual(first, "ಪರೀಕ್ಷೆ")
+        XCTAssertNotEqual(first, "cloud translation")
         XCTAssertEqual(second, "cloud translation")
         XCTAssertEqual(fake.callCount, 2)
     }

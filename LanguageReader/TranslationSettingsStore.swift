@@ -97,7 +97,7 @@ struct TranslationSettingsStore {
         }
 
         let endpoint = normalizeEndpointText(endpointText)
-        guard let endpointURL = URL(string: endpoint) else {
+        guard let endpointURL = validatedEndpointURL(endpoint) else {
             return nil
         }
 
@@ -122,5 +122,16 @@ struct TranslationSettingsStore {
             return String(trimmed.dropLast())
         }
         return trimmed
+    }
+
+    private func validatedEndpointURL(_ endpoint: String) -> URL? {
+        guard let components = URLComponents(string: endpoint),
+              let scheme = components.scheme?.lowercased(),
+              scheme == "https" || scheme == "http",
+              let host = components.host,
+              !host.isEmpty else {
+            return nil
+        }
+        return components.url
     }
 }
