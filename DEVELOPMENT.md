@@ -68,6 +68,7 @@ Notes:
 ## Testing Standard
 - Treat tests as strict quality gates, not smoke checks.
 - Every feature should have failure-path and edge-case coverage.
+- Ensure caching/normalization and URL parsing edge cases are covered in unit tests.
 - When a production issue is observed, add a regression test in the same change.
 - For reader performance issues, confirm sentence/token preprocessing does not rerun on pure scroll updates.
 - Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known+ignored filtering).
