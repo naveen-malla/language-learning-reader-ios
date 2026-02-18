@@ -72,6 +72,41 @@ final class TranslationSettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.hasAPIKey)
         XCTAssertNil(store.apiKey)
     }
+
+    func testConfigurationRequiresValidEndpointURL() throws {
+        let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        store.endpointText = "http://[invalid]"
+        store.regionText = "eastus"
+        try store.saveAPIKey("secret")
+
+        XCTAssertNil(store.configuration())
+    }
+
+    func testConfigurationRejectsEmptyLanguages() throws {
+        let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        store.regionText = "eastus"
+        store.sourceLanguage = "  "
+        store.targetLanguage = ""
+        try store.saveAPIKey("secret")
+
+        XCTAssertNil(store.configuration())
+    }
+
+    func testConfigurationAcceptsWhitespaceAroundFields() throws {
+        let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        store.endpointText = " https://api.cognitive.microsofttranslator.com "
+        store.regionText = " westus2 "
+        store.sourceLanguage = " kn "
+        store.targetLanguage = " en "
+        try store.saveAPIKey(" secret ")
+
+        let config = try XCTUnwrap(store.configuration())
+        XCTAssertEqual(config.endpoint.absoluteString, "https://api.cognitive.microsofttranslator.com")
+        XCTAssertEqual(config.region, "westus2")
+        XCTAssertEqual(config.sourceLanguage, "kn")
+        XCTAssertEqual(config.targetLanguage, "en")
+        XCTAssertEqual(config.apiKey, "secret")
+    }
 }
 
 private final class InMemorySecretStore: SecretStoring {

@@ -96,6 +96,67 @@ final class SentenceTranslationServiceTests: XCTestCase {
         XCTAssertEqual(fake.callCount, 2)
     }
 
+    func testDoesNotCacheFailuresAcrossCalls() async throws {
+        let defaults = testDefaults()
+        let keychain = InMemorySecretStore()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        settings.regionText = "germanywestcentral"
+        try settings.saveAPIKey("secret")
+
+        let fake = FakeAzureTranslatorClient(
+            results: [
+                .failure(FakeAzureTranslatorClient.FakeError.failed),
+                .success("cloud translation")
+            ]
+        )
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: fake
+        )
+
+        let first = await service.translate(sentence: "ಪರೀಕ್ಷೆ")
+        let second = await service.translate(sentence: "ಪರೀಕ್ಷೆ")
+
+        XCTAssertEqual(first, "ಪರೀಕ್ಷೆ")
+        XCTAssertEqual(second, "cloud translation")
+        XCTAssertEqual(fake.callCount, 2)
+    }
+
+    func testCachesOfflineFallbackBySentence() async {
+        let defaults = testDefaults()
+        let service = SentenceTranslationService(
+            settingsStore: TranslationSettingsStore(defaults: defaults, keychain: InMemorySecretStore()),
+            cloudTranslator: FakeAzureTranslatorClient()
+        )
+
+        let first = await service.translate(sentence: "plain unknown sentence")
+        let second = await service.translate(sentence: "plain unknown sentence")
+
+        XCTAssertEqual(first, "plain unknown sentence")
+        XCTAssertEqual(second, "plain unknown sentence")
+    }
+
+    func testTrimmedSentenceIsUsedForCacheKey() async throws {
+        let defaults = testDefaults()
+        let keychain = InMemorySecretStore()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        settings.regionText = "germanywestcentral"
+        try settings.saveAPIKey("secret")
+
+        let fake = FakeAzureTranslatorClient(results: [.success("one"), .success("two")])
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: fake
+        )
+
+        let first = await service.translate(sentence: "  ಪದ ")
+        let second = await service.translate(sentence: "ಪದ")
+
+        XCTAssertEqual(first, "one")
+        XCTAssertEqual(second, "one")
+        XCTAssertEqual(fake.callCount, 1)
+    }
+
     private func testDefaults() -> UserDefaults {
         let name = "SentenceTranslationServiceTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

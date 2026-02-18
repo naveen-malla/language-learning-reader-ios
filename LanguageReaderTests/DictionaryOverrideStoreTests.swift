@@ -77,4 +77,30 @@ final class DictionaryOverrideStoreTests: XCTestCase {
         XCTAssertTrue(lines[0].hasPrefix("ಮೊದಲ\t"))
         XCTAssertTrue(lines[1].hasPrefix("ಎರಡನೆ\t"))
     }
+
+    func testSetOverridePersistsEmptyMeaningAsBlankLine() throws {
+        let overridesURL = try makeTempFileURL(fileName: "dictionary_overrides.tsv")
+        let store = DictionaryOverrideStore(fileURL: overridesURL, missingURL: nil)
+
+        store.setOverride(word: "word", meaning: "")
+
+        let reloadedStore = DictionaryOverrideStore(fileURL: overridesURL, missingURL: nil)
+        XCTAssertNil(reloadedStore.lookup(normalizedKey: "word"))
+        let contents = try String(contentsOf: overridesURL, encoding: .utf8)
+        XCTAssertFalse(contents.contains("word\t"))
+    }
+
+    func testAppendMissingPreservesExistingContent() throws {
+        let missingURL = try makeTempFileURL(fileName: "dictionary_missing.tsv")
+        try "starter\t2024-01-01T00:00:00Z\n".write(to: missingURL, atomically: true, encoding: .utf8)
+        let store = DictionaryOverrideStore(fileURL: nil, missingURL: missingURL)
+
+        store.appendMissing(word: "ಮತ್ತೊಂದು")
+
+        let contents = try String(contentsOf: missingURL, encoding: .utf8)
+        let lines = contents.split(separator: "\n")
+        XCTAssertEqual(lines.count, 2)
+        XCTAssertTrue(lines[0].hasPrefix("starter\t"))
+        XCTAssertTrue(lines[1].hasPrefix("ಮತ್ತೊಂದು\t"))
+    }
 }

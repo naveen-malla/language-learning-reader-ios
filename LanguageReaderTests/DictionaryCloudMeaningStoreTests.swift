@@ -48,4 +48,45 @@ final class DictionaryCloudMeaningStoreTests: XCTestCase {
         XCTAssertEqual(store.allCount(), 0)
         XCTAssertNil(store.lookup(normalizedKey: "ಮನೆ", languageCode: "kn"))
     }
+
+    func testSetMeaningNormalizesLanguageAndDefaultsSource() throws {
+        let fileURL = try makeTempFileURL(fileName: "dictionary_cloud_cache.tsv")
+        let store = DictionaryCloudMeaningStore(fileURL: fileURL)
+
+        store.setMeaning(normalizedKey: "  ಮನೆ\t", languageCode: " KN ", meaning: " house\t ", source: " ")
+
+        XCTAssertEqual(store.lookup(normalizedKey: "ಮನೆ", languageCode: "kn"), "house")
+        XCTAssertEqual(store.allCount(), 1)
+
+        let contents = try String(contentsOf: fileURL, encoding: .utf8)
+        XCTAssertTrue(contents.contains("kn\tಮನೆ\thouse\tcloud\t"))
+    }
+
+    func testSetMeaningIgnoresBlankInputs() {
+        let store = DictionaryCloudMeaningStore(fileURL: nil)
+
+        store.setMeaning(normalizedKey: "", languageCode: "kn", meaning: "house", source: "remote")
+        store.setMeaning(normalizedKey: "ಮನೆ", languageCode: "", meaning: "house", source: "remote")
+        store.setMeaning(normalizedKey: "ಮನೆ", languageCode: "kn", meaning: "   ", source: "remote")
+
+        XCTAssertEqual(store.allCount(), 0)
+        XCTAssertNil(store.lookup(normalizedKey: "ಮನೆ", languageCode: "kn"))
+    }
+
+    func testLoadEntriesNormalizesLanguageAndSkipsInvalidRows() throws {
+        let fileURL = try makeTempFileURL(fileName: "dictionary_cloud_cache.tsv")
+        let content = [
+            "# header",
+            "KN\tಮನೆ\thouse\t\t2024-01-01T00:00:00Z",
+            "\tempty-language\thouse\tremote\t2024-01-01T00:00:00Z",
+            "kn\t\thouse\tremote\t2024-01-01T00:00:00Z",
+            "kn\tಮನೆ\t\tremote\t2024-01-01T00:00:00Z"
+        ].joined(separator: "\n")
+        try content.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let store = DictionaryCloudMeaningStore(fileURL: fileURL)
+
+        XCTAssertEqual(store.lookup(normalizedKey: "ಮನೆ", languageCode: "kn"), "house")
+        XCTAssertEqual(store.allCount(), 1)
+    }
 }

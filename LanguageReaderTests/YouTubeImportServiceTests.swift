@@ -36,6 +36,16 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertNil(YouTubeVideoIDParser.parse(" "))
     }
 
+    func testVideoIDParserAcceptsMobileWatchURL() {
+        let input = "https://m.youtube.com/watch?v=KaBYEZ6q2tY&feature=youtu.be"
+        XCTAssertEqual(YouTubeVideoIDParser.parse(input), "KaBYEZ6q2tY")
+    }
+
+    func testVideoIDParserRejectsPlaylistWithoutVideo() {
+        let input = "https://www.youtube.com/playlist?list=PL1234567890"
+        XCTAssertNil(YouTubeVideoIDParser.parse(input))
+    }
+
     func testTranscriptXMLParserNormalizesLines() {
         let xml = """
         <?xml version="1.0" encoding="utf-8" ?>
@@ -73,5 +83,17 @@ final class YouTubeImportServiceTests: XCTestCase {
 
         let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
         XCTAssertEqual(parsed, "")
+    }
+
+    func testTranscriptXMLParserDecodesEntitiesAndTrimsWhitespace() {
+        let xml = """
+        <transcript>
+            <text start="0.1" dur="1.0">  hello &amp; world  </text>
+            <text start="1.1" dur="1.0">&lt;tag&gt;</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed, "hello & world\n<tag>")
     }
 }

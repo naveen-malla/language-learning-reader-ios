@@ -58,4 +58,25 @@ final class WordLearningStateResolverTests: XCTestCase {
 
         XCTAssertEqual(state, .learning(level: .level2))
     }
+
+    func testReturnsNewForEmptyNormalizedKey() {
+        let state = resolver.state(
+            forNormalizedKey: "   ",
+            statusByKey: ["": .level1],
+            ignoredKeys: [""]
+        )
+
+        XCTAssertEqual(state, .new)
+        XCTAssertTrue(state.isVisibleInSentenceList)
+    }
+
+    func testKnownOverridesLearningLevelBadge() {
+        let state = resolver.state(
+            forNormalizedKey: "ಮನೆ",
+            statusByKey: ["ಮನೆ": .known],
+            ignoredKeys: []
+        )
+
+        XCTAssertNil(state.levelBadge)
+    }
 }
