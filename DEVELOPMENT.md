@@ -14,6 +14,10 @@
 2. Select an iPhone Simulator (prefer iPhone 14 Pro; otherwise use the newest available).
 3. Build and run.
 
+## Testing Notes
+- Word learning visual state logic is covered in `LanguageReaderTests/WordLearningStateResolverTests.swift`.
+- Flashcard session size normalization is covered in `LanguageReaderTests/FlashcardDeckTests.swift`.
+
 ## Reader Input Notes
 - App now opens on `Library` (not the old paste-first Reader tab).
 - `Library -> Import Content` includes:

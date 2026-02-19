@@ -2,6 +2,17 @@ import XCTest
 @testable import LanguageReader
 
 final class FlashcardDeckTests: XCTestCase {
+    func testSessionWordLimitNormalizationUsesDefaultForInvalidValue() {
+        XCTAssertEqual(
+            FlashcardSettings.normalizedSessionWordLimit(7),
+            FlashcardDeck.defaultSessionWordLimit
+        )
+    }
+
+    func testSessionWordLimitNormalizationAcceptsConfiguredOption() {
+        XCTAssertEqual(FlashcardSettings.normalizedSessionWordLimit(10), 10)
+    }
+
     func testDueDeckIncludesOnlyDueLearningEntries() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let entries: [VocabEntry] = [

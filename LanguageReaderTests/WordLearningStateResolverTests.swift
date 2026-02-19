@@ -2,81 +2,56 @@ import XCTest
 @testable import LanguageReader
 
 final class WordLearningStateResolverTests: XCTestCase {
-    private let resolver = WordLearningStateResolver(normalizer: TextNormalizer())
+    private let resolver = WordLearningStateResolver()
 
-    func testReturnsIgnoredBeforeStatus() {
+    func testStateForEmptyNormalizedKeyReturnsNew() {
+        let state = resolver.state(forNormalizedKey: "", statusByKey: ["": .level2], ignoredKeys: [""])
+
+        XCTAssertEqual(state, .new)
+    }
+
+    func testIgnoredOverridesStatus() {
         let state = resolver.state(
-            forNormalizedKey: "ಮನೆ",
-            statusByKey: ["ಮನೆ": .level3],
-            ignoredKeys: ["ಮನೆ"]
+            forNormalizedKey: "ignored",
+            statusByKey: ["ignored": .known],
+            ignoredKeys: ["ignored"]
         )
 
         XCTAssertEqual(state, .ignored)
-        XCTAssertFalse(state.isVisibleInSentenceList)
     }
 
-    func testReturnsKnownForKnownStatus() {
-        let state = resolver.state(
-            forNormalizedKey: "ಮನೆ",
-            statusByKey: ["ಮನೆ": .known],
-            ignoredKeys: []
-        )
+    func testKnownStatusReturnsKnown() {
+        let state = resolver.state(forNormalizedKey: "known", statusByKey: ["known": .known], ignoredKeys: [])
 
         XCTAssertEqual(state, .known)
-        XCTAssertFalse(state.isVisibleInSentenceList)
     }
 
-    func testReturnsLearningForTrackedLearningStatus() {
-        let state = resolver.state(
-            forNormalizedKey: "ಮನೆ",
-            statusByKey: ["ಮನೆ": .level3],
-            ignoredKeys: []
-        )
+    func testLearningStatusReturnsLearning() {
+        let state = resolver.state(forNormalizedKey: "learn", statusByKey: ["learn": .level3], ignoredKeys: [])
 
         XCTAssertEqual(state, .learning(level: .level3))
-        XCTAssertEqual(state.levelBadge, "3")
-        XCTAssertTrue(state.isVisibleInSentenceList)
     }
 
-    func testReturnsNewWhenStatusMissing() {
-        let state = resolver.state(
-            for: "  ಹೊಸದು ",
-            statusByKey: [:],
-            ignoredKeys: []
-        )
-
-        XCTAssertEqual(state, .new)
-        XCTAssertTrue(state.isVisibleInSentenceList)
-    }
-
-    func testNormalizesInputWordBeforeLookup() {
-        let state = resolver.state(
-            for: "  HELLO ",
-            statusByKey: ["hello": .level2],
-            ignoredKeys: []
-        )
+    func testStateForWordNormalizesInput() {
+        let state = resolver.state(forWord: "  KaNnAdA  ", statusByKey: ["kannada": .level2], ignoredKeys: [])
 
         XCTAssertEqual(state, .learning(level: .level2))
     }
 
-    func testReturnsNewForEmptyNormalizedKey() {
-        let state = resolver.state(
-            forNormalizedKey: "   ",
-            statusByKey: ["": .level1],
-            ignoredKeys: [""]
-        )
+    func testVisualStateMetadata() {
+        XCTAssertEqual(WordLearningVisualState.new.accessibilityLabel, "new")
+        XCTAssertEqual(WordLearningVisualState.ignored.accessibilityLabel, "ignored")
+        XCTAssertEqual(WordLearningVisualState.known.accessibilityLabel, "known")
+        XCTAssertEqual(WordLearningVisualState.learning(level: .level4).accessibilityLabel, "level 4")
 
-        XCTAssertEqual(state, .new)
-        XCTAssertTrue(state.isVisibleInSentenceList)
-    }
+        XCTAssertNil(WordLearningVisualState.new.levelBadge)
+        XCTAssertNil(WordLearningVisualState.ignored.levelBadge)
+        XCTAssertNil(WordLearningVisualState.known.levelBadge)
+        XCTAssertEqual(WordLearningVisualState.learning(level: .level2).levelBadge, "2")
 
-    func testKnownOverridesLearningLevelBadge() {
-        let state = resolver.state(
-            forNormalizedKey: "ಮನೆ",
-            statusByKey: ["ಮನೆ": .known],
-            ignoredKeys: []
-        )
-
-        XCTAssertNil(state.levelBadge)
+        XCTAssertTrue(WordLearningVisualState.new.isVisibleInSentenceList)
+        XCTAssertTrue(WordLearningVisualState.learning(level: .level1).isVisibleInSentenceList)
+        XCTAssertFalse(WordLearningVisualState.ignored.isVisibleInSentenceList)
+        XCTAssertFalse(WordLearningVisualState.known.isVisibleInSentenceList)
     }
 }
