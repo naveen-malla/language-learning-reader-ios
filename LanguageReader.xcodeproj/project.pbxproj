@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -142,7 +142,7 @@
 		A941E9D128F013645480702D /* LanguageReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderTests.swift; sourceTree = "<group>"; };
 		ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanguageReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACE6AA91863EF9905618C4FF /* SentenceTokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTokenizerTests.swift; sourceTree = "<group>"; };
-		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardsView.swift; sourceTree = "<group>"; };
 		AF234D6E88AEDA883D53A53C /* DictionaryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryManager.swift; sourceTree = "<group>"; };
 		AF51C5F563980B0D0414E21A /* WordLearningStateResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordLearningStateResolverTests.swift; sourceTree = "<group>"; };
@@ -364,6 +364,7 @@
 			);
 			mainGroup = 0D42A0CC0299F3160484B6AC;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -484,7 +485,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -578,7 +578,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LanguageReader;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
