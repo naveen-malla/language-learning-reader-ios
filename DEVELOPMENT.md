@@ -17,6 +17,7 @@
 ## Testing Notes
 - Word learning visual state logic is covered in `LanguageReaderTests/WordLearningStateResolverTests.swift`.
 - Flashcard session size normalization is covered in `LanguageReaderTests/FlashcardDeckTests.swift`.
+- Keychain storage read/write/delete is covered in `LanguageReaderTests/KeychainSecretStoreTests.swift`.
 
 ## Reader Input Notes
 - App now opens on `Library` (not the old paste-first Reader tab).

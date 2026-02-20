@@ -23,6 +23,7 @@
 		1D68C289805ED116DF2A0BC2 /* TokenizedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E26C85BB2E9AC50470AA7EF /* TokenizedTextView.swift */; };
 		1DB504FA3214E1640288FFA5 /* DictionaryPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7EA97413DB75CE6B24B9E3 /* DictionaryPaths.swift */; };
 		203405BD555E15738F57C50C /* SentenceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60DD77205B79D92CD081129 /* SentenceTokenizer.swift */; };
+		221ED346677A709395151299 /* KeychainSecretStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE9D18AAF575D0821F4D012 /* KeychainSecretStoreTests.swift */; };
 		223E545AE32DFF1032F17357 /* SentenceTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F52E83C0F1584163CDEACB4D /* SentenceTextView.swift */; };
 		23D0D13F12AC1884B18FC517 /* YouTubeImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DCE5E432B2AD2BDF99BCAB7 /* YouTubeImportService.swift */; };
 		2AD2DEAA52F03E217C61D286 /* SentenceInsightsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0BFD3741B04326AA8BE3A6 /* SentenceInsightsBuilder.swift */; };
@@ -125,6 +126,7 @@
 		63D640A38A99377FD7B8064C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6912B052B7C9E0731389FF68 /* SentenceReaderModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceReaderModelTests.swift; sourceTree = "<group>"; };
 		6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerTests.swift; sourceTree = "<group>"; };
+		6DE9D18AAF575D0821F4D012 /* KeychainSecretStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecretStoreTests.swift; sourceTree = "<group>"; };
 		6F3341B085FE651FE1611901 /* AzureTranslatorClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureTranslatorClient.swift; sourceTree = "<group>"; };
 		710967A6ABAA9D02CDFC01BA /* RemoteWordMeaningProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteWordMeaningProvider.swift; sourceTree = "<group>"; };
 		7113087082DAA25821B94B75 /* DictionaryLanguageProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryLanguageProfile.swift; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 				514783E2E8B83C13BBF13A44 /* FlashcardDeckTests.swift */,
 				97208467D26E534AF5D49076 /* FlashcardNavigatorTests.swift */,
 				DECFFF6294E2E0FF0B980CB7 /* IgnoredWordsStoreTests.swift */,
+				6DE9D18AAF575D0821F4D012 /* KeychainSecretStoreTests.swift */,
 				A941E9D128F013645480702D /* LanguageReaderTests.swift */,
 				3143065ECB59DD365A715BE6 /* ReaderLayoutMetricsTests.swift */,
 				FF6003B699E24F2AEBFD59B2 /* SentenceInsightsBuilderTests.swift */,
@@ -451,6 +454,7 @@
 				88518463F63406E83736F8F2 /* FlashcardDeckTests.swift in Sources */,
 				ACEB271D0DED3265B4C23856 /* FlashcardNavigatorTests.swift in Sources */,
 				8E1A94773D48C9F355B48391 /* IgnoredWordsStoreTests.swift in Sources */,
+				221ED346677A709395151299 /* KeychainSecretStoreTests.swift in Sources */,
 				A0CAD107EB38F1325EE13669 /* LanguageReaderTests.swift in Sources */,
 				FEB2C58349FB8CF82BDEBDA8 /* ReaderLayoutMetricsTests.swift in Sources */,
 				6FF9A26BDB13C219CD1C9785 /* SentenceInsightsBuilderTests.swift in Sources */,
