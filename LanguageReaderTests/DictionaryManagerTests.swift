@@ -27,7 +27,8 @@ final class DictionaryManagerTests: XCTestCase {
         remoteProvider: RemoteWordMeaningProviding? = nil,
         sourceLanguage: String = "kn",
         targetLanguage: String = "en",
-        cloudFallbackEnabled: Bool = true
+        cloudFallbackEnabled: Bool = true,
+        cloudFallbackTargetLanguageOverride: String? = nil
     ) -> DictionaryManager {
         let provider = SampleDictionaryProvider(entries: entries)
         let overrideStore = DictionaryOverrideStore(
@@ -41,6 +42,9 @@ final class DictionaryManagerTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         defaults.set(cloudFallbackEnabled, forKey: DictionaryManager.cloudFallbackEnabledKey)
+        if let cloudFallbackTargetLanguageOverride {
+            defaults.set(cloudFallbackTargetLanguageOverride, forKey: DictionaryManager.cloudFallbackTargetLanguageKey)
+        }
 
         return DictionaryManager(
             provider: provider,
@@ -253,6 +257,39 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertTrue(lines[1].hasPrefix("ಹೊಸದು\t"))
     }
 
+    func testRemoteLookupUsesTargetLanguageOverrideWhenProvided() async {
+        let remote = CapturingRemoteWordMeaningProvider(resultsByWord: ["hola": "hello"])
+        let manager = makeManager(
+            entries: [:],
+            remoteProvider: remote,
+            sourceLanguage: " ES ",
+            targetLanguage: "en",
+            cloudFallbackTargetLanguageOverride: " DE "
+        )
+
+        _ = await manager.lookupDetailedWithRemoteFallback("hola")
+
+        let call = await remote.lastCall()
+        XCTAssertEqual(call?.sourceLanguage, "es")
+        XCTAssertEqual(call?.targetLanguage, "de")
+    }
+
+    func testRemoteLookupFallsBackToDefaultTargetLanguageWhenOverrideBlank() async {
+        let remote = CapturingRemoteWordMeaningProvider(resultsByWord: ["hola": "hello"])
+        let manager = makeManager(
+            entries: [:],
+            remoteProvider: remote,
+            sourceLanguage: "es",
+            targetLanguage: " ",
+            cloudFallbackTargetLanguageOverride: "  "
+        )
+
+        _ = await manager.lookupDetailedWithRemoteFallback("hola")
+
+        let call = await remote.lastCall()
+        XCTAssertEqual(call?.targetLanguage, "en")
+    }
+
     func testSentenceGlossTranslation() {
         let manager = makeManager(entries: ["ನಮಸ್ಕಾರ": "hello", "ಇದು": "this", "ಮನೆ": "house"])
         let translator = SentenceGlossTranslator(dictionaryManager: manager)
@@ -293,5 +330,29 @@ private actor FakeRemoteWordMeaningProvider: RemoteWordMeaningProviding {
 
     func lookupCallCount() -> Int {
         calls
+    }
+}
+
+private actor CapturingRemoteWordMeaningProvider: RemoteWordMeaningProviding {
+    struct Call: Equatable {
+        let word: String
+        let sourceLanguage: String
+        let targetLanguage: String
+    }
+
+    private let resultsByWord: [String: String]
+    private var last: Call?
+
+    init(resultsByWord: [String: String]) {
+        self.resultsByWord = resultsByWord
+    }
+
+    func lookupMeaning(for word: String, sourceLanguage: String, targetLanguage: String) async -> String? {
+        last = Call(word: word, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
+        return resultsByWord[word]
+    }
+
+    func lastCall() -> Call? {
+        last
     }
 }

@@ -19,6 +19,7 @@
 - Flashcard session size normalization is covered in `LanguageReaderTests/FlashcardDeckTests.swift`.
 - Keychain storage read/write/delete is covered in `LanguageReaderTests/KeychainSecretStoreTests.swift`.
 - Document source type persistence and open-state flags are covered in `LanguageReaderTests/DocumentTests.swift`.
+- Dictionary remote fallback language overrides are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
 
 ## Reader Input Notes
 - App now opens on `Library` (not the old paste-first Reader tab).
