@@ -21,6 +21,7 @@
 - Document source type persistence and open-state flags are covered in `LanguageReaderTests/DocumentTests.swift`.
 - Dictionary remote fallback language overrides are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
+- YouTube import selection (track preference, missing Kannada captions, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
 
 ## Reader Input Notes
 - App now opens on `Library` (not the old paste-first Reader tab).
