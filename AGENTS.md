@@ -65,6 +65,11 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 ## Project Generation
 - If source files are added or removed, run `xcodegen generate`.
 
+## Dictionary Data Paths
+- Overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).
+- Missing list: `Documents/dictionary_missing.tsv`.
+- Cloud fallback cache: `Documents/dictionary_cloud_cache.tsv`.
+
 ## Data & Secrets
 - Never commit secrets.
 - Store optional API keys in Keychain only.
