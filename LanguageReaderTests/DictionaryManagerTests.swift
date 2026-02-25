@@ -242,6 +242,49 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertEqual(remoteCalls, 0)
     }
 
+    func testPrefetchRemoteMeaningsDedupesAndSkipsKnownWords() async {
+        let remote = FakeRemoteWordMeaningProvider(resultsByWord: ["hola": "hello"])
+        let cached = CachedWordMeaning(
+            languageCode: "es",
+            normalizedKey: "cached",
+            meaning: "cached",
+            source: "remote",
+            updatedAt: Date()
+        )
+        let manager = makeManager(
+            entries: ["local": "local meaning"],
+            cloudEntries: [cached],
+            remoteProvider: remote,
+            sourceLanguage: "es",
+            targetLanguage: "en"
+        )
+
+        await manager.prefetchRemoteMeanings(for: [" local ", "hola", "HOLA", "cached", "  "])
+
+        let remoteCalls = await remote.lookupCallCount()
+        XCTAssertEqual(remoteCalls, 1)
+        XCTAssertEqual(manager.cloudCacheCount(), 2)
+
+        let lookup = manager.lookupDetailed("hola")
+        XCTAssertEqual(lookup.path, .cache)
+        XCTAssertEqual(lookup.meaning, "hello")
+    }
+
+    func testPrefetchRemoteMeaningsNoopWhenDisabled() async {
+        let remote = FakeRemoteWordMeaningProvider(resultsByWord: ["hola": "hello"])
+        let manager = makeManager(
+            entries: [:],
+            remoteProvider: remote,
+            cloudFallbackEnabled: false
+        )
+
+        await manager.prefetchRemoteMeanings(for: ["hola"])
+
+        let remoteCalls = await remote.lookupCallCount()
+        XCTAssertEqual(remoteCalls, 0)
+        XCTAssertEqual(manager.cloudCacheCount(), 0)
+    }
+
     func testReportMissingAppendsWithoutOverwriting() throws {
         let missingURL = makeTemporaryURL(fileName: "missing.tsv")
         let manager = makeManager(entries: [:], missingURL: missingURL)
