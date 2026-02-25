@@ -63,6 +63,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Cleanup while allowing local edits: `./scripts/guard_main.sh --cleanup --allow-dirty`
 
 ## Project Generation
+- Prerequisite: install xcodegen if missing (`brew install xcodegen`).
 - If source files are added or removed, run `xcodegen generate`.
 
 ## Dictionary Data Paths
