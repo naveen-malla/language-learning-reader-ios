@@ -9,6 +9,7 @@ enum YouTubeImportError: LocalizedError {
     case kannadaCaptionsUnavailable
     case transcriptUnavailable
     case unsupportedDuration
+    case lowQualityTranscript
 
     var errorDescription: String? {
         switch self {
@@ -28,6 +29,8 @@ enum YouTubeImportError: LocalizedError {
             return "Could not extract transcript text from subtitles."
         case .unsupportedDuration:
             return "Video is too long for beginner feed right now."
+        case .lowQualityTranscript:
+            return "Subtitles are too short or not readable enough for study."
         }
     }
 }
@@ -112,6 +115,10 @@ actor YouTubeImportService {
     static let shared = YouTubeImportService()
 
     static let maxBeginnerDurationSeconds = 720
+    static let minTranscriptCharacterCount = 140
+    static let minTranscriptLineCount = 4
+    static let minKannadaScalarCount = 60
+    static let minKannadaScalarRatio = 0.20
 
     private var metadataCache: [String: VideoMetadata] = [:]
     private let session: URLSession
@@ -156,6 +163,9 @@ actor YouTubeImportService {
 
         guard !transcript.isEmpty else {
             throw YouTubeImportError.transcriptUnavailable
+        }
+        guard isTranscriptReadable(transcript) else {
+            throw YouTubeImportError.lowQualityTranscript
         }
 
         await cacheStore.addTrustedChannel(channelID: metadata.channelID, channelTitle: metadata.channelTitle)
@@ -393,6 +403,32 @@ actor YouTubeImportService {
                 baseURL: url
             )
         }
+    }
+
+    private func isTranscriptReadable(_ transcript: String) -> Bool {
+        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= Self.minTranscriptCharacterCount else { return false }
+
+        let lineCount = trimmed
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .count
+        guard lineCount >= Self.minTranscriptLineCount else { return false }
+
+        let scalars = trimmed.unicodeScalars.filter { scalar in
+            !CharacterSet.whitespacesAndNewlines.contains(scalar) &&
+            !CharacterSet.controlCharacters.contains(scalar)
+        }
+        guard !scalars.isEmpty else { return false }
+
+        let kannadaScalars = scalars.filter { scalar in
+            (0x0C80...0x0CFF).contains(scalar.value)
+        }.count
+        guard kannadaScalars >= Self.minKannadaScalarCount else { return false }
+
+        let kannadaRatio = Double(kannadaScalars) / Double(scalars.count)
+        return kannadaRatio >= Self.minKannadaScalarRatio
     }
 
     private struct CaptionTrack {

@@ -75,8 +75,7 @@ final class AutoImportCoordinator {
 
     func importSmartPack(modelContext: ModelContext) async -> AutoImportRunSummary {
         let documents = fetchDocuments(modelContext: modelContext)
-        let unreadCount = unreadImportedLessonCount(documents: documents)
-        let targetCount = max(1, AutoImportSettings.smartPackTargetCount - unreadCount)
+        let targetCount = AutoImportSettings.smartPackTargetCount
         let summary = await runImportBatch(
             mode: .smartPack,
             trigger: .libraryEntry,

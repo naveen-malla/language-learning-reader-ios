@@ -70,12 +70,12 @@ Prerequisites:
 
 ## YouTube Import Notes
 - Paste a full YouTube URL in `Library -> Import Content -> YouTube URL`.
-- Import currently accepts videos only when a Kannada subtitle track is available (`kn*`, including auto-generated tracks).
+- Import accepts videos only when a Kannada subtitle track is available (`kn*`, including auto-generated tracks) and transcript quality is readable enough for study.
 - Beginner suggestions now come from dynamic channel RSS discovery (not static video IDs), then pass runtime subtitle + duration validation (`<= 12 min`) before display.
 - Suggestion cards support channel follow/unfollow, and ranking adapts to followed channels plus your prior import history.
-- `Get 3-Day Pack` imports a batched smart pack (`3 days * 2 lessons/day = 6` target, partial results allowed).
+- `Get 3-Day Pack` always plans the full batched smart pack (`3 days * 2 lessons/day = 6` target, partial results allowed when supply is low).
 - Auto top-up runs on app launch and Library entry when enabled, cooldown has elapsed (24h default), and unread imported lessons are below threshold (`< 3`).
-- Discovery and validation results are cached locally with TTL and backoff to reduce repeated network cost.
+- Discovery and validation results are cached locally with TTL and backoff to reduce repeated network cost; force refresh revalidates previously cached invalid candidates to recover from transient failures.
 - Background refresh is optional and best-effort; foreground checks still enforce deterministic top-up rules.
 - Imported YouTube lessons persist on-device like any other library item.
 

@@ -32,8 +32,10 @@
 - `Import Content` now also supports direct `.txt` file import for faster lesson ingestion from external notes/readers.
 - `Suggested for Beginners` uses thumbnail cards and hides videos that fail live Kannada subtitle validation.
 - Suggested inventory is populated by dynamic channel RSS discovery, then filtered by runtime validation (Kannada captions + beginner duration cap).
+- Final import gate also rejects transcript bodies that are too short or non-readable to prevent noisy alphanumeric-only lessons.
 - Suggested categories are mixed beginner-safe topics (`Basics`, `Grammar`, `Conversation`, `Short Stories`).
 - Suggestion cards allow follow/unfollow per channel; ranking prioritizes followed channels and previously successful category/channel history from local imports.
+- `Get 3-Day Pack` uses a fixed full-pack target (`6`) per tap; force refresh revalidates previously invalid-cached candidates instead of trusting stale negative cache entries.
 - Auto top-up checks run at app launch and Library entry (when enabled), reusing the same planner as smart pack import.
 - Discovery failures degrade to cached suggestions with backoff to avoid repeated failing calls.
 - `My Library` merges text and YouTube lessons with source metadata.

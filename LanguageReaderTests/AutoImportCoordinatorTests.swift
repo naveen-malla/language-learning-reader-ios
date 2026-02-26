@@ -121,7 +121,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
         let summary = await coordinator.importSmartPack(modelContext: context)
         XCTAssertEqual(summary.mode, .smartPack)
-        XCTAssertEqual(summary.targetCount, 5)
+        XCTAssertEqual(summary.targetCount, 6)
         XCTAssertEqual(summary.attemptedCount, 2)
         XCTAssertEqual(summary.importedCount, 2)
         XCTAssertEqual(summary.skippedDuplicates, 1)

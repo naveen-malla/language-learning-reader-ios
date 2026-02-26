@@ -95,8 +95,10 @@
   - call `youtubei/v1/player` for metadata and caption tracks
   - select Kannada subtitle tracks (`kn*`), including auto-generated `asr` tracks.
 - Transcript extraction uses subtitle XML parsing and normalization into one newline-delimited lesson body.
+- Import path enforces a transcript readability gate (minimum content + Kannada-script ratio) so low-signal alphanumeric subtitles are rejected.
 - Suggestion shelf uses dynamic channel-seed RSS discovery (not hardcoded video IDs), then performs runtime subtitle and duration validation so the UI only shows currently importable entries.
 - Discovery/validation results are cached locally with TTL and exponential backoff to keep behavior deterministic during endpoint volatility.
+- Force-refresh discovery bypasses cached invalid validation records and revalidates candidates to recover from transient endpoint failures.
 - Smart pack and auto top-up share one batch planner:
   - default target: 6 lessons (`3 days * 2/day`)
   - duration cap: 12 minutes

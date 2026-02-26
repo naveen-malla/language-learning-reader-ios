@@ -23,8 +23,8 @@
 - Dictionary remote prefetch dedupe and disabled fallback behavior are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
 - Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
-- YouTube import selection (track preference, missing Kannada captions, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
-- Dynamic discovery parsing, malformed-feed tolerance, cache reuse, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
+- YouTube import selection (track preference, missing Kannada captions, low-quality transcript rejection, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
+- Dynamic discovery parsing, malformed-feed tolerance, cache reuse, force-refresh revalidation of cached invalid candidates, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
 - Suggestion preference ranking is covered in `LanguageReaderTests/SuggestionRankerTests.swift`.
 - Suggestion/discovery cache TTL, validation cache, trusted channels, and backoff progression are covered in `LanguageReaderTests/SuggestionCacheStoreTests.swift`.
 - Auto top-up trigger rules, dedupe behavior, and batch metadata persistence are covered in `LanguageReaderTests/AutoImportCoordinatorTests.swift`.
@@ -41,6 +41,7 @@
 - `Continue Reading` only shows lessons that have been opened at least once.
 - `Suggested for Beginners` shows only subtitle-validated Kannada YouTube entries.
 - Suggested entries are discovered from channel RSS feeds and validated live (caption availability + duration guard).
+- Smart-pack planning always targets the full default pack size (`6`) on each tap; auto top-up still scales by unread queue.
 - Auto top-up runs on app launch and Library entry when enabled, with defaults:
   - cooldown: 24 hours
   - unread trigger: fewer than 3 imported YouTube lessons
@@ -136,6 +137,7 @@ Notes:
   - confirm imported YouTube rows show thumbnail, source badge, and channel metadata
   - confirm imported item appears in `Continue Reading` only after the first reader open
   - confirm `Get 3-Day Pack` imports a deterministic batch and opens the first imported lesson
+  - confirm a second `Get 3-Day Pack` tap revalidates discovery candidates and does not get stuck on stale invalid-cache entries
   - confirm auto top-up runs only when cooldown elapsed and unread threshold is below trigger
   - confirm when discovery fails, cached suggestions are still shown if available
   - confirm `Settings -> Auto Content` reflects last auto attempt/success timestamps

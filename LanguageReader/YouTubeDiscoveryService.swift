@@ -77,7 +77,11 @@ actor YouTubeDiscoveryService {
         let feedResult = await fetchCandidates(from: seeds, existingVideoIDs: existingVideoIDs)
 
         let budgeted = Array(feedResult.candidates.prefix(AutoImportSettings.defaultValidationBudget))
-        let validated = await validateCandidates(budgeted, existingVideoIDs: existingVideoIDs)
+        let validated = await validateCandidates(
+            budgeted,
+            existingVideoIDs: existingVideoIDs,
+            allowCachedFailures: !forceRefresh
+        )
 
         if !validated.isEmpty {
             await cacheStore.saveSuggestions(validated)
@@ -186,7 +190,8 @@ actor YouTubeDiscoveryService {
 
     private func validateCandidates(
         _ candidates: [FeedCandidate],
-        existingVideoIDs: Set<String>
+        existingVideoIDs: Set<String>,
+        allowCachedFailures: Bool
     ) async -> [YouTubeSuggestedVideo] {
         var suggestions: [YouTubeSuggestedVideo] = []
 
@@ -204,7 +209,9 @@ actor YouTubeDiscoveryService {
                                 let hydrated = await self.applyCandidateMetadata(candidate, to: cachedSuggestion)
                                 return (absoluteIndex, hydrated)
                             }
-                            return (absoluteIndex, nil)
+                            if allowCachedFailures {
+                                return (absoluteIndex, nil)
+                            }
                         }
 
                         do {
@@ -219,7 +226,9 @@ actor YouTubeDiscoveryService {
                             await self.cacheStore.storeValidationSuccess(suggestion)
                             return (absoluteIndex, suggestion)
                         } catch {
-                            await self.cacheStore.storeValidationFailure(videoID: candidate.videoID)
+                            if Self.shouldCacheValidationFailure(error) {
+                                await self.cacheStore.storeValidationFailure(videoID: candidate.videoID)
+                            }
                             return (absoluteIndex, nil)
                         }
                     }
@@ -274,6 +283,26 @@ actor YouTubeDiscoveryService {
         excluding existingVideoIDs: Set<String>
     ) -> [YouTubeSuggestedVideo] {
         suggestions.filter { !existingVideoIDs.contains($0.videoID) }
+    }
+
+    private static func shouldCacheValidationFailure(_ error: Error) -> Bool {
+        guard let error = error as? YouTubeImportError else {
+            return false
+        }
+
+        switch error {
+        case .captionsUnavailable,
+                .kannadaCaptionsUnavailable,
+                .unsupportedDuration,
+                .lowQualityTranscript:
+            return true
+        case .invalidURL,
+                .invalidVideoID,
+                .networkFailure,
+                .parsingFailure,
+                .transcriptUnavailable:
+            return false
+        }
     }
 }
 

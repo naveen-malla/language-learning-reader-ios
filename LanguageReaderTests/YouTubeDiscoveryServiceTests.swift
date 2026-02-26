@@ -112,6 +112,49 @@ final class YouTubeDiscoveryServiceTests: XCTestCase {
         XCTAssertEqual(secondRequestCount, firstRequestCount)
     }
 
+    func testForceRefreshRevalidatesCandidatesPreviouslyCachedAsInvalid() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let validator = DiscoveryValidatorStub(failingVideoIDs: [])
+        let videoID = "EEEEEEEEEEE"
+
+        await cache.storeValidationFailure(videoID: videoID)
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            guard url.absoluteString.contains("youtube.com/feeds/videos.xml") else {
+                throw URLError(.badURL)
+            }
+
+            let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "channel_id" })?
+                .value ?? ""
+            let xml = self.makeFeedXML(
+                channelID: channelID,
+                channelTitle: "Channel",
+                videos: channelID == "UChsgGgFHYTBL4m0dgRc78PQ"
+                    ? [(videoID, "Revalidated Candidate", "2026-02-26T00:00:00+00:00")]
+                    : []
+            )
+            return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        let suggestions = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: true)
+        let validationCalls = await validator.callCount(for: videoID)
+
+        XCTAssertEqual(suggestions.map(\.videoID), [videoID])
+        XCTAssertEqual(validationCalls, 1)
+    }
+
     func testLoadSuggestionsReturnsExpiredCacheDuringBackoff() async {
         let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
         var now = Date(timeIntervalSince1970: 1_700_000_000)

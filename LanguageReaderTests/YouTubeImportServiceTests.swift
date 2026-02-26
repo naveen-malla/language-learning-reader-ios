@@ -106,7 +106,13 @@ final class YouTubeImportServiceTests: XCTestCase {
     func testImportVideoPrefersManualKannadaTrack() async throws {
         let videoID = "KaBYEZ6q2tY"
         let channelID = "channel-\(videoID)"
-        let manualTranscript = "ಮ್ಯಾನುಯಲ್"
+        let manualLines = [
+            "ಇದು ಕನ್ನಡ ಕಲಿಕೆಯ ಮೊದಲ ಪಾಠ ಮತ್ತು ಉಚ್ಚಾರಣೆಯ ಅಭ್ಯಾಸ.",
+            "ನೀವು ನಿಧಾನವಾಗಿ ಓದಿ ಪ್ರತಿಯೊಂದು ಪದವನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ಹೇಳಿ.",
+            "ಈ ವಾಕ್ಯಗಳು ಓದುಗರಿಗೆ ಅರ್ಥವಾಗುವ ಸರಳ ಭಾಷೆಯಲ್ಲಿ ಇವೆ.",
+            "ಪ್ರತಿ ದಿನ ಅಭ್ಯಾಸ ಮಾಡಿದರೆ ಓದು ಮತ್ತು ಪದಸಂಪತ್ತು ವೇಗವಾಗಿ ಬೆಳೆಯುತ್ತದೆ."
+        ]
+        let manualTranscript = manualLines.joined(separator: "\n")
         let asrTranscript = "ಆಸರ್"
         let session = makeStubbedSession { request in
             let url = try XCTUnwrap(request.url)
@@ -138,7 +144,7 @@ final class YouTubeImportServiceTests: XCTestCase {
                 return StubbedURLProtocol.response(for: url, data: payload)
             }
             if url.absoluteString.contains("manual.xml") {
-                let xml = "<transcript><text>\(manualTranscript)</text></transcript>"
+                let xml = self.makeTranscriptXML(lines: manualLines)
                 return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
             }
             if url.absoluteString.contains("asr.xml") {
@@ -196,6 +202,51 @@ final class YouTubeImportServiceTests: XCTestCase {
             XCTFail("Expected importVideo to throw when Kannada captions are missing")
         } catch let error as YouTubeImportError {
             XCTAssertEqual(error, .kannadaCaptionsUnavailable)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testImportVideoThrowsWhenTranscriptIsLowQuality() async {
+        let videoID = "KaBYEZ6q2tY"
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 120,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/kn.xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("kn.xml") {
+                let xml = "<transcript><text>ಹಲೋ</text></transcript>"
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+
+        do {
+            _ = try await service.importVideo(videoID: videoID)
+            XCTFail("Expected low quality transcript to be rejected")
+        } catch let error as YouTubeImportError {
+            XCTAssertEqual(error, .lowQualityTranscript)
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
@@ -427,6 +478,11 @@ private extension YouTubeImportServiceTests {
             \(entries)
         </feed>
         """
+    }
+
+    func makeTranscriptXML(lines: [String]) -> String {
+        let body = lines.map { "<text>\($0)</text>" }.joined()
+        return "<transcript>\(body)</transcript>"
     }
 
     func extractVideoID(from request: URLRequest) throws -> String {

@@ -161,6 +161,8 @@ Tasks:
 - Add auto top-up on app launch/Library entry with cooldown + unread trigger. (done)
 - Persist per-import metadata (`sourceChannelID`, `importModeRaw`, `autoBatchID`). (done)
 - Add caching/backoff for resilient discovery under endpoint volatility. (done)
+- Ensure force-refresh smart pack can revalidate transiently failed candidates (not blocked by stale invalid cache). (done)
+- Reject low-quality transcript imports to prevent unreadable alphanumeric-only lessons. (done)
 - Add optional BG app refresh wiring with same coordinator/rate limits. (done)
 
 Acceptance criteria:
