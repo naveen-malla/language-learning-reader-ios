@@ -5,7 +5,8 @@
 - Reader maintains a cached normalized-key status map and refreshes it on lifecycle/save events instead of rebuilding per render.
 - Ignored words are persisted separately in `UserDefaults` as normalized keys for lightweight filtering without schema migration.
 - `Document` stores source metadata so one model can represent text imports and YouTube imports:
-  - `sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`
+  - `sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceChannelID`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`
+  - `importModeRaw` (`manual`, `smartPack`, `autoTopUp`) and `autoBatchID` for batch analytics/recovery
   - `firstOpenedAt`, `lastOpenedAt` for behavior-based shelves (`Continue Reading`).
 
 ## Home IA
@@ -94,8 +95,17 @@
   - call `youtubei/v1/player` for metadata and caption tracks
   - select Kannada subtitle tracks (`kn*`), including auto-generated `asr` tracks.
 - Transcript extraction uses subtitle XML parsing and normalization into one newline-delimited lesson body.
-- Suggestion shelf uses a vetted seed catalog and performs runtime subtitle validation so the UI only shows currently importable entries.
+- Suggestion shelf uses dynamic channel-seed RSS discovery (not hardcoded video IDs), then performs runtime subtitle and duration validation so the UI only shows currently importable entries.
+- Discovery/validation results are cached locally with TTL and exponential backoff to keep behavior deterministic during endpoint volatility.
+- Smart pack and auto top-up share one batch planner:
+  - default target: 6 lessons (`3 days * 2/day`)
+  - duration cap: 12 minutes
+  - validation budget: 30 candidates
+  - validation concurrency: 4
+  - auto trigger: unread imported YouTube lessons `< 3`
+  - auto cooldown: 24 hours
 - Beginner feed currently enforces short-form duration guardrails (max 12 minutes) to prevent overload for new learners.
+- Background refresh is optional/best-effort and uses the same coordinator/rate limits as foreground checks.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.

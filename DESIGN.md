@@ -19,6 +19,7 @@
    - import text (`Paste Text`)
    - import local text file (`Text File`)
    - import YouTube by URL
+   - import a one-tap smart pack (`Get 3-Day Pack`)
    - open a suggested beginner video card and import in one tap
 2. Imported lesson opens directly in Reader.
 3. Read with tappable word tokens.
@@ -30,8 +31,11 @@
 - `Import Content` card exposes `Paste Text` and `YouTube URL`.
 - `Import Content` now also supports direct `.txt` file import for faster lesson ingestion from external notes/readers.
 - `Suggested for Beginners` uses thumbnail cards and hides videos that fail live Kannada subtitle validation.
+- Suggested inventory is populated by dynamic channel RSS discovery, then filtered by runtime validation (Kannada captions + beginner duration cap).
 - Suggested categories are mixed beginner-safe topics (`Basics`, `Grammar`, `Conversation`, `Short Stories`).
 - Suggestion cards allow follow/unfollow per channel; ranking prioritizes followed channels and previously successful category/channel history from local imports.
+- Auto top-up checks run at app launch and Library entry (when enabled), reusing the same planner as smart pack import.
+- Discovery failures degrade to cached suggestions with backoff to avoid repeated failing calls.
 - `My Library` merges text and YouTube lessons with source metadata.
 - `Continue Reading` is behavior-driven: item appears only after first open.
 
@@ -115,7 +119,7 @@
 - Session metrics include lightweight daily-loop telemetry (`Today` reviewed cards, `Known` ratio, and `Today Acc`) in addition to session counters.
 
 ## Data Model (V1)
-- Document: id, title, body, createdAt, updatedAt, source metadata (`sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`) and open-state timestamps (`firstOpenedAt`, `lastOpenedAt`).
+- Document: id, title, body, createdAt, updatedAt, source metadata (`sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceChannelID`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`), import metadata (`importModeRaw`, `autoBatchID`), and open-state timestamps (`firstOpenedAt`, `lastOpenedAt`).
 - VocabEntry: id, surface, normalizedKey, meaning, status (`level1`,`level2`,`level3`,`level4`,`known`), createdAt, lastSeenAt, encounterCount.
 - IgnoredWordsStore: persistent normalized-word key set in `UserDefaults` used by sentence filtering and highlight resolution.
 

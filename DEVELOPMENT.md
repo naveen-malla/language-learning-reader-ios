@@ -24,7 +24,10 @@
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
 - Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
 - YouTube import selection (track preference, missing Kannada captions, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
+- Dynamic discovery parsing, malformed-feed tolerance, cache reuse, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
 - Suggestion preference ranking is covered in `LanguageReaderTests/SuggestionRankerTests.swift`.
+- Suggestion/discovery cache TTL, validation cache, trusted channels, and backoff progression are covered in `LanguageReaderTests/SuggestionCacheStoreTests.swift`.
+- Auto top-up trigger rules, dedupe behavior, and batch metadata persistence are covered in `LanguageReaderTests/AutoImportCoordinatorTests.swift`.
 - Flashcard daily telemetry aggregation is covered in `LanguageReaderTests/FlashcardStatsStoreTests.swift`.
 - Appearance mode mapping and dark/light selection behavior is covered in `LanguageReaderTests/AppAppearanceModeTests.swift`.
 
@@ -34,8 +37,16 @@
   - `Paste Text` for manual text lessons
   - `Text File` for local `.txt` lesson import
   - `YouTube URL` for subtitle-based lesson import
+- `Library -> Import Content` also includes `Get 3-Day Pack` for one-tap batch import of validated Kannada lessons.
 - `Continue Reading` only shows lessons that have been opened at least once.
 - `Suggested for Beginners` shows only subtitle-validated Kannada YouTube entries.
+- Suggested entries are discovered from channel RSS feeds and validated live (caption availability + duration guard).
+- Auto top-up runs on app launch and Library entry when enabled, with defaults:
+  - cooldown: 24 hours
+  - unread trigger: fewer than 3 imported YouTube lessons
+  - validation budget: 30 candidates
+  - validation concurrency: 4
+- Auto-content toggles and status live in `Settings -> Auto Content`.
 - Suggestion cards support channel follow/unfollow and re-rank using followed channels + existing import history.
 - If simulator keyboard paste is unreliable, use `Paste from Clipboard` inside `Library -> Paste Text`.
 - Two large sample documents are seeded on first launch and appear in `Library -> My Library`.
@@ -124,6 +135,11 @@ Notes:
   - confirm following/unfollowing a suggestion channel reorders cards immediately
   - confirm imported YouTube rows show thumbnail, source badge, and channel metadata
   - confirm imported item appears in `Continue Reading` only after the first reader open
+  - confirm `Get 3-Day Pack` imports a deterministic batch and opens the first imported lesson
+  - confirm auto top-up runs only when cooldown elapsed and unread threshold is below trigger
+  - confirm when discovery fails, cached suggestions are still shown if available
+  - confirm `Settings -> Auto Content` reflects last auto attempt/success timestamps
+  - confirm app logs no BGTask registration warning (`BGTaskSchedulerPermittedIdentifiers` present in Info.plist)
 
 ## Project Generation
 - If you add or remove source files, run `xcodegen generate` to update `LanguageReader.xcodeproj`.

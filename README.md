@@ -5,6 +5,8 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 ## Product Snapshot
 - Start from a Library-first home with import actions, beginner suggestions, and continue-reading shelves.
 - Import from in-app text paste, text file, or YouTube URL (Kannada subtitles required for YouTube import).
+- Pull a one-tap `Get 3-Day Pack` of fresh subtitle-validated Kannada lessons.
+- Keep content fresh automatically with app-use top-up triggers and cooldown limits.
 - Read saved lessons in a distraction-light interface designed for long sessions.
 - Tap words to get instant meanings, pronunciation, and vocabulary actions.
 - Keep learning state unified across Reader, Vocab, and Flashcards.
@@ -69,8 +71,12 @@ Prerequisites:
 ## YouTube Import Notes
 - Paste a full YouTube URL in `Library -> Import Content -> YouTube URL`.
 - Import currently accepts videos only when a Kannada subtitle track is available (`kn*`, including auto-generated tracks).
-- Beginner suggestions are pre-seeded and validated at runtime, and each card is kept only if subtitles are currently importable.
+- Beginner suggestions now come from dynamic channel RSS discovery (not static video IDs), then pass runtime subtitle + duration validation (`<= 12 min`) before display.
 - Suggestion cards support channel follow/unfollow, and ranking adapts to followed channels plus your prior import history.
+- `Get 3-Day Pack` imports a batched smart pack (`3 days * 2 lessons/day = 6` target, partial results allowed).
+- Auto top-up runs on app launch and Library entry when enabled, cooldown has elapsed (24h default), and unread imported lessons are below threshold (`< 3`).
+- Discovery and validation results are cached locally with TTL and backoff to reduce repeated network cost.
+- Background refresh is optional and best-effort; foreground checks still enforce deterministic top-up rules.
 - Imported YouTube lessons persist on-device like any other library item.
 
 ## Dictionary Pipeline
@@ -135,4 +141,5 @@ In **Settings -> Translation API**, provide:
 - Morphology handling is heuristic, not full linguistic analysis.
 - Per-word cloud fallback is context-light and can vary by sentence context.
 - Flashcard intervals still use fixed level buckets; adaptive calibration against long-run retention is pending more usage data.
+- Auto content discovery depends on public YouTube feed/web endpoint availability; on failures the app falls back to cached suggestions.
 - No cloud sync in V1.

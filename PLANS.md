@@ -53,6 +53,13 @@ Completed:
 - Added `Text File` import flow for local `.txt` lesson ingestion in Library.
 - Added suggestion personalization controls (followed-channel toggle + preference-based ranking from local import history).
 - Added flashcard daily telemetry metrics (`Today`, `Known`, `Today Acc`) for low-friction progress feedback.
+- Replaced static beginner video-ID seeding with dynamic channel RSS discovery + runtime Kannada subtitle/duration validation.
+- Added discovery cache store with per-video validation TTL, trusted-channel memory, and exponential failure backoff.
+- Added one-tap `Get 3-Day Pack` smart-pack import in Library with batch metadata and first-lesson open behavior.
+- Added auto top-up coordinator on app launch/Library entry with cooldown + unread-threshold gating.
+- Added `Settings -> Auto Content` controls and manual pack-run action.
+- Added optional background refresh scheduler and app lifecycle wiring for best-effort prefetch.
+- Added auto-content regression coverage (`YouTubeDiscoveryServiceTests`, `SuggestionCacheStoreTests`, `AutoImportCoordinatorTests`, `DocumentTests` migration coverage).
 
 In progress:
 - Dictionary quality for inflected forms and coverage gaps (Phase 1 ongoing).
@@ -60,7 +67,6 @@ In progress:
 - Dictionary quality evaluation pipeline (coverage + gold accuracy + thresholds) with first Kannada fixture.
 - Reader visual polish toward a cleaner library-to-reader handoff.
 - Phase 3 learning loop refinement (fixed-level schedule tuning against real retention outcomes).
-- Dynamic recommendation expansion beyond curated seed videos while preserving subtitle validation and beginner difficulty guards.
 
 Pending:
 - Fixed-level interval calibration against real retention outcomes and usage cadence.
@@ -143,7 +149,27 @@ Acceptance criteria:
 - A short review session can be completed without navigation friction.
 - Status updates are reflected consistently in reader, vocab, and flashcards.
 
-### Phase 4: Hardening and Release Readiness
+### Phase 4: Kannada Auto-Content Automation (Completed)
+Goals:
+- Remove weekly hardcoded content maintenance.
+- Keep lesson continuity high with near-zero manual effort.
+
+Tasks:
+- Replace static video IDs with channel-seed RSS discovery. (done)
+- Validate candidates with existing metadata/caption pipeline + duration guard. (done)
+- Add one-tap smart-pack import target (`3 days * 2 lessons/day`). (done)
+- Add auto top-up on app launch/Library entry with cooldown + unread trigger. (done)
+- Persist per-import metadata (`sourceChannelID`, `importModeRaw`, `autoBatchID`). (done)
+- Add caching/backoff for resilient discovery under endpoint volatility. (done)
+- Add optional BG app refresh wiring with same coordinator/rate limits. (done)
+
+Acceptance criteria:
+- Suggestions refresh from recent channel uploads without source edits.
+- One tap imports a deterministic pack and opens the first lesson.
+- Auto top-up runs only when trigger conditions are met.
+- Discovery failures degrade to cached suggestions and avoid aggressive retries.
+
+### Phase 5: Hardening and Release Readiness
 Goals:
 - Stable daily-use build.
 
@@ -167,6 +193,8 @@ Acceptance criteria:
   - Search in vocab; change status.
   - Flashcard reveal and status update.
   - Settings: diagnostics toggle, overrides file creation.
+  - Library: `Get 3-Day Pack` import path (successful + partial pack behavior).
+  - Auto top-up trigger gating (cooldown + unread threshold) and cached-fallback behavior.
 
 ## Commit Discipline
 - Keep commits focused by concern:
