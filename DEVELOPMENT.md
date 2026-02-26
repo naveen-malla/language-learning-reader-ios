@@ -134,8 +134,16 @@ Dictionary quality notes:
 - Runtime lookup path is language-profile based (`kn` has inflection rules; other languages use generic exact lookup by default).
 - Missing-word cloud fallback results are cached in `Documents/dictionary_cloud_cache.tsv`.
 - Settings -> Dictionary Quality evaluates your local saved documents (coverage) and saved vocab meanings (accuracy).
+- Summarize local missing words by frequency:
+  `python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20`
+- Known missing-word regressions are fixture-driven:
+  - fixture: `LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`
+  - test: `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryMissingFixtureTests`
 - Re-run dictionary-focused tests after lookup changes:
   `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryManagerTests`
+
+Language onboarding:
+- Follow `docs/LANGUAGE_ONBOARDING_CHECKLIST.md` when wiring a new source language.
 
 ## Dictionary Overrides
 - Overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).

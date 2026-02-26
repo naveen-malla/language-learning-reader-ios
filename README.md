@@ -78,6 +78,18 @@ Prerequisites:
 ./scripts/build_dictionary.py
 ```
 
+- Evaluate dictionary quality against fixtures:
+
+```bash
+python3 scripts/evaluate_dictionary.py --report-json /tmp/dictionary_eval_report.json
+```
+
+- Summarize `dictionary_missing.tsv` by frequency:
+
+```bash
+python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20
+```
+
 - Runtime prefers app-container dictionary if present, otherwise bundled fallback.
 - Local correction files in app Documents:
   - `dictionary_overrides.tsv`
@@ -92,6 +104,8 @@ Prerequisites:
 - Dictionary settings intentionally keep this area quality-focused to reduce noise in the reading workflow.
 - Settings quality uses your saved documents for coverage and your saved vocab meanings for accuracy.
 - If you have no local documents/vocab yet, quality falls back to a built-in language fixture baseline.
+- Missing-word regression fixtures are tracked in `LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`.
+- Fixture-driven verification runs in `LanguageReaderTests/DictionaryMissingFixtureTests.swift`.
 
 ## Optional Translation Setup
 Translation is optional and not required for core functionality.
@@ -111,6 +125,7 @@ In **Settings -> Translation API**, provide:
 - Development workflow: `DEVELOPMENT.md`
 - UX and behavior details: `DESIGN.md`
 - Architecture decisions: `DECISIONS.md`
+- Language onboarding checklist: `docs/LANGUAGE_ONBOARDING_CHECKLIST.md`
 
 ## Known Limits (Current Scope)
 - Kannada is the first fully wired language profile.

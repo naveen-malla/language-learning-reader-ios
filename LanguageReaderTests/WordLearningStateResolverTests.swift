@@ -33,7 +33,7 @@ final class WordLearningStateResolverTests: XCTestCase {
     }
 
     func testStateForWordNormalizesInput() {
-        let state = resolver.state(forWord: "  KaNnAdA  ", statusByKey: ["kannada": .level2], ignoredKeys: [])
+        let state = resolver.state(for: "  KaNnAdA  ", statusByKey: ["kannada": .level2], ignoredKeys: [])
 
         XCTAssertEqual(state, .learning(level: .level2))
     }

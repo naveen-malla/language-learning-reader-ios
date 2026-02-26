@@ -13,7 +13,7 @@ Use this file as the first read in a new chat, then read:
 3. `DESIGN.md`
 4. `DECISIONS.md`
 
-## Status Snapshot (2026-02-15)
+## Status Snapshot (2026-02-26)
 Completed:
 - iOS SwiftUI app scaffold with SwiftData models.
 - Tabs: Reader, Vocab, Flashcards, Settings.
@@ -47,6 +47,9 @@ Completed:
 - Added subtitle-verified beginner suggestion catalog (grammar/basics/stories) with runtime validation.
 - Extended `Document` persistence with source metadata (type/url/video/channel/category/duration/thumbnail) and open-state timestamps.
 - Added parser-level regression tests for YouTube URL parsing and transcript XML normalization.
+- Added fixture-driven regression tests for known missing-word failures (`LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`).
+- Added missing-word frequency summarizer tooling (`scripts/summarize_missing_words.py`) with unit tests.
+- Added language onboarding checklist for new source languages (`docs/LANGUAGE_ONBOARDING_CHECKLIST.md`).
 
 In progress:
 - Dictionary quality for inflected forms and coverage gaps (Phase 1 ongoing).
@@ -79,18 +82,18 @@ Tasks:
    - Improve dictionary build script so bundled entries are pre-cleaned and concise by default. (done)
    - Rebuild `dictionary.sqlite` and verify no schema breakage. (ongoing per dataset refresh cycle)
 3. Phase 1C:
-   - Add tests for known failure words from `dictionary_missing.tsv` fixtures.
-   - Add optional tooling to summarize missing words by frequency.
+   - Add tests for known failure words from `dictionary_missing.tsv` fixtures. (done)
+   - Add optional tooling to summarize missing words by frequency. (done)
 4. Phase 1D:
    - Add optional API fallback for unresolved single-word meanings with local caching. (done, enabled by user setting)
    - Keep fallback language-agnostic at architecture level (language profiles + source-language keyed cache). (done)
 5. Phase 1E:
-   - Add language onboarding checklist (dictionary source import + profile rules + fixture tests) so new languages avoid re-engineering.
+   - Add language onboarding checklist (dictionary source import + profile rules + fixture tests) so new languages avoid re-engineering. (done)
 6. Phase 1F (started):
-   - Add dictionary evaluator script (`scripts/evaluate_dictionary.py`) for corpus coverage + gold-meaning accuracy.
-   - Add fixture-driven thresholds and machine-readable report output for repeatable quality tracking.
-   - Add evaluator unit tests (`scripts/test_evaluate_dictionary.py`) so metric logic is regression-safe.
-   - Add initial Kannada core fixture as baseline quality gate.
+   - Add dictionary evaluator script (`scripts/evaluate_dictionary.py`) for corpus coverage + gold-meaning accuracy. (done)
+   - Add fixture-driven thresholds and machine-readable report output for repeatable quality tracking. (done)
+   - Add evaluator unit tests (`scripts/test_evaluate_dictionary.py`) so metric logic is regression-safe. (done)
+   - Add initial Kannada core fixture as baseline quality gate. (done)
 
 Acceptance criteria:
 - Manual sample text lookup feels consistent and fast.

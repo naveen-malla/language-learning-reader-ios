@@ -67,9 +67,12 @@
 - Prefer concise meanings in UI by stripping metadata prefixes and trimming long multi-sense tails.
 - Resolve single-hop dictionary redirects that use `=` prefix; strip trailing digits in redirect targets.
 - Maintain a local TSV override file and missing-word log in Documents for quick corrections without re-bundling.
+- Treat `dictionary_missing.tsv` as a feedback signal: aggregate by normalized-word frequency and prioritize the highest-frequency misses first.
+- Keep known missing-word regressions fixture-driven (`LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`) so suffix/redirect fixes stay locked by tests.
 - Store cloud-fetched missing meanings in `dictionary_cloud_cache.tsv` keyed by `language + normalized_key`.
 - Lookup priority is: override -> local dictionary candidates -> cloud cache -> optional remote fallback.
 - Settings quality metrics are computed from local app data (saved documents + saved vocab meanings) so the score reflects each user’s actual library, with fixture fallback only when local data is empty.
+- New language additions follow a repeatable onboarding checklist (`docs/LANGUAGE_ONBOARDING_CHECKLIST.md`) to avoid per-language re-engineering.
 
 ## Translation APIs
 - Optional only; no runtime dependency in MVP.

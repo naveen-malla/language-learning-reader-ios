@@ -65,7 +65,9 @@
 		B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */; };
 		C11F29DF54A45B15F1FD2075 /* DictionaryQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE5F055A5A82B140071FE35D /* DictionaryQualityTests.swift */; };
 		C22769D0E108F11C91C55E2F /* SQLiteDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4325FF375C87B5DBB8C012B /* SQLiteDictionaryProvider.swift */; };
+		C29047F11E172D55DEA5E824 /* DictionaryMissingFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 274EF7CD5444D5BBA266055B /* DictionaryMissingFixtureTests.swift */; };
 		C959E9CB79FCD5EA1CD568B1 /* DictionaryOverrideStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */; };
+		DDF8BAF9648E612BBA662D8E /* dictionary_missing_fixture.tsv in Resources */ = {isa = PBXBuildFile; fileRef = 402CD4217E89B4AD88C24442 /* dictionary_missing_fixture.tsv */; };
 		DE5F8A5D5A69AF7F2A813167 /* TokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAEE00F2082DEC6BC257350 /* TokenizerTests.swift */; };
 		DFFFDCC9C193AB67CF4F70DA /* AzureTranslatorClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A87E56BB99099969C8D501 /* AzureTranslatorClientTests.swift */; };
 		E46F636358C529CAF6EF41F8 /* SampleDictionaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C924FAB0A3E47FED5C27A16A /* SampleDictionaryProvider.swift */; };
@@ -104,11 +106,13 @@
 		1A5F68A6624DFA5E5CEDDCA2 /* KeychainSecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecretStore.swift; sourceTree = "<group>"; };
 		1AEAD45CF466E461FA6BDAB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2689C8D43C4600AACC1315E9 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
+		274EF7CD5444D5BBA266055B /* DictionaryMissingFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryMissingFixtureTests.swift; sourceTree = "<group>"; };
 		2CEA19E87BDCA7B44E079C07 /* SampleDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDocuments.swift; sourceTree = "<group>"; };
 		3143065ECB59DD365A715BE6 /* ReaderLayoutMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderLayoutMetricsTests.swift; sourceTree = "<group>"; };
 		3358F84D5EB791E944BE93E4 /* FlashcardDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardDeck.swift; sourceTree = "<group>"; };
 		38A87E56BB99099969C8D501 /* AzureTranslatorClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureTranslatorClientTests.swift; sourceTree = "<group>"; };
 		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
+		402CD4217E89B4AD88C24442 /* dictionary_missing_fixture.tsv */ = {isa = PBXFileReference; path = dictionary_missing_fixture.tsv; sourceTree = "<group>"; };
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		49AA7B79ADABC54279052FC0 /* IgnoredWordsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoredWordsStore.swift; sourceTree = "<group>"; };
 		4DCE5E432B2AD2BDF99BCAB7 /* YouTubeImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeImportService.swift; sourceTree = "<group>"; };
@@ -202,6 +206,14 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		270CA76F2417221B6D4F6749 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				402CD4217E89B4AD88C24442 /* dictionary_missing_fixture.tsv */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
 		3CA56DAFA4F43118E274C908 /* LanguageReaderTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -209,6 +221,7 @@
 				8E4C77EEC297D31203171F5D /* DictionaryCloudMeaningStoreTests.swift */,
 				8EBC448F2CFEDABD258086A5 /* DictionaryLanguageProfileTests.swift */,
 				5D2331C7AE5BC9A3BBCC43F8 /* DictionaryManagerTests.swift */,
+				274EF7CD5444D5BBA266055B /* DictionaryMissingFixtureTests.swift */,
 				0D2BC961618032C47FBA36D1 /* DictionaryOverrideStoreTests.swift */,
 				FE5F055A5A82B140071FE35D /* DictionaryQualityTests.swift */,
 				1443B17CEAAA718C44C2E593 /* DictionaryTests.swift */,
@@ -232,6 +245,7 @@
 				127DDEEE2440414892719D87 /* VocabStatusTests.swift */,
 				AF51C5F563980B0D0414E21A /* WordLearningStateResolverTests.swift */,
 				571623CE454DAC176A46138D /* YouTubeImportServiceTests.swift */,
+				270CA76F2417221B6D4F6749 /* Fixtures */,
 			);
 			path = LanguageReaderTests;
 			sourceTree = "<group>";
@@ -341,6 +355,7 @@
 			buildConfigurationList = C4EAAA1DC21578685BE0E3B8 /* Build configuration list for PBXNativeTarget "LanguageReaderTests" */;
 			buildPhases = (
 				BDB907AAABC0F7888DDD57AD /* Sources */,
+				DF9A4C716C47BED31A8E401D /* Resources */,
 			);
 			buildRules = (
 			);
@@ -391,6 +406,14 @@
 				9B07F5A2C217416BAD1F55B4 /* Assets.xcassets in Resources */,
 				55A31A47B947688FF10CED71 /* LaunchScreen.storyboard in Resources */,
 				954207AF9CAB12581ECA0A60 /* dictionary.sqlite in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DF9A4C716C47BED31A8E401D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DDF8BAF9648E612BBA662D8E /* dictionary_missing_fixture.tsv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -455,6 +478,7 @@
 				A3CD9F6CDE9A4009C03984F1 /* DictionaryCloudMeaningStoreTests.swift in Sources */,
 				F8ABECEAF56361F12A029B81 /* DictionaryLanguageProfileTests.swift in Sources */,
 				B991276B574A85E94495DFAB /* DictionaryManagerTests.swift in Sources */,
+				C29047F11E172D55DEA5E824 /* DictionaryMissingFixtureTests.swift in Sources */,
 				C959E9CB79FCD5EA1CD568B1 /* DictionaryOverrideStoreTests.swift in Sources */,
 				C11F29DF54A45B15F1FD2075 /* DictionaryQualityTests.swift in Sources */,
 				FA1A241A6189011CD35FF242 /* DictionaryTests.swift in Sources */,

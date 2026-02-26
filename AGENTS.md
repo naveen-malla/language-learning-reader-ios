@@ -57,6 +57,8 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Evaluate dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --report-json /tmp/dictionary_eval_report.json`
 - Evaluate without failing thresholds: `python3 scripts/evaluate_dictionary.py --no-fail-on-thresholds`
 - Dictionary evaluation tests: `./scripts/test_evaluate_dictionary.py`
+- Summarize missing words by frequency: `python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20`
+- Missing-word summary tests: `./scripts/test_summarize_missing_words.py`
 - Install dictionary into simulator: `./scripts/install_dictionary.sh`
 - Repo hygiene guard (main-only check/cleanup): `./scripts/guard_main.sh`
 - Enforce cleanup to main-only state: `./scripts/guard_main.sh --cleanup`

@@ -89,6 +89,7 @@
 - Clean dictionary meanings for readability (remove leading metadata markers and trim long multi-sense tails).
 - If no local meaning exists and cloud fallback is enabled, fetch one-word translation and store it in local cache.
 - Optional diagnostics mode shows lookup path (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
+- Missing-word reports are expected to feed a lightweight cleanup loop: frequency summary -> fixture regression -> dictionary/profile fix.
 
 ## Color Coding
 - New (untracked): blue highlight.
