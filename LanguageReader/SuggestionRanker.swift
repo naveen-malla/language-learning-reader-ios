@@ -26,17 +26,41 @@ enum SuggestionRanker {
         context: SuggestionRankingContext
     ) -> [YouTubeSuggestedVideo] {
         let scored = suggestions.enumerated().map { index, suggestion in
-            (suggestion, score(suggestion: suggestion, baseIndex: index, context: context))
+            ScoredSuggestion(
+                suggestion: suggestion,
+                baseScore: score(suggestion: suggestion, baseIndex: index, context: context)
+            )
         }
 
-        return scored
-            .sorted { lhs, rhs in
-                if lhs.1 != rhs.1 {
-                    return lhs.1 > rhs.1
+        var remaining = scored
+        var pickedCategoryCounts: [String: Int] = [:]
+        var ordered: [YouTubeSuggestedVideo] = []
+
+        while !remaining.isEmpty {
+            let bestIndex = remaining.indices.max { lhs, rhs in
+                let lhsScore = diversityAdjustedScore(
+                    for: remaining[lhs],
+                    pickedCategoryCounts: pickedCategoryCounts
+                )
+                let rhsScore = diversityAdjustedScore(
+                    for: remaining[rhs],
+                    pickedCategoryCounts: pickedCategoryCounts
+                )
+                if lhsScore != rhsScore {
+                    return lhsScore < rhsScore
                 }
-                return lhs.0.title.localizedCaseInsensitiveCompare(rhs.0.title) == .orderedAscending
-            }
-            .map(\.0)
+                return remaining[lhs].suggestion.title.localizedCaseInsensitiveCompare(
+                    remaining[rhs].suggestion.title
+                ) == .orderedDescending
+            }!
+
+            let chosen = remaining.remove(at: bestIndex).suggestion
+            ordered.append(chosen)
+            let categoryKey = normalizeCategory(chosen.category)
+            pickedCategoryCounts[categoryKey, default: 0] += 1
+        }
+
+        return ordered
     }
 
     private static func score(
@@ -61,6 +85,26 @@ enum SuggestionRanker {
             value += durationBias
         }
 
+        if let publishedAt = suggestion.publishedAt {
+            let days = max(0, Int(Date().timeIntervalSince(publishedAt) / (24 * 3600)))
+            let recencyBonus = max(0, 40 - min(days, 40))
+            value += recencyBonus
+        }
+
         return value
+    }
+
+    private static func diversityAdjustedScore(
+        for suggestion: ScoredSuggestion,
+        pickedCategoryCounts: [String: Int]
+    ) -> Int {
+        let categoryKey = normalizeCategory(suggestion.suggestion.category)
+        let count = pickedCategoryCounts[categoryKey, default: 0]
+        return suggestion.baseScore - (count * 120)
+    }
+
+    private struct ScoredSuggestion {
+        let suggestion: YouTubeSuggestedVideo
+        let baseScore: Int
     }
 }

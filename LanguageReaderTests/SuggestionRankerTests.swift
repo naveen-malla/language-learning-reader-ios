@@ -38,7 +38,33 @@ final class SuggestionRankerTests: XCTestCase {
         )
 
         XCTAssertEqual(ranked.first?.videoID, "3")
-        XCTAssertEqual(ranked[1].videoID, "2")
+        XCTAssertEqual(ranked[1].videoID, "1")
+    }
+
+    func testRecencyBoostPrefersFreshSuggestion() {
+        let oldDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        let freshDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let suggestions = [
+            makeSuggestion(
+                videoID: "1",
+                title: "Old",
+                channel: "Alpha",
+                category: "Basics",
+                duration: 240,
+                publishedAt: oldDate
+            ),
+            makeSuggestion(
+                videoID: "2",
+                title: "Fresh",
+                channel: "Beta",
+                category: "Basics",
+                duration: 240,
+                publishedAt: freshDate
+            )
+        ]
+
+        let ranked = SuggestionRanker.rank(suggestions, context: .empty)
+        XCTAssertEqual(ranked.first?.videoID, "2")
     }
 
     private func makeSuggestion(
@@ -46,15 +72,18 @@ final class SuggestionRankerTests: XCTestCase {
         title: String,
         channel: String,
         category: String,
-        duration: Int
+        duration: Int,
+        publishedAt: Date? = nil
     ) -> YouTubeSuggestedVideo {
         YouTubeSuggestedVideo(
             videoID: videoID,
             title: title,
             channelTitle: channel,
+            channelID: nil,
             category: category,
             durationSeconds: duration,
-            thumbnailURL: nil
+            thumbnailURL: nil,
+            publishedAt: publishedAt
         )
     }
 }

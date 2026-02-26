@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @State private var hasRunLaunchTopUp = false
+
     var body: some View {
         TabView {
             LibraryView()
@@ -26,6 +29,14 @@ struct ContentView: View {
         .tint(Theme.accent)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .task {
+            guard !hasRunLaunchTopUp else { return }
+            hasRunLaunchTopUp = true
+            _ = await AutoImportCoordinator.shared.performAutoTopUpIfNeeded(
+                modelContext: modelContext,
+                trigger: .appLaunch
+            )
+        }
     }
 }
 

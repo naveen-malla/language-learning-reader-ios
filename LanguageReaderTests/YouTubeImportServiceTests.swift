@@ -105,6 +105,7 @@ final class YouTubeImportServiceTests: XCTestCase {
 
     func testImportVideoPrefersManualKannadaTrack() async throws {
         let videoID = "KaBYEZ6q2tY"
+        let channelID = "channel-\(videoID)"
         let manualTranscript = "ಮ್ಯಾನುಯಲ್"
         let asrTranscript = "ಆಸರ್"
         let session = makeStubbedSession { request in
@@ -118,6 +119,7 @@ final class YouTubeImportServiceTests: XCTestCase {
             if url.absoluteString.contains("youtubei/v1/player") {
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
+                    channelID: channelID,
                     durationSeconds: 120,
                     thumbnailWidths: [120, 640],
                     tracks: [
@@ -152,6 +154,7 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(content.videoID, videoID)
         XCTAssertEqual(content.title, "Test Video \(videoID)")
         XCTAssertEqual(content.channelTitle, "Channel \(videoID)")
+        XCTAssertEqual(content.channelID, channelID)
         XCTAssertEqual(content.durationSeconds, 120)
         XCTAssertEqual(content.thumbnailURL?.absoluteString, "https://example.com/thumb-640.jpg")
         XCTAssertEqual(content.transcript, manualTranscript)
@@ -170,6 +173,7 @@ final class YouTubeImportServiceTests: XCTestCase {
             if url.absoluteString.contains("youtubei/v1/player") {
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
+                    channelID: "channel-\(videoID)",
                     durationSeconds: 120,
                     thumbnailWidths: [120],
                     tracks: [
@@ -199,8 +203,30 @@ final class YouTubeImportServiceTests: XCTestCase {
 
     func testLoadBeginnerSuggestionsFiltersOverlongVideosAndKeepsRankOrder() async {
         let overlongID = "RpJ-qH_vfD8"
+        let channelToVideoID = [
+            "UChsgGgFHYTBL4m0dgRc78PQ": "KaBYEZ6q2tY",
+            "UClhQBYN17XW_lA4568Qtu3A": "Pho7XZTsPis",
+            "UCirKrUfKVP2ebtwEWCObTbw": "RpJ-qH_vfD8",
+            "UCqZRKIkmWX2L2iAIDjYi0Fw": "UKWBtAYAo5I",
+            "UCe-zK4ux-tMl9Y8JJJqxL7Q": "ebQ0LPgoFkQ",
+            "UCOG5uDioDLiIZsSmyYSKYHw": "m4llekMMKEg"
+        ]
+
         let session = makeStubbedSession { request in
             let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/feeds/videos.xml") {
+                let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?
+                    .first(where: { $0.name == "channel_id" })?
+                    .value
+                let videoID = channelID.flatMap { channelToVideoID[$0] }
+                let xml = self.makeFeedXML(
+                    channelID: channelID ?? "missing",
+                    channelTitle: "Feed \(channelID ?? "missing")",
+                    videos: videoID.map { [($0, "Seed \($0)", "2026-02-26T00:00:00+00:00")] } ?? []
+                )
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
             if url.absoluteString.contains("youtube.com/watch") {
                 return StubbedURLProtocol.response(
                     for: url,
@@ -212,6 +238,7 @@ final class YouTubeImportServiceTests: XCTestCase {
                 let duration = videoID == overlongID ? 999 : 120
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
+                    channelID: "channel-\(videoID)",
                     durationSeconds: duration,
                     thumbnailWidths: [120],
                     tracks: [
@@ -228,7 +255,7 @@ final class YouTubeImportServiceTests: XCTestCase {
         }
 
         let service = YouTubeImportService(session: session)
-        let suggestions = await service.loadBeginnerSuggestions()
+        let suggestions = await service.loadBeginnerSuggestions(forceRefresh: true)
         let ids = suggestions.map(\.videoID)
 
         XCTAssertFalse(ids.contains(overlongID))
@@ -350,6 +377,7 @@ private extension YouTubeImportServiceTests {
 
     func makePlayerPayload(
         videoID: String,
+        channelID: String,
         durationSeconds: Int,
         thumbnailWidths: [Int],
         tracks: [[String: Any]]
@@ -361,6 +389,7 @@ private extension YouTubeImportServiceTests {
             "videoDetails": [
                 "title": "Test Video \(videoID)",
                 "author": "Channel \(videoID)",
+                "channelId": channelID,
                 "lengthSeconds": "\(durationSeconds)",
                 "thumbnail": ["thumbnails": thumbnails]
             ],
@@ -371,6 +400,33 @@ private extension YouTubeImportServiceTests {
             ]
         ]
         return try! JSONSerialization.data(withJSONObject: payload)
+    }
+
+    func makeFeedXML(
+        channelID: String,
+        channelTitle: String,
+        videos: [(videoID: String, title: String, published: String)]
+    ) -> String {
+        let entries = videos.map { video in
+            """
+            <entry>
+                <yt:videoId>\(video.videoID)</yt:videoId>
+                <title>\(video.title)</title>
+                <published>\(video.published)</published>
+                <author>
+                    <name>\(channelTitle)</name>
+                    <uri>https://www.youtube.com/channel/\(channelID)</uri>
+                </author>
+            </entry>
+            """
+        }.joined()
+
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015">
+            \(entries)
+        </feed>
+        """
     }
 
     func extractVideoID(from request: URLRequest) throws -> String {

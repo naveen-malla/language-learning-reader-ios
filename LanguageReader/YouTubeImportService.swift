@@ -32,26 +32,23 @@ enum YouTubeImportError: LocalizedError {
     }
 }
 
-struct YouTubeSuggestionSeed: Sendable {
-    let videoID: String
-    let category: String
-    let rank: Int
-}
-
 struct YouTubeSuggestedVideo: Identifiable, Sendable {
     var id: String { videoID }
     let videoID: String
     let title: String
     let channelTitle: String
+    let channelID: String?
     let category: String
     let durationSeconds: Int
     let thumbnailURL: URL?
+    let publishedAt: Date?
 }
 
 struct ImportedYouTubeContent: Sendable {
     let videoID: String
     let title: String
     let channelTitle: String
+    let channelID: String?
     let transcript: String
     let durationSeconds: Int
     let thumbnailURL: URL?
@@ -116,60 +113,31 @@ actor YouTubeImportService {
 
     static let maxBeginnerDurationSeconds = 720
 
-    private static let starterCatalog: [YouTubeSuggestionSeed] = [
-        .init(videoID: "KaBYEZ6q2tY", category: "Basics", rank: 1),
-        .init(videoID: "Pho7XZTsPis", category: "Conversation", rank: 2),
-        .init(videoID: "RpJ-qH_vfD8", category: "Grammar", rank: 3),
-        .init(videoID: "UKWBtAYAo5I", category: "Short Stories", rank: 4),
-        .init(videoID: "ebQ0LPgoFkQ", category: "Alphabet", rank: 5),
-        .init(videoID: "m4llekMMKEg", category: "Beginner Intro", rank: 6)
-    ]
-
     private var metadataCache: [String: VideoMetadata] = [:]
     private let session: URLSession
+    private let cacheStore: SuggestionCacheStore
+    private lazy var discoveryService = YouTubeDiscoveryService(
+        session: session,
+        cacheStore: cacheStore,
+        validator: self
+    )
 
-    init(session: URLSession = .shared) {
+    init(
+        session: URLSession = .shared,
+        cacheStore: SuggestionCacheStore = .shared
+    ) {
         self.session = session
+        self.cacheStore = cacheStore
     }
 
-    func loadBeginnerSuggestions() async -> [YouTubeSuggestedVideo] {
-        var suggestions: [YouTubeSuggestedVideo] = []
-
-        await withTaskGroup(of: (Int, YouTubeSuggestedVideo?).self) { group in
-            for seed in Self.starterCatalog {
-                group.addTask { [weak self] in
-                    guard let self else { return (seed.rank, nil) }
-                    do {
-                        let metadata = try await self.loadMetadata(videoID: seed.videoID, requireKannada: true)
-                        guard metadata.durationSeconds <= Self.maxBeginnerDurationSeconds else {
-                            return (seed.rank, nil)
-                        }
-                        return (seed.rank, YouTubeSuggestedVideo(
-                            videoID: seed.videoID,
-                            title: metadata.title,
-                            channelTitle: metadata.channelTitle,
-                            category: seed.category,
-                            durationSeconds: metadata.durationSeconds,
-                            thumbnailURL: metadata.thumbnailURL
-                        ))
-                    } catch {
-                        return (seed.rank, nil)
-                    }
-                }
-            }
-
-            var ranked: [(Int, YouTubeSuggestedVideo)] = []
-            for await result in group {
-                if let value = result.1 {
-                    ranked.append((result.0, value))
-                }
-            }
-            suggestions = ranked
-                .sorted { $0.0 < $1.0 }
-                .map(\.1)
-        }
-
-        return suggestions
+    func loadBeginnerSuggestions(
+        existingVideoIDs: Set<String> = [],
+        forceRefresh: Bool = false
+    ) async -> [YouTubeSuggestedVideo] {
+        await discoveryService.loadSuggestions(
+            existingVideoIDs: existingVideoIDs,
+            forceRefresh: forceRefresh
+        )
     }
 
     func importFromURL(_ input: String) async throws -> ImportedYouTubeContent {
@@ -190,13 +158,47 @@ actor YouTubeImportService {
             throw YouTubeImportError.transcriptUnavailable
         }
 
+        await cacheStore.addTrustedChannel(channelID: metadata.channelID, channelTitle: metadata.channelTitle)
+
         return ImportedYouTubeContent(
             videoID: videoID,
             title: metadata.title,
             channelTitle: metadata.channelTitle,
+            channelID: metadata.channelID,
             transcript: transcript,
             durationSeconds: metadata.durationSeconds,
             thumbnailURL: metadata.thumbnailURL
+        )
+    }
+
+    func validateCandidate(
+        videoID: String,
+        category: String,
+        publishedAt: Date?,
+        fallbackTitle: String?,
+        fallbackChannelTitle: String?,
+        fallbackChannelID: String?
+    ) async throws -> YouTubeSuggestedVideo {
+        let metadata = try await loadMetadata(videoID: videoID, requireKannada: true)
+        guard metadata.durationSeconds <= Self.maxBeginnerDurationSeconds else {
+            throw YouTubeImportError.unsupportedDuration
+        }
+
+        let resolvedTitle = metadata.title.isEmpty ? (fallbackTitle ?? "Untitled") : metadata.title
+        let resolvedChannelTitle = metadata.channelTitle.isEmpty
+            ? (fallbackChannelTitle ?? "Unknown Channel")
+            : metadata.channelTitle
+        let resolvedChannelID = metadata.channelID.isEmpty ? fallbackChannelID : metadata.channelID
+
+        return YouTubeSuggestedVideo(
+            videoID: videoID,
+            title: resolvedTitle,
+            channelTitle: resolvedChannelTitle,
+            channelID: resolvedChannelID,
+            category: category,
+            durationSeconds: metadata.durationSeconds,
+            thumbnailURL: metadata.thumbnailURL,
+            publishedAt: publishedAt
         )
     }
 
@@ -319,6 +321,7 @@ actor YouTubeImportService {
         guard let videoDetails = payload["videoDetails"] as? [String: Any] else { return nil }
         guard let title = videoDetails["title"] as? String else { return nil }
         guard let channelTitle = videoDetails["author"] as? String else { return nil }
+        let channelID = videoDetails["channelId"] as? String ?? ""
         let durationSeconds = Int(videoDetails["lengthSeconds"] as? String ?? "") ?? 0
 
         let thumbnailURL: URL? = {
@@ -342,6 +345,7 @@ actor YouTubeImportService {
             videoID: videoID,
             title: title,
             channelTitle: channelTitle,
+            channelID: channelID,
             durationSeconds: durationSeconds,
             thumbnailURL: thumbnailURL,
             languageCode: track.languageCode,
@@ -401,12 +405,15 @@ actor YouTubeImportService {
         let videoID: String
         let title: String
         let channelTitle: String
+        let channelID: String
         let durationSeconds: Int
         let thumbnailURL: URL?
         let languageCode: String
         let captionTrackURL: URL
     }
 }
+
+extension YouTubeImportService: YouTubeCandidateValidating {}
 
 enum YouTubeTranscriptXMLParser {
     static func parseTranscript(data: Data) -> String {

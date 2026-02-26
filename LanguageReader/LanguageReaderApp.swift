@@ -4,6 +4,7 @@ import SwiftData
 
 @main
 struct LanguageReaderApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     private static let seedVersion = "sample_documents_seed_v1"
     @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
     private let sharedModelContainer: ModelContainer
@@ -14,6 +15,7 @@ struct LanguageReaderApp: App {
         do {
             sharedModelContainer = try ModelContainer(for: Document.self, VocabEntry.self)
             seedInitialDocumentsIfNeeded(container: sharedModelContainer)
+            AutoImportBackgroundScheduler.registerIfNeeded(container: sharedModelContainer)
         } catch {
             fatalError("Failed to initialize model container: \(error)")
         }
@@ -54,6 +56,11 @@ struct LanguageReaderApp: App {
             ContentView()
                 .environment(\.appAppearanceMode, selectedAppearanceMode)
                 .preferredColorScheme(selectedAppearanceMode.preferredColorScheme)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                AutoImportBackgroundScheduler.scheduleIfNeeded()
+            }
         }
         .modelContainer(sharedModelContainer)
     }

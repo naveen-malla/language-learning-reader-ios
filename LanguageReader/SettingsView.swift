@@ -2,12 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
     private let dictionaryManager = DictionaryManager.shared
     private let translationSettings = TranslationSettingsStore()
     @Query(sort: \Document.updatedAt, order: .reverse) private var documents: [Document]
     @Query(sort: \VocabEntry.createdAt, order: .reverse) private var vocabEntries: [VocabEntry]
     @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
     @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
+    @AppStorage(AutoImportSettings.autoTopUpEnabledKey) private var autoTopUpEnabled = AutoImportSettings.defaultAutoTopUpEnabled
+    @AppStorage(AutoImportSettings.backgroundRefreshEnabledKey) private var backgroundRefreshEnabled = AutoImportSettings.defaultBackgroundRefreshEnabled
     @State private var endpointText = ""
     @State private var regionText = ""
     @State private var sourceLanguageText = ""
@@ -18,6 +21,10 @@ struct SettingsView: View {
     @State private var isEvaluatingQuality = false
     @State private var qualityStatusMessage: String?
     @State private var translationStatusMessage: String?
+    @State private var autoImportStatusMessage: String?
+    @State private var isRunningAutoImport = false
+    @State private var lastAutoTopUpAttemptAt: Date?
+    @State private var lastAutoTopUpSuccessAt: Date?
 
     var body: some View {
         NavigationStack {
@@ -94,6 +101,47 @@ struct SettingsView: View {
                             Text("Controls how many due words start each flashcard session. Default is 5 words.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                        }
+
+                        SectionCard("Auto Content") {
+                            Toggle("Auto top-up Kannada lessons", isOn: $autoTopUpEnabled)
+                                .toggleStyle(.switch)
+
+                            Toggle("Allow background refresh", isOn: $backgroundRefreshEnabled)
+                                .toggleStyle(.switch)
+                                .onChange(of: backgroundRefreshEnabled) { _, enabled in
+                                    if enabled {
+                                        AutoImportBackgroundScheduler.scheduleIfNeeded()
+                                    }
+                                }
+
+                            Text("Defaults: 6 lessons per pack, 24h cooldown, trigger when unread imported lessons are below 3.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            if let lastAutoTopUpAttemptAt {
+                                Text("Last auto attempt: \(lastAutoTopUpAttemptAt.formatted(date: .abbreviated, time: .shortened))")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            if let lastAutoTopUpSuccessAt {
+                                Text("Last auto success: \(lastAutoTopUpSuccessAt.formatted(date: .abbreviated, time: .shortened))")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Button(isRunningAutoImport ? "Running..." : "Run 3-Day Pack Now") {
+                                runAutoImportPackNow()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(isRunningAutoImport)
+
+                            if let autoImportStatusMessage {
+                                Text(autoImportStatusMessage)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
 
                         SectionCard("Dictionary Quality") {
@@ -232,6 +280,7 @@ struct SettingsView: View {
                 sessionWordLimit = normalizedSessionWordLimit
                 loadTranslationSettings()
                 evaluateDictionaryQuality()
+                loadAutoImportStatus()
             }
         }
     }
@@ -275,6 +324,26 @@ struct SettingsView: View {
             translationStatusMessage = "Removed API key."
         } catch {
             translationStatusMessage = "Failed to remove API key."
+        }
+    }
+
+    private func loadAutoImportStatus() {
+        let defaults = UserDefaults.standard
+        lastAutoTopUpAttemptAt = defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey) as? Date
+        lastAutoTopUpSuccessAt = defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey) as? Date
+    }
+
+    private func runAutoImportPackNow() {
+        guard !isRunningAutoImport else { return }
+        isRunningAutoImport = true
+
+        Task {
+            let summary = await AutoImportCoordinator.shared.importSmartPack(modelContext: modelContext)
+            await MainActor.run {
+                autoImportStatusMessage = summary.statusMessage
+                isRunningAutoImport = false
+                loadAutoImportStatus()
+            }
         }
     }
 

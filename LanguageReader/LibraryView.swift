@@ -11,6 +11,9 @@ struct LibraryView: View {
     @State private var hasLoadedSuggestions = false
     @State private var isLoadingSuggestions = false
     @State private var importingVideoIDs: Set<String> = []
+    @State private var isImportingSmartPack = false
+    @State private var hasAttemptedLibraryAutoTopUp = false
+    @State private var smartPackStatusMessage: String?
 
     @State private var isShowingTextImport = false
     @State private var isShowingYouTubeImport = false
@@ -35,6 +38,10 @@ struct LibraryView: View {
 
     private var libraryDocuments: [Document] {
         documents.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var importedVideoIDs: Set<String> {
+        Set(documents.compactMap(\.sourceVideoID))
     }
 
     private var rankingContext: SuggestionRankingContext {
@@ -115,6 +122,10 @@ struct LibraryView: View {
             }
             .task {
                 await refreshSuggestions(force: false)
+                if !hasAttemptedLibraryAutoTopUp {
+                    hasAttemptedLibraryAutoTopUp = true
+                    await runAutoTopUpIfNeeded()
+                }
             }
             .sheet(isPresented: $isShowingTextImport) {
                 TextImportSheet { title, body in
@@ -195,6 +206,31 @@ struct LibraryView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
+
+                Button {
+                    runSmartPackImport()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isImportingSmartPack {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        Label(
+                            isImportingSmartPack ? "Building Pack..." : "Get 3-Day Pack",
+                            systemImage: "wand.and.stars"
+                        )
+                    }
+                    .readerUtilityButtonStyle()
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .disabled(isImportingSmartPack)
+
+                if let smartPackStatusMessage {
+                    Text(smartPackStatusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -291,10 +327,41 @@ struct LibraryView: View {
     private func refreshSuggestions(force: Bool) async {
         guard force || !hasLoadedSuggestions else { return }
         isLoadingSuggestions = true
-        let loaded = await YouTubeImportService.shared.loadBeginnerSuggestions()
+        let loaded = await YouTubeDiscoveryService.shared.loadSuggestions(
+            existingVideoIDs: importedVideoIDs,
+            forceRefresh: force
+        )
         suggestions = SuggestionRanker.rank(loaded, context: rankingContext)
         hasLoadedSuggestions = true
         isLoadingSuggestions = false
+    }
+
+    private func runSmartPackImport() {
+        guard !isImportingSmartPack else { return }
+        isImportingSmartPack = true
+
+        Task {
+            let summary = await AutoImportCoordinator.shared.importSmartPack(modelContext: modelContext)
+            smartPackStatusMessage = summary.statusMessage
+
+            if let documentID = summary.firstImportedDocumentID,
+               let document = fetchDocument(id: documentID) {
+                readerDestination = ReaderDestination(id: document.id, document: document)
+            }
+
+            await refreshSuggestions(force: true)
+            isImportingSmartPack = false
+        }
+    }
+
+    private func runAutoTopUpIfNeeded() async {
+        if let summary = await AutoImportCoordinator.shared.performAutoTopUpIfNeeded(
+            modelContext: modelContext,
+            trigger: .libraryEntry
+        ) {
+            smartPackStatusMessage = summary.statusMessage
+            await refreshSuggestions(force: true)
+        }
     }
 
     private func importSuggestion(_ suggestion: YouTubeSuggestedVideo) {
@@ -304,7 +371,13 @@ struct LibraryView: View {
         Task {
             do {
                 let imported = try await YouTubeImportService.shared.importVideo(videoID: suggestion.videoID)
-                persistImported(content: imported, category: suggestion.category, openImmediately: true)
+                persistImported(
+                    content: imported,
+                    category: suggestion.category,
+                    mode: .manual,
+                    autoBatchID: nil,
+                    openImmediately: true
+                )
             } catch {
                 alertMessage = error.localizedDescription
             }
@@ -314,10 +387,22 @@ struct LibraryView: View {
 
     private func importYouTubeURL(_ urlText: String) async throws {
         let imported = try await YouTubeImportService.shared.importFromURL(urlText)
-        persistImported(content: imported, category: "Custom", openImmediately: true)
+        persistImported(
+            content: imported,
+            category: "Custom",
+            mode: .manual,
+            autoBatchID: nil,
+            openImmediately: true
+        )
     }
 
-    private func persistImported(content: ImportedYouTubeContent, category: String, openImmediately: Bool) {
+    private func persistImported(
+        content: ImportedYouTubeContent,
+        category: String,
+        mode: DocumentImportMode,
+        autoBatchID: String?,
+        openImmediately: Bool
+    ) {
         let now = Date()
         let document = Document(
             title: content.title,
@@ -328,9 +413,12 @@ struct LibraryView: View {
             sourceURL: content.watchURL.absoluteString,
             sourceVideoID: content.videoID,
             sourceChannel: content.channelTitle,
+            sourceChannelID: content.channelID,
             sourceCategory: category,
             sourceDurationSeconds: content.durationSeconds,
-            thumbnailURL: content.thumbnailURL?.absoluteString
+            thumbnailURL: content.thumbnailURL?.absoluteString,
+            importMode: mode,
+            autoBatchID: autoBatchID
         )
 
         modelContext.insert(document)
@@ -340,6 +428,13 @@ struct LibraryView: View {
         if openImmediately {
             readerDestination = ReaderDestination(id: document.id, document: document)
         }
+    }
+
+    private func fetchDocument(id: UUID) -> Document? {
+        let descriptor = FetchDescriptor<Document>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try? modelContext.fetch(descriptor).first
     }
 
     private func handleTextFileImport(_ result: Result<[URL], Error>) {

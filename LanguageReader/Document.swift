@@ -18,9 +18,12 @@ final class Document {
     var sourceURL: String?
     var sourceVideoID: String?
     var sourceChannel: String?
+    var sourceChannelID: String?
     var sourceCategory: String?
     var sourceDurationSeconds: Int?
     var thumbnailURL: String?
+    var importModeRaw: String?
+    var autoBatchID: String?
     var firstOpenedAt: Date?
     var lastOpenedAt: Date?
 
@@ -33,9 +36,12 @@ final class Document {
         sourceURL: String? = nil,
         sourceVideoID: String? = nil,
         sourceChannel: String? = nil,
+        sourceChannelID: String? = nil,
         sourceCategory: String? = nil,
         sourceDurationSeconds: Int? = nil,
         thumbnailURL: String? = nil,
+        importMode: DocumentImportMode? = nil,
+        autoBatchID: String? = nil,
         firstOpenedAt: Date? = nil,
         lastOpenedAt: Date? = nil
     ) {
@@ -48,9 +54,12 @@ final class Document {
         self.sourceURL = sourceURL
         self.sourceVideoID = sourceVideoID
         self.sourceChannel = sourceChannel
+        self.sourceChannelID = sourceChannelID
         self.sourceCategory = sourceCategory
         self.sourceDurationSeconds = sourceDurationSeconds
         self.thumbnailURL = thumbnailURL
+        self.importModeRaw = importMode?.rawValue
+        self.autoBatchID = autoBatchID
         self.firstOpenedAt = firstOpenedAt
         self.lastOpenedAt = lastOpenedAt
     }
@@ -71,5 +80,15 @@ extension Document {
 
     var isOpened: Bool {
         firstOpenedAt != nil
+    }
+
+    var importMode: DocumentImportMode? {
+        get {
+            guard let importModeRaw else { return nil }
+            return DocumentImportMode(rawValue: importModeRaw)
+        }
+        set {
+            importModeRaw = newValue?.rawValue
+        }
     }
 }

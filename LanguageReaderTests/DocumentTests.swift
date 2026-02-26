@@ -30,4 +30,32 @@ final class DocumentTests: XCTestCase {
         document.firstOpenedAt = Date()
         XCTAssertTrue(document.isOpened)
     }
+
+    func testImportModeRoundTrip() {
+        let document = Document(
+            title: "Title",
+            body: "Body",
+            importMode: .smartPack
+        )
+
+        XCTAssertEqual(document.importModeRaw, DocumentImportMode.smartPack.rawValue)
+        XCTAssertEqual(document.importMode, .smartPack)
+
+        document.importMode = .autoTopUp
+        XCTAssertEqual(document.importModeRaw, DocumentImportMode.autoTopUp.rawValue)
+        XCTAssertEqual(document.importMode, .autoTopUp)
+    }
+
+    func testImportModeFallsBackForUnknownRawValue() {
+        let document = Document(title: "Title", body: "Body")
+        document.importModeRaw = "unknown"
+        XCTAssertNil(document.importMode)
+    }
+
+    func testNewMetadataFieldsDefaultToNil() {
+        let document = Document(title: "Title", body: "Body")
+        XCTAssertNil(document.sourceChannelID)
+        XCTAssertNil(document.importModeRaw)
+        XCTAssertNil(document.autoBatchID)
+    }
 }
