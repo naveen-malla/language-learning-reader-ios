@@ -4,7 +4,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 
 ## Product Snapshot
 - Start from a Library-first home with import actions, beginner suggestions, and continue-reading shelves.
-- Import from in-app text paste or YouTube URL (Kannada subtitles required for YouTube import).
+- Import from in-app text paste, text file, or YouTube URL (Kannada subtitles required for YouTube import).
 - Read saved lessons in a distraction-light interface designed for long sessions.
 - Tap words to get instant meanings, pronunciation, and vocabulary actions.
 - Keep learning state unified across Reader, Vocab, and Flashcards.
@@ -12,6 +12,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 - Work fully offline by default; optional cloud translation/fallback is additive.
 - Tune flashcard session load from Settings with a subtle `Words per session` control (default: 5).
 - Flashcards show both `Due` total and current `Session` word count so session sizing is explicit.
+- Flashcards include lightweight learning telemetry (`Today`, `Known`, `Today Acc`) for quick daily loop checks.
 
 ## Screenshots
 
@@ -25,8 +26,9 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 
 ## Core UX
 - **Library-first flow**: open to a mixed content home (`Continue Reading`, `Suggested for Beginners`, `My Library`).
-- **One-tap importing**: `Paste Text` and `YouTube URL` import are both available directly on the home screen.
+- **One-tap importing**: `Paste Text`, `Text File`, and `YouTube URL` imports are available directly on the home screen.
 - **Subtitle-gated YouTube import**: only videos with Kannada subtitle tracks are imported.
+- **Suggestion personalization**: suggestion ordering prioritizes followed channels and previously successful categories/channels from your library.
 - **Liquid-glass interface layer**: thin/ultra-thin material cards, pills, and controls add depth while preserving contrast.
 - **Word-level intelligence**: dictionary lookup path tracking (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
 - **Progressive vocab states**: `1`, `2`, `3`, `4`, `Known` with one shared definition source.
@@ -68,6 +70,7 @@ Prerequisites:
 - Paste a full YouTube URL in `Library -> Import Content -> YouTube URL`.
 - Import currently accepts videos only when a Kannada subtitle track is available (`kn*`, including auto-generated tracks).
 - Beginner suggestions are pre-seeded and validated at runtime, and each card is kept only if subtitles are currently importable.
+- Suggestion cards support channel follow/unfollow, and ranking adapts to followed channels plus your prior import history.
 - Imported YouTube lessons persist on-device like any other library item.
 
 ## Dictionary Pipeline
@@ -131,4 +134,5 @@ In **Settings -> Translation API**, provide:
 - Kannada is the first fully wired language profile.
 - Morphology handling is heuristic, not full linguistic analysis.
 - Per-word cloud fallback is context-light and can vary by sentence context.
+- Flashcard intervals still use fixed level buckets; adaptive calibration against long-run retention is pending more usage data.
 - No cloud sync in V1.

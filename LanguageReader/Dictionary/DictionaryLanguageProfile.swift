@@ -89,7 +89,7 @@ struct DictionaryWordFormGenerator {
         var candidates: [String] = []
 
         func appendIfNew(_ value: String, minimumLength: Int = 1) {
-            guard value.count >= minimumLength else { return }
+            guard value.unicodeScalars.count >= minimumLength else { return }
             guard !candidates.contains(value) else { return }
             candidates.append(value)
         }
@@ -108,9 +108,24 @@ struct DictionaryWordFormGenerator {
         for ending in profile.progressiveVerbEndings where normalizedWord.hasSuffix(ending) {
             let stem = String(normalizedWord.dropLast(ending.count))
             appendIfNew(stem, minimumLength: profile.minimumVerbStemLength)
-            appendIfNew(stem + "ು", minimumLength: profile.minimumVerbStemLength)
+            let baseStem = stem.droppingTrailingKannadaUSign ?? stem
+            appendIfNew(baseStem, minimumLength: profile.minimumVerbStemLength)
+            appendIfNew(baseStem + "ು", minimumLength: profile.minimumVerbStemLength)
         }
 
         return candidates
+    }
+}
+
+private extension String {
+    var droppingTrailingKannadaUSign: String? {
+        let kannadaUSign: UInt32 = 0x0CC1
+        guard unicodeScalars.last?.value == kannadaUSign else {
+            return nil
+        }
+
+        var scalars = Array(unicodeScalars)
+        scalars.removeLast()
+        return String(String.UnicodeScalarView(scalars))
     }
 }

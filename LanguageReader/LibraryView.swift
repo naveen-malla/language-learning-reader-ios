@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import UniformTypeIdentifiers
 
 struct LibraryView: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,8 +14,10 @@ struct LibraryView: View {
 
     @State private var isShowingTextImport = false
     @State private var isShowingYouTubeImport = false
+    @State private var isShowingFileImport = false
     @State private var alertMessage: String?
     @State private var readerDestination: ReaderDestination?
+    @AppStorage("library.followed_channels.v1") private var followedChannelsRaw = ""
 
     static let dateFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
@@ -32,6 +35,53 @@ struct LibraryView: View {
 
     private var libraryDocuments: [Document] {
         documents.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var rankingContext: SuggestionRankingContext {
+        let followed = Set(
+            followedChannelsRaw
+                .split(separator: "|")
+                .map { SuggestionRanker.normalizeChannel(String($0)) }
+                .filter { !$0.isEmpty }
+        )
+
+        var categoryHistory: [String: Int] = [:]
+        var channelHistory: [String: Int] = [:]
+
+        for document in documents where document.sourceType == .youtube {
+            if let category = document.sourceCategory {
+                let key = SuggestionRanker.normalizeCategory(category)
+                if !key.isEmpty {
+                    categoryHistory[key, default: 0] += 1
+                }
+            }
+
+            if let channel = document.sourceChannel {
+                let key = SuggestionRanker.normalizeChannel(channel)
+                if !key.isEmpty {
+                    channelHistory[key, default: 0] += 1
+                }
+            }
+        }
+
+        return SuggestionRankingContext(
+            followedChannels: followed,
+            categoryHistory: categoryHistory,
+            channelHistory: channelHistory
+        )
+    }
+
+    private var rankingFingerprint: String {
+        let followed = rankingContext.followedChannels.sorted().joined(separator: "|")
+        let categories = rankingContext.categoryHistory
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key):\($0.value)" }
+            .joined(separator: "|")
+        let channels = rankingContext.channelHistory
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key):\($0.value)" }
+            .joined(separator: "|")
+        return [followed, categories, channels].joined(separator: "||")
     }
 
     var body: some View {
@@ -84,6 +134,13 @@ struct LibraryView: View {
                     try await importYouTubeURL(urlText)
                 }
             }
+            .fileImporter(
+                isPresented: $isShowingFileImport,
+                allowedContentTypes: [.plainText, .text],
+                allowsMultipleSelection: false
+            ) { result in
+                handleTextFileImport(result)
+            }
             .fullScreenCover(item: $readerDestination) { route in
                 NavigationStack {
                     DocumentReaderView(document: route.document)
@@ -96,6 +153,9 @@ struct LibraryView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage ?? "")
+            }
+            .onChange(of: rankingFingerprint) { _, _ in
+                suggestions = SuggestionRanker.rank(suggestions, context: rankingContext)
             }
         }
     }
@@ -126,6 +186,15 @@ struct LibraryView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                Button {
+                    isShowingFileImport = true
+                } label: {
+                    Label("Text File", systemImage: "doc.text")
+                        .readerUtilityButtonStyle()
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -184,8 +253,10 @@ struct LibraryView: View {
                             ForEach(suggestions) { suggestion in
                                 SuggestedVideoCard(
                                     suggestion: suggestion,
+                                    isFollowingChannel: isFollowingChannel(suggestion.channelTitle),
                                     isImporting: importingVideoIDs.contains(suggestion.videoID),
-                                    onImport: { importSuggestion(suggestion) }
+                                    onImport: { importSuggestion(suggestion) },
+                                    onToggleFollow: { toggleFollowChannel(suggestion.channelTitle) }
                                 )
                             }
                         }
@@ -221,7 +292,7 @@ struct LibraryView: View {
         guard force || !hasLoadedSuggestions else { return }
         isLoadingSuggestions = true
         let loaded = await YouTubeImportService.shared.loadBeginnerSuggestions()
-        suggestions = loaded
+        suggestions = SuggestionRanker.rank(loaded, context: rankingContext)
         hasLoadedSuggestions = true
         isLoadingSuggestions = false
     }
@@ -263,10 +334,85 @@ struct LibraryView: View {
         )
 
         modelContext.insert(document)
+        updateFollowedChannelsFromImport(channelTitle: content.channelTitle)
+        suggestions = SuggestionRanker.rank(suggestions, context: rankingContext)
 
         if openImmediately {
             readerDestination = ReaderDestination(id: document.id, document: document)
         }
+    }
+
+    private func handleTextFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .failure(let error):
+            alertMessage = error.localizedDescription
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            do {
+                let imported = try loadTextDocument(from: url)
+                guard !imported.body.isEmpty else {
+                    alertMessage = "Selected file is empty."
+                    return
+                }
+                let now = Date()
+                let document = Document(
+                    title: imported.title,
+                    body: imported.body,
+                    createdAt: now,
+                    updatedAt: now,
+                    sourceType: .text,
+                    sourceURL: url.absoluteString
+                )
+                modelContext.insert(document)
+                readerDestination = ReaderDestination(id: document.id, document: document)
+            } catch {
+                alertMessage = "Could not import text file."
+            }
+        }
+    }
+
+    private func loadTextDocument(from url: URL) throws -> (title: String, body: String) {
+        let access = url.startAccessingSecurityScopedResource()
+        defer {
+            if access {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = url.deletingPathExtension().lastPathComponent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (title: title.isEmpty ? "Imported Text" : title, body: text)
+    }
+
+    private func isFollowingChannel(_ channelTitle: String) -> Bool {
+        let channelKey = SuggestionRanker.normalizeChannel(channelTitle)
+        return rankingContext.followedChannels.contains(channelKey)
+    }
+
+    private func toggleFollowChannel(_ channelTitle: String) {
+        var channels = rankingContext.followedChannels
+        let key = SuggestionRanker.normalizeChannel(channelTitle)
+        guard !key.isEmpty else { return }
+
+        if channels.contains(key) {
+            channels.remove(key)
+        } else {
+            channels.insert(key)
+        }
+
+        followedChannelsRaw = channels.sorted().joined(separator: "|")
+        suggestions = SuggestionRanker.rank(suggestions, context: rankingContext)
+    }
+
+    private func updateFollowedChannelsFromImport(channelTitle: String) {
+        let channelKey = SuggestionRanker.normalizeChannel(channelTitle)
+        guard !channelKey.isEmpty else { return }
+
+        var channels = rankingContext.followedChannels
+        channels.insert(channelKey)
+        followedChannelsRaw = channels.sorted().joined(separator: "|")
     }
 
     private struct ReaderDestination: Identifiable {
@@ -331,8 +477,10 @@ private struct ContinueReadingCard: View {
 
 private struct SuggestedVideoCard: View {
     let suggestion: YouTubeSuggestedVideo
+    let isFollowingChannel: Bool
     let isImporting: Bool
     let onImport: () -> Void
+    let onToggleFollow: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -370,6 +518,21 @@ private struct SuggestedVideoCard: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+
+            Button {
+                onToggleFollow()
+            } label: {
+                Text(isFollowingChannel ? "Following" : "Follow channel")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(isFollowingChannel ? Theme.accentSecondary : .secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        (isFollowingChannel ? Theme.accentSecondary.opacity(0.2) : Color.white.opacity(0.08)),
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.plain)
 
             HStack(spacing: 8) {
                 Text(formattedDuration(seconds: suggestion.durationSeconds))

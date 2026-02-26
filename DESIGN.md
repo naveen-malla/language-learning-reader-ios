@@ -17,6 +17,7 @@
 ## Core Flow
 1. Open Library and choose one of three entry points:
    - import text (`Paste Text`)
+   - import local text file (`Text File`)
    - import YouTube by URL
    - open a suggested beginner video card and import in one tap
 2. Imported lesson opens directly in Reader.
@@ -27,8 +28,10 @@
 
 ## Library Home UX
 - `Import Content` card exposes `Paste Text` and `YouTube URL`.
+- `Import Content` now also supports direct `.txt` file import for faster lesson ingestion from external notes/readers.
 - `Suggested for Beginners` uses thumbnail cards and hides videos that fail live Kannada subtitle validation.
 - Suggested categories are mixed beginner-safe topics (`Basics`, `Grammar`, `Conversation`, `Short Stories`).
+- Suggestion cards allow follow/unfollow per channel; ranking prioritizes followed channels and previously successful category/channel history from local imports.
 - `My Library` merges text and YouTube lessons with source metadata.
 - `Continue Reading` is behavior-driven: item appears only after first open.
 
@@ -109,6 +112,7 @@
 - Missed words are re-queued once per session for immediate reinforcement.
 - `Mark Known` is kept as a manual override action.
 - Session chrome is a full-height noir-glass layout with a top progress rail, center glass card, and two-row action dock.
+- Session metrics include lightweight daily-loop telemetry (`Today` reviewed cards, `Known` ratio, and `Today Acc`) in addition to session counters.
 
 ## Data Model (V1)
 - Document: id, title, body, createdAt, updatedAt, source metadata (`sourceType`, `sourceURL`, `sourceVideoID`, `sourceChannel`, `sourceCategory`, `sourceDurationSeconds`, `thumbnailURL`) and open-state timestamps (`firstOpenedAt`, `lastOpenedAt`).

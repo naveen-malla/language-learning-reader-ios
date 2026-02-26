@@ -24,14 +24,19 @@
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
 - Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
 - YouTube import selection (track preference, missing Kannada captions, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
+- Suggestion preference ranking is covered in `LanguageReaderTests/SuggestionRankerTests.swift`.
+- Flashcard daily telemetry aggregation is covered in `LanguageReaderTests/FlashcardStatsStoreTests.swift`.
+- Appearance mode mapping and dark/light selection behavior is covered in `LanguageReaderTests/AppAppearanceModeTests.swift`.
 
 ## Reader Input Notes
 - App now opens on `Library` (not the old paste-first Reader tab).
 - `Library -> Import Content` includes:
   - `Paste Text` for manual text lessons
+  - `Text File` for local `.txt` lesson import
   - `YouTube URL` for subtitle-based lesson import
 - `Continue Reading` only shows lessons that have been opened at least once.
 - `Suggested for Beginners` shows only subtitle-validated Kannada YouTube entries.
+- Suggestion cards support channel follow/unfollow and re-rank using followed channels + existing import history.
 - If simulator keyboard paste is unreliable, use `Paste from Clipboard` inside `Library -> Paste Text`.
 - Two large sample documents are seeded on first launch and appear in `Library -> My Library`.
 - In sentence mode, swipe horizontally to move one sentence at a time.
@@ -100,6 +105,7 @@ Notes:
   - confirm tapping a level badge opens the shared `1 2 3 4 Known` menu with checkmark + meaning text
   - confirm vocab rows use the same badge-triggered status picker and status meanings as sentence rows
   - confirm flashcards show due-only queue (`Due`, `Queue`, `Accuracy`) with binary `Wrong/Correct` feedback after flip
+  - confirm flashcards metrics also show `Today`, `Known`, and `Today Acc`
   - confirm Settings -> Flashcards -> `Words per session` defaults to `5` and changes the next started session size
   - confirm each due word is tested in both directions in-session (`word -> meaning`, `meaning -> word`)
   - confirm same-word reverse direction is not shown immediately back-to-back when multiple words are in the session
@@ -112,8 +118,10 @@ Notes:
 - Manual library/import checks after home/import changes:
   - confirm app lands on `Library` tab at launch
   - confirm `Paste Text` import creates a new library item
+  - confirm `Text File` import opens the imported lesson in reader
   - confirm `YouTube URL` import rejects links without Kannada subtitles
   - confirm importing a suggested video opens reader immediately after save
+  - confirm following/unfollowing a suggestion channel reorders cards immediately
   - confirm imported YouTube rows show thumbnail, source badge, and channel metadata
   - confirm imported item appears in `Continue Reading` only after the first reader open
 

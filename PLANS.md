@@ -50,19 +50,20 @@ Completed:
 - Added fixture-driven regression tests for known missing-word failures (`LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`).
 - Added missing-word frequency summarizer tooling (`scripts/summarize_missing_words.py`) with unit tests.
 - Added language onboarding checklist for new source languages (`docs/LANGUAGE_ONBOARDING_CHECKLIST.md`).
+- Added `Text File` import flow for local `.txt` lesson ingestion in Library.
+- Added suggestion personalization controls (followed-channel toggle + preference-based ranking from local import history).
+- Added flashcard daily telemetry metrics (`Today`, `Known`, `Today Acc`) for low-friction progress feedback.
 
 In progress:
 - Dictionary quality for inflected forms and coverage gaps (Phase 1 ongoing).
 - Phase 1 expansion for multi-language-ready lookup architecture (language profiles + cloud cache path).
 - Dictionary quality evaluation pipeline (coverage + gold accuracy + thresholds) with first Kannada fixture.
 - Reader visual polish toward a cleaner library-to-reader handoff.
-- Phase 3 learning loop refinement (fixed-level schedule tuning + session analytics polish).
+- Phase 3 learning loop refinement (fixed-level schedule tuning against real retention outcomes).
 - Dynamic recommendation expansion beyond curated seed videos while preserving subtitle validation and beginner difficulty guards.
 
 Pending:
 - Fixed-level interval calibration against real retention outcomes and usage cadence.
-- Followed-channel and preference-based ranking for suggestions.
-- Additional import sources after text + YouTube stabilization.
 
 ## Roadmap
 
@@ -118,10 +119,11 @@ Tasks:
 - Ensure library -> document -> reader transition is smooth. (done)
 - Replace paste-first home with a mixed-content Library shell. (done)
 - Add in-app import actions for text and YouTube URL. (done)
+- Add in-app file import for local text lessons. (done)
 - Add beginner suggestion shelf with subtitle-verified YouTube cards + thumbnails. (done)
-- Keep sentence mode as one sentence per horizontal page (stable pager behavior).
+- Keep sentence mode as one sentence per horizontal page (stable pager behavior). (done)
 - Improve typography, vertical rhythm, and token spacing.
-- Validate light/dark mode readability.
+- Validate light/dark mode readability. (done)
 
 Acceptance criteria:
 - Reader content fits iPhone 14 Pro viewport correctly.
@@ -135,7 +137,7 @@ Goals:
 Tasks:
 - Refine flashcard session logic (queue, revisit wrong items). (done)
 - Tune status transitions (`new` -> `learning` -> `known`). (ongoing; `known` remains manual-only)
-- Add lightweight stats for daily review and known ratio. (partially done: session `Due/Queue/Accuracy` + session completion summary)
+- Add lightweight stats for daily review and known ratio. (done: session `Due/Queue/Accuracy/Today/Known/Today Acc`)
 
 Acceptance criteria:
 - A short review session can be completed without navigation friction.

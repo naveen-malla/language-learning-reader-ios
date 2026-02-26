@@ -4,7 +4,7 @@ import XCTest
 
 final class YouTubeImportServiceTests: XCTestCase {
     override func tearDown() {
-        StubbedURLProtocol.handler = nil
+        StubbedURLProtocol.reset()
         super.tearDown()
     }
 
@@ -246,7 +246,22 @@ final class YouTubeImportServiceTests: XCTestCase {
 }
 
 private final class StubbedURLProtocol: URLProtocol {
-    static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    private static var handlers: [String: (URLRequest) throws -> (HTTPURLResponse, Data)] = [:]
+    private static let lock = NSLock()
+
+    static func registerHandler(_ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)) -> String {
+        let id = UUID().uuidString
+        lock.lock()
+        handlers[id] = handler
+        lock.unlock()
+        return id
+    }
+
+    static func reset() {
+        lock.lock()
+        handlers.removeAll()
+        lock.unlock()
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -257,18 +272,32 @@ private final class StubbedURLProtocol: URLProtocol {
     }
 
     override func startLoading() {
-        guard let handler = Self.handler else {
-            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+        Self.lock.lock()
+        let handlers = Self.handlers
+        Self.lock.unlock()
+
+        let sessionID = request.value(forHTTPHeaderField: "X-Stub-Session-ID")
+        if let sessionID, let handler = handlers[sessionID] {
+            respond(using: handler)
             return
         }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
+
+        for handler in handlers.values {
+            do {
+                let (response, data) = try handler(request)
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                client?.urlProtocol(self, didLoad: data)
+                client?.urlProtocolDidFinishLoading(self)
+                return
+            } catch let error as URLError where error.code == .badURL {
+                continue
+            } catch {
+                client?.urlProtocol(self, didFailWithError: error)
+                return
+            }
         }
+
+        client?.urlProtocol(self, didFailWithError: URLError(.badURL))
     }
 
     override func stopLoading() {}
@@ -282,13 +311,25 @@ private final class StubbedURLProtocol: URLProtocol {
         )!
         return (response, data)
     }
+
+    private func respond(using handler: (URLRequest) throws -> (HTTPURLResponse, Data)) {
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
 }
 
 private extension YouTubeImportServiceTests {
     func makeStubbedSession(handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)) -> URLSession {
-        StubbedURLProtocol.handler = handler
+        let sessionID = StubbedURLProtocol.registerHandler(handler)
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubbedURLProtocol.self]
+        config.httpAdditionalHeaders = ["X-Stub-Session-ID": sessionID]
         return URLSession(configuration: config)
     }
 
@@ -333,11 +374,39 @@ private extension YouTubeImportServiceTests {
     }
 
     func extractVideoID(from request: URLRequest) throws -> String {
-        if let body = request.httpBody,
+        if let body = bodyData(from: request),
            let json = try JSONSerialization.jsonObject(with: body) as? [String: Any],
            let videoID = json["videoId"] as? String {
             return videoID
         }
         throw URLError(.badURL)
+    }
+
+    private func bodyData(from request: URLRequest) -> Data? {
+        if let body = request.httpBody {
+            return body
+        }
+
+        guard let stream = request.httpBodyStream else {
+            return nil
+        }
+
+        stream.open()
+        defer { stream.close() }
+
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1024)
+        while stream.hasBytesAvailable {
+            let bytesRead = stream.read(&buffer, maxLength: buffer.count)
+            if bytesRead < 0 {
+                return nil
+            }
+            if bytesRead == 0 {
+                break
+            }
+            data.append(buffer, count: bytesRead)
+        }
+
+        return data.isEmpty ? nil : data
     }
 }

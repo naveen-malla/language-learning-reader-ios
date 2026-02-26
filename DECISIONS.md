@@ -11,11 +11,12 @@
 ## Home IA
 - Main app entry is `Library`, not the old paste-first Reader composer.
 - Library prioritizes import + shelf behavior:
-  - quick import (`Paste Text`, `YouTube URL`)
+  - quick import (`Paste Text`, `Text File`, `YouTube URL`)
   - subtitle-verified beginner suggestions
   - full mixed-source library list
   - continue shelf based on actual open behavior.
 - New lessons should remain labeled as new until first reader open (`firstOpenedAt == nil`).
+- Beginner suggestion ranking uses local preference signals only (followed channels + imported category/channel history), keeping personalization offline and deterministic.
 
 ## Tokenization
 - NaturalLanguage when available for better word boundaries.
@@ -51,6 +52,7 @@
 - Flashcards test each due word in both directions in-session (`word -> meaning`, `meaning -> word`) before finalizing a level outcome.
 - Directional prompts are intentionally separated within a session (not immediate back-to-back for the same word when multiple words are queued).
 - Flashcard session intake is intentionally capped by a user-configurable `Words per session` setting (default `5`) to keep cognitive load controlled.
+- Lightweight daily telemetry (`reviewed`, `correct`) is stored in local `UserDefaults` to show same-day momentum and known-ratio progress without adding backend dependencies.
 - Level progression is conservative by design: promote by one level only after two perfect rounds in a row; cap auto-promotion at `level4`.
 - Demotion is lightweight: only rounds with two wrong answers demote one level (minimum `level1`); mixed rounds keep level unchanged.
 - `known` remains a manual-only state change and is never auto-assigned by flashcards.
@@ -64,6 +66,8 @@
 - Keep lookup architecture language-agnostic via `DictionaryLanguageProfile` (generic default plus language-specific inflection rules).
 - Use heuristic suffix stripping for Kannada inflections (including common accusative/genitive forms); not a full morphological analyzer.
 - Add a lightweight progressive-verb fallback (`-ುತ್ತ...` forms) to improve hit rate on reading text without a full lemmatizer.
+- Kannada stem minimum lengths are enforced by Unicode scalar count (not grapheme count) so short-but-valid stems like `ಕಾ` are not dropped.
+- Progressive verb candidate generation normalizes stems that already end with Kannada `ು` signs to avoid malformed duplicates and preserve both bare stem and infinitive candidates.
 - Prefer concise meanings in UI by stripping metadata prefixes and trimming long multi-sense tails.
 - Resolve single-hop dictionary redirects that use `=` prefix; strip trailing digits in redirect targets.
 - Maintain a local TSV override file and missing-word log in Documents for quick corrections without re-bundling.

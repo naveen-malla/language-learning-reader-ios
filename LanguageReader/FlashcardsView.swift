@@ -15,8 +15,10 @@ struct FlashcardsView: View {
     @State private var sessionReviewed = 0
     @State private var sessionCorrect = 0
     @State private var isShowingSessionSettings = false
+    @State private var todayStats: FlashcardDailyStats = .zero
 
     private let transliterator = Transliterator()
+    private let statsStore = FlashcardStatsStore.shared
 
     private var entryByID: [UUID: VocabEntry] {
         Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
@@ -78,6 +80,19 @@ struct FlashcardsView: View {
         FlashcardSettings.normalizedSessionWordLimit(sessionWordLimit)
     }
 
+    private var knownRatioText: String {
+        guard !entries.isEmpty else { return "0%" }
+        let knownCount = entries.filter { $0.status == .known }.count
+        let ratio = (Double(knownCount) / Double(entries.count)) * 100
+        return "\(Int(round(ratio)))%"
+    }
+
+    private var todayAccuracyText: String {
+        guard todayStats.reviewed > 0 else { return "-" }
+        let value = (Double(todayStats.correct) / Double(todayStats.reviewed)) * 100
+        return "\(Int(round(value)))%"
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -111,9 +126,11 @@ struct FlashcardsView: View {
             }
             .onAppear {
                 runSimpleModeMigrationIfNeeded()
+                refreshDailyStats()
             }
             .onChange(of: entries.count) { _, _ in
                 runSimpleModeMigrationIfNeeded()
+                refreshDailyStats()
             }
         }
     }
@@ -173,10 +190,15 @@ struct FlashcardsView: View {
     }
 
     private var sessionMetrics: some View {
-        HStack(spacing: 8) {
-            metricPill(title: "Due", value: "\(dueEntries.count)")
-            metricPill(title: hasActiveSession ? "Queue" : "Session", value: "\(queueMetricWordCount)")
-            metricPill(title: "Accuracy", value: accuracyText)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                metricPill(title: "Due", value: "\(dueEntries.count)")
+                metricPill(title: hasActiveSession ? "Queue" : "Session", value: "\(queueMetricWordCount)")
+                metricPill(title: "Accuracy", value: accuracyText)
+                metricPill(title: "Today", value: "\(todayStats.reviewed)")
+                metricPill(title: "Known", value: knownRatioText)
+                metricPill(title: "Today Acc", value: todayAccuracyText)
+            }
         }
     }
 
@@ -637,6 +659,8 @@ struct FlashcardsView: View {
         if answer == .correct {
             sessionCorrect += 1
         }
+        statsStore.record(answer: answer)
+        refreshDailyStats()
         entry.encounterCount += 1
 
         var roundAnswers = pendingAnswersByWordID[prompt.entryID, default: []]
@@ -731,6 +755,10 @@ struct FlashcardsView: View {
         guard value.isEmpty == false else { return nil }
         guard value.caseInsensitiveCompare(word) != .orderedSame else { return nil }
         return value
+    }
+
+    private func refreshDailyStats() {
+        todayStats = statsStore.stats()
     }
 }
 
