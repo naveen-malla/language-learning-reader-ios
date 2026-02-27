@@ -240,6 +240,51 @@ final class AutoImportCoordinatorTests: XCTestCase {
         XCTAssertEqual(discoveryCalls, 0)
         XCTAssertEqual(importerCalls, 0)
     }
+
+    func testPerformAutoTopUpDoesNotWriteSuccessMetadataWhenImportsFail() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "FFFFFFFFFFF",
+                title: "Will Fail",
+                channelTitle: "Broken Channel",
+                channelID: "UC-BROKEN",
+                category: "Basics",
+                durationSeconds: 120,
+                thumbnailURL: nil,
+                publishedAt: now
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [:])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.performAutoTopUpIfNeeded(
+            modelContext: context,
+            trigger: .appLaunch
+        )
+        XCTAssertNotNil(summary)
+        XCTAssertEqual(summary?.mode, .autoTopUp)
+        XCTAssertEqual(summary?.attemptedCount, 1)
+        XCTAssertEqual(summary?.importedCount, 0)
+        XCTAssertNil(summary?.batchID)
+
+        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey) as? Date)
+        XCTAssertNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey) as? Date)
+        XCTAssertNil(defaults.string(forKey: AutoImportSettings.lastAutoTopUpBatchIDKey))
+
+        let stored = try context.fetch(FetchDescriptor<Document>())
+        XCTAssertTrue(stored.isEmpty)
+    }
 }
 
 private extension AutoImportCoordinatorTests {

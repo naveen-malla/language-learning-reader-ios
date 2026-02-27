@@ -24,10 +24,10 @@
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
 - Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
 - YouTube import selection (track preference, missing Kannada captions, low-quality transcript rejection, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
-- Dynamic discovery parsing, malformed-feed tolerance, cache reuse, force-refresh revalidation of cached invalid candidates, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
+- Dynamic discovery parsing, malformed-feed tolerance, cache reuse, cacheable-vs-transient validation-failure handling, force-refresh revalidation of cached invalid candidates, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
 - Suggestion preference ranking is covered in `LanguageReaderTests/SuggestionRankerTests.swift`.
 - Suggestion/discovery cache TTL, validation cache, trusted channels, and backoff progression are covered in `LanguageReaderTests/SuggestionCacheStoreTests.swift`.
-- Auto top-up trigger rules, dedupe behavior, and batch metadata persistence are covered in `LanguageReaderTests/AutoImportCoordinatorTests.swift`.
+- Auto top-up trigger rules, dedupe behavior, success/failure metadata writes, and batch metadata persistence are covered in `LanguageReaderTests/AutoImportCoordinatorTests.swift`.
 - Flashcard daily telemetry aggregation is covered in `LanguageReaderTests/FlashcardStatsStoreTests.swift`.
 - Appearance mode mapping and dark/light selection behavior is covered in `LanguageReaderTests/AppAppearanceModeTests.swift`.
 

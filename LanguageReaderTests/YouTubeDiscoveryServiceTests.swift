@@ -155,6 +155,98 @@ final class YouTubeDiscoveryServiceTests: XCTestCase {
         XCTAssertEqual(validationCalls, 1)
     }
 
+    func testCachedKannadaFailureSkipsRevalidationWhenNotForceRefreshing() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let videoID = "FFFFFFFFFFF"
+        let validator = DiscoveryValidatorStub(failingVideoIDs: [videoID])
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            guard url.absoluteString.contains("youtube.com/feeds/videos.xml") else {
+                throw URLError(.badURL)
+            }
+
+            let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "channel_id" })?
+                .value ?? ""
+            let xml = self.makeFeedXML(
+                channelID: channelID,
+                channelTitle: "Channel",
+                videos: channelID == "UChsgGgFHYTBL4m0dgRc78PQ"
+                    ? [(videoID, "Cached Failure Candidate", "2026-02-26T00:00:00+00:00")]
+                    : []
+            )
+            return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        let first = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: true)
+        XCTAssertTrue(first.isEmpty)
+        let callsAfterFirstRun = await validator.callCount(for: videoID)
+        XCTAssertEqual(callsAfterFirstRun, 1)
+
+        let second = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: false)
+        XCTAssertTrue(second.isEmpty)
+        let callsAfterSecondRun = await validator.callCount(for: videoID)
+        XCTAssertEqual(callsAfterSecondRun, 1)
+    }
+
+    func testTransientValidationFailureIsRetriedOnNextRun() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let videoID = "GGGGGGGGGGG"
+        let validator = DiscoveryValidatorStub(
+            failingVideoIDs: [],
+            firstFailureByVideoID: [videoID: .networkFailure]
+        )
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            guard url.absoluteString.contains("youtube.com/feeds/videos.xml") else {
+                throw URLError(.badURL)
+            }
+
+            let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "channel_id" })?
+                .value ?? ""
+            let xml = self.makeFeedXML(
+                channelID: channelID,
+                channelTitle: "Channel",
+                videos: channelID == "UChsgGgFHYTBL4m0dgRc78PQ"
+                    ? [(videoID, "Transient Failure Candidate", "2026-02-26T00:00:00+00:00")]
+                    : []
+            )
+            return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        let first = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: true)
+        XCTAssertTrue(first.isEmpty)
+
+        let second = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: false)
+        XCTAssertEqual(second.map(\.videoID), [videoID])
+
+        let calls = await validator.callCount(for: videoID)
+        XCTAssertEqual(calls, 2)
+    }
+
     func testLoadSuggestionsReturnsExpiredCacheDuringBackoff() async {
         let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
         var now = Date(timeIntervalSince1970: 1_700_000_000)
@@ -201,9 +293,14 @@ final class YouTubeDiscoveryServiceTests: XCTestCase {
 private actor DiscoveryValidatorStub: YouTubeCandidateValidating {
     private var counts: [String: Int] = [:]
     private let failingVideoIDs: Set<String>
+    private let firstFailureByVideoID: [String: YouTubeImportError]
 
-    init(failingVideoIDs: Set<String>) {
+    init(
+        failingVideoIDs: Set<String>,
+        firstFailureByVideoID: [String: YouTubeImportError] = [:]
+    ) {
         self.failingVideoIDs = failingVideoIDs
+        self.firstFailureByVideoID = firstFailureByVideoID
     }
 
     func validateCandidate(
@@ -215,6 +312,10 @@ private actor DiscoveryValidatorStub: YouTubeCandidateValidating {
         fallbackChannelID: String?
     ) async throws -> YouTubeSuggestedVideo {
         counts[videoID, default: 0] += 1
+        if let firstFailure = firstFailureByVideoID[videoID],
+           counts[videoID, default: 0] == 1 {
+            throw firstFailure
+        }
         if failingVideoIDs.contains(videoID) {
             throw YouTubeImportError.kannadaCaptionsUnavailable
         }
