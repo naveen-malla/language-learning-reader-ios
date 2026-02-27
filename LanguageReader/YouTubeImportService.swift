@@ -75,14 +75,14 @@ struct YouTubeVideoIDParser {
         }
 
         if let host = components.host?.lowercased() {
-            if host == "youtu.be" || host == "www.youtu.be" {
+            if isShortYouTubeHost(host) {
                 let pathParts = components.path.split(separator: "/")
                 if let first = pathParts.first, isValidVideoID(String(first)) {
                     return String(first)
                 }
             }
 
-            if host.contains("youtube.com") {
+            if isYouTubeHost(host) {
                 if let value = components.queryItems?.first(where: { $0.name == "v" })?.value,
                    isValidVideoID(value) {
                     return value
@@ -108,6 +108,14 @@ struct YouTubeVideoIDParser {
 
     static func isValidVideoID(_ value: String) -> Bool {
         value.range(of: #"^[A-Za-z0-9_-]{11}$"#, options: .regularExpression) != nil
+    }
+
+    private static func isYouTubeHost(_ host: String) -> Bool {
+        host == "youtube.com" || host.hasSuffix(".youtube.com")
+    }
+
+    private static func isShortYouTubeHost(_ host: String) -> Bool {
+        host == "youtu.be" || host == "www.youtu.be"
     }
 }
 

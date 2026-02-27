@@ -39,6 +39,7 @@ final class YouTubeImportServiceTests: XCTestCase {
 
     func testVideoIDParserRejectsInvalidInput() {
         XCTAssertNil(YouTubeVideoIDParser.parse("https://example.com/not-youtube"))
+        XCTAssertNil(YouTubeVideoIDParser.parse("https://notyoutube.com/watch?v=KaBYEZ6q2tY"))
         XCTAssertNil(YouTubeVideoIDParser.parse(" "))
     }
 

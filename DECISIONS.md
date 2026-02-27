@@ -94,6 +94,7 @@
   - extract innertube API key from watch HTML
   - call `youtubei/v1/player` for metadata and caption tracks
   - select Kannada subtitle tracks (`kn*`), including auto-generated `asr` tracks.
+- URL parsing accepts only real YouTube hosts (`youtube.com`/subdomains and `youtu.be`) to avoid false-positive imports from lookalike domains.
 - Transcript extraction uses subtitle XML parsing and normalization into one newline-delimited lesson body.
 - Import path enforces a transcript readability gate (minimum content + Kannada-script ratio) so low-signal alphanumeric subtitles are rejected.
 - Suggestion shelf uses dynamic channel-seed RSS discovery (not hardcoded video IDs), then performs runtime subtitle and duration validation so the UI only shows currently importable entries.
