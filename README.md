@@ -87,6 +87,7 @@ Prerequisites:
 
 ## Dictionary Pipeline
 - Bundled SQLite dictionary powers offline lookup.
+- SQLite lookups are serialized with per-lookup prepared statements to avoid concurrent read races during sentence-mode background meaning prefetch.
 - Build/update bundled dictionary:
 
 ```bash

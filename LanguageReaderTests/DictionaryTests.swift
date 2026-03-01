@@ -1,4 +1,5 @@
 import XCTest
+import SQLite3
 @testable import LanguageReader
 
 final class DictionaryTests: XCTestCase {
@@ -149,5 +150,100 @@ final class DictionaryTests: XCTestCase {
         XCTAssertEqual(snapshot.fixtureLanguageCode, "en")
         XCTAssertEqual(snapshot.fixtureName, "English Core V1")
         XCTAssertTrue(snapshot.usedFallbackFixture)
+    }
+
+    func testSQLiteProviderLookupReturnsExpectedMeaning() throws {
+        let url = try makeSQLiteDictionary(entries: [
+            "hello": "hi",
+            "ನಮಸ್ಕಾರ": "hello"
+        ])
+        let provider = try XCTUnwrap(
+            SQLiteDictionaryProvider(fileURL: url, sourceDescription: "test dictionary")
+        )
+
+        XCTAssertEqual(provider.lookup(normalizedKey: "hello"), "hi")
+        XCTAssertEqual(provider.lookup(normalizedKey: "ನಮಸ್ಕಾರ"), "hello")
+        XCTAssertNil(provider.lookup(normalizedKey: "missing"))
+    }
+
+    func testSQLiteProviderSupportsConcurrentReads() throws {
+        let url = try makeSQLiteDictionary(entries: [
+            "hello": "hi",
+            "world": "earth",
+            "ನಮಸ್ಕಾರ": "hello"
+        ])
+        let provider = try XCTUnwrap(
+            SQLiteDictionaryProvider(fileURL: url, sourceDescription: "test dictionary")
+        )
+        let lookups: [(word: String, expected: String?)] = [
+            ("hello", "hi"),
+            ("world", "earth"),
+            ("ನಮಸ್ಕಾರ", "hello"),
+            ("missing", nil)
+        ]
+
+        let queue = DispatchQueue.global(qos: .userInitiated)
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var failures: [String] = []
+
+        for i in 0..<300 {
+            let lookup = lookups[i % lookups.count]
+            group.enter()
+            queue.async {
+                let result = provider.lookup(normalizedKey: lookup.word)
+                if result != lookup.expected {
+                    lock.lock()
+                    failures.append("word=\(lookup.word) expected=\(lookup.expected ?? "nil") got=\(result ?? "nil")")
+                    lock.unlock()
+                }
+                group.leave()
+            }
+        }
+
+        XCTAssertEqual(group.wait(timeout: .now() + 10), .success)
+        XCTAssertTrue(failures.isEmpty, failures.prefix(8).joined(separator: "\n"))
+    }
+
+    private func makeSQLiteDictionary(entries: [String: String]) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dictionary-test-\(UUID().uuidString).sqlite")
+
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK,
+              let db else {
+            throw NSError(domain: "DictionaryTests", code: 1)
+        }
+        defer { sqlite3_close(db) }
+
+        let createStatement = "CREATE TABLE entries (key TEXT PRIMARY KEY, meaning TEXT NOT NULL);"
+        guard sqlite3_exec(db, createStatement, nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "DictionaryTests", code: 2)
+        }
+
+        var insertStatement: OpaquePointer?
+        let insertSQL = "INSERT INTO entries (key, meaning) VALUES (?, ?);"
+        guard sqlite3_prepare_v2(db, insertSQL, -1, &insertStatement, nil) == SQLITE_OK,
+              let insertStatement else {
+            throw NSError(domain: "DictionaryTests", code: 3)
+        }
+        defer { sqlite3_finalize(insertStatement) }
+
+        let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        for (key, meaning) in entries {
+            sqlite3_reset(insertStatement)
+            sqlite3_clear_bindings(insertStatement)
+            key.withCString { cString in
+                sqlite3_bind_text(insertStatement, 1, cString, -1, sqliteTransient)
+            }
+            meaning.withCString { cString in
+                sqlite3_bind_text(insertStatement, 2, cString, -1, sqliteTransient)
+            }
+            guard sqlite3_step(insertStatement) == SQLITE_DONE else {
+                throw NSError(domain: "DictionaryTests", code: 4)
+            }
+        }
+
+        return url
     }
 }

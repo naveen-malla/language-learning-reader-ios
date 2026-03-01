@@ -21,6 +21,7 @@
 - Document source type persistence and open-state flags are covered in `LanguageReaderTests/DocumentTests.swift`.
 - Dictionary remote fallback language overrides are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
 - Dictionary remote prefetch dedupe and disabled fallback behavior are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
+- SQLite provider concurrent-read regression coverage is in `LanguageReaderTests/DictionaryTests.swift` (`testSQLiteProviderSupportsConcurrentReads`).
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
 - Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
 - YouTube import selection (track preference, missing Kannada captions, subtitles-only candidate inclusion, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
