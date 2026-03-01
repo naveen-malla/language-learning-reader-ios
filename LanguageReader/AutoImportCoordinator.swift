@@ -18,6 +18,7 @@ struct AutoImportRunSummary {
     let targetCount: Int
     let attemptedCount: Int
     let importedCount: Int
+    let repeatedImportCount: Int
     let skippedDuplicates: Int
     let batchID: String?
     let firstImportedDocumentID: UUID?
@@ -35,17 +36,32 @@ struct AutoImportRunSummary {
         switch mode {
         case .smartPack:
             if importedCount == 0 {
-                return "No new Kannada lessons found right now."
+                if attemptedCount == 0 {
+                    return "Feed refreshed. No importable lessons found in this cycle."
+                }
+                return "Checked \(attemptedCount) candidates, but none passed subtitle and duration checks."
+            }
+            if repeatedImportCount == importedCount {
+                return "Added \(importedCount) lessons from your existing feed while waiting for fresh uploads."
+            }
+            if repeatedImportCount > 0 {
+                return "Added \(importedCount) lessons (\(repeatedImportCount) from existing feed)."
             }
             if isSuccessful {
-                return "Imported \(importedCount) lessons for your next 2-3 days."
+                return "Added \(importedCount) fresh lessons to your queue."
             }
-            return "Imported \(importedCount) lessons (partial pack)."
+            return "Added \(importedCount) lessons (\(targetCount - importedCount) still missing)."
         case .autoTopUp:
             if importedCount == 0 {
-                return "Auto top-up found no new lessons."
+                if attemptedCount == 0 {
+                    return "Auto top-up left queue unchanged: no feed candidates available."
+                }
+                return "Auto top-up checked \(attemptedCount) items, but none passed subtitle and duration checks."
             }
-            return "Auto top-up imported \(importedCount) lessons."
+            if repeatedImportCount > 0 {
+                return "Auto top-up added \(importedCount) lessons (\(repeatedImportCount) from existing feed)."
+            }
+            return "Auto top-up added \(importedCount) fresh lessons."
         case .manual:
             return "Imported \(importedCount) lessons."
         }
@@ -82,7 +98,8 @@ final class AutoImportCoordinator {
             targetCount: targetCount,
             modelContext: modelContext,
             documents: documents,
-            forceDiscoveryRefresh: true
+            forceDiscoveryRefresh: true,
+            allowRepeatImports: effectiveAllowRepeatImports
         )
         defaults.set(now(), forKey: "auto_import.last_smart_pack_at.v1")
         return summary
@@ -116,7 +133,8 @@ final class AutoImportCoordinator {
             targetCount: targetCount,
             modelContext: modelContext,
             documents: documents,
-            forceDiscoveryRefresh: false
+            forceDiscoveryRefresh: false,
+            allowRepeatImports: effectiveAllowRepeatImports
         )
 
         if summary.importedCount > 0 {
@@ -150,13 +168,21 @@ final class AutoImportCoordinator {
         return defaults.bool(forKey: AutoImportSettings.autoTopUpEnabledKey)
     }
 
+    private var effectiveAllowRepeatImports: Bool {
+        if defaults.object(forKey: AutoImportSettings.allowRepeatImportsKey) == nil {
+            return AutoImportSettings.defaultAllowRepeatImports
+        }
+        return defaults.bool(forKey: AutoImportSettings.allowRepeatImportsKey)
+    }
+
     private func runImportBatch(
         mode: DocumentImportMode,
         trigger: AutoImportTrigger,
         targetCount: Int,
         modelContext: ModelContext,
         documents: [Document],
-        forceDiscoveryRefresh: Bool
+        forceDiscoveryRefresh: Bool,
+        allowRepeatImports: Bool
     ) async -> AutoImportRunSummary {
         guard targetCount > 0 else {
             return AutoImportRunSummary(
@@ -165,32 +191,94 @@ final class AutoImportCoordinator {
                 targetCount: 0,
                 attemptedCount: 0,
                 importedCount: 0,
+                repeatedImportCount: 0,
                 skippedDuplicates: 0,
                 batchID: nil,
                 firstImportedDocumentID: nil
             )
         }
 
-        var existingVideoIDs = Set(documents.compactMap(\.sourceVideoID))
-        let candidates = await discoveryService.loadSuggestions(
-            existingVideoIDs: existingVideoIDs,
-            forceRefresh: forceDiscoveryRefresh
+        let batchID = UUID().uuidString
+        let recentChannelKeys = Self.recentlyImportedChannelKeys(from: documents)
+        let libraryVideoIDs = Set(documents.compactMap(\.sourceVideoID))
+        var existingVideoIDs = libraryVideoIDs
+        existingVideoIDs.formUnion(historicalImportedVideoIDs())
+        // Empty library should not trust old discovery cache; force a fresh pull.
+        let shouldForceDiscoveryRefresh = forceDiscoveryRefresh || libraryVideoIDs.isEmpty
+        let discoveredCandidates = await discoveryService.loadSuggestions(
+            existingVideoIDs: allowRepeatImports ? [] : existingVideoIDs,
+            forceRefresh: shouldForceDiscoveryRefresh
         )
+        let freshCandidates = discoveredCandidates.filter { !existingVideoIDs.contains($0.videoID) }
+        let repeatCandidates = discoveredCandidates.filter { existingVideoIDs.contains($0.videoID) }
+        let repeatCandidateIDs = Set(repeatCandidates.map(\.videoID))
+        let candidates = Self.prioritizeCandidates(
+            freshCandidates + (allowRepeatImports ? repeatCandidates : []),
+            recentChannelKeys: recentChannelKeys,
+            batchID: batchID
+        )
+
+        var primaryPass: [YouTubeSuggestedVideo] = []
+        var deferredPass: [YouTubeSuggestedVideo] = []
+        var seenTitleFingerprints: Set<String> = []
+        var seenChannelKeys = recentChannelKeys
+
+        for candidate in candidates {
+            let titleFingerprint = Self.titleFingerprint(candidate.title)
+            if !titleFingerprint.isEmpty, seenTitleFingerprints.contains(titleFingerprint) {
+                continue
+            }
+
+            let channelKey = Self.normalizedChannelKey(candidate)
+            if !channelKey.isEmpty, seenChannelKeys.contains(channelKey) {
+                deferredPass.append(candidate)
+                continue
+            }
+
+            primaryPass.append(candidate)
+            if !titleFingerprint.isEmpty {
+                seenTitleFingerprints.insert(titleFingerprint)
+            }
+            if !channelKey.isEmpty {
+                seenChannelKeys.insert(channelKey)
+            }
+        }
+
+        for candidate in deferredPass {
+            if primaryPass.count >= max(targetCount * 2, targetCount + 4) {
+                break
+            }
+
+            let titleFingerprint = Self.titleFingerprint(candidate.title)
+            if !titleFingerprint.isEmpty, seenTitleFingerprints.contains(titleFingerprint) {
+                continue
+            }
+
+            primaryPass.append(candidate)
+            if !titleFingerprint.isEmpty {
+                seenTitleFingerprints.insert(titleFingerprint)
+            }
+        }
+
+        let plannedCandidates = primaryPass
 
         var attemptedCount = 0
         var importedCount = 0
-        var skippedDuplicates = 0
+        var repeatedImportCount = 0
+        var skippedDuplicates = allowRepeatImports ? 0 : repeatCandidates.count
         var firstImportedDocumentID: UUID?
-        let batchID = UUID().uuidString
+        var importedVideoIDsThisRun: Set<String> = []
 
-        for candidate in candidates {
+        for candidate in plannedCandidates {
             if importedCount >= targetCount {
                 break
             }
 
             if existingVideoIDs.contains(candidate.videoID) {
-                skippedDuplicates += 1
-                continue
+                if !allowRepeatImports {
+                    skippedDuplicates += 1
+                    continue
+                }
             }
 
             attemptedCount += 1
@@ -216,7 +304,11 @@ final class AutoImportCoordinator {
 
                 modelContext.insert(document)
                 existingVideoIDs.insert(candidate.videoID)
+                importedVideoIDsThisRun.insert(candidate.videoID)
                 importedCount += 1
+                if repeatCandidateIDs.contains(candidate.videoID) {
+                    repeatedImportCount += 1
+                }
                 if firstImportedDocumentID == nil {
                     firstImportedDocumentID = document.id
                 }
@@ -227,6 +319,7 @@ final class AutoImportCoordinator {
 
         if importedCount > 0 {
             try? modelContext.save()
+            persistHistoricalImportedVideoIDs(importedVideoIDsThisRun)
         }
 
         return AutoImportRunSummary(
@@ -235,15 +328,126 @@ final class AutoImportCoordinator {
             targetCount: targetCount,
             attemptedCount: attemptedCount,
             importedCount: importedCount,
+            repeatedImportCount: repeatedImportCount,
             skippedDuplicates: skippedDuplicates,
             batchID: importedCount > 0 ? batchID : nil,
             firstImportedDocumentID: firstImportedDocumentID
         )
     }
 
+    private static func normalizedTitleKey(_ title: String) -> String {
+        title
+            .lowercased()
+            .replacingOccurrences(of: #"[^\p{L}\p{N}\s]"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func titleFingerprint(_ title: String) -> String {
+        let words = normalizedTitleKey(title).split(separator: " ")
+        guard !words.isEmpty else { return "" }
+        return words.prefix(10).joined(separator: " ")
+    }
+
+    private static func normalizedChannelKey(_ suggestion: YouTubeSuggestedVideo) -> String {
+        if let channelID = suggestion.channelID?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !channelID.isEmpty {
+            return channelID.lowercased()
+        }
+        return suggestion.channelTitle
+            .lowercased()
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func normalizedChannelKey(from document: Document) -> String {
+        if let channelID = document.sourceChannelID?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !channelID.isEmpty {
+            return channelID.lowercased()
+        }
+
+        return (document.sourceChannel ?? "")
+            .lowercased()
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func recentlyImportedChannelKeys(
+        from documents: [Document],
+        limit: Int = 20
+    ) -> Set<String> {
+        let recent = documents
+            .filter { $0.sourceType == .youtube }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(limit)
+        return Set(recent.map(normalizedChannelKey(from:)).filter { !$0.isEmpty })
+    }
+
+    private static func prioritizeCandidates(
+        _ suggestions: [YouTubeSuggestedVideo],
+        recentChannelKeys: Set<String>,
+        batchID: String
+    ) -> [YouTubeSuggestedVideo] {
+        suggestions.sorted { lhs, rhs in
+            let lhsChannel = normalizedChannelKey(lhs)
+            let rhsChannel = normalizedChannelKey(rhs)
+            let lhsIsNovel = !recentChannelKeys.contains(lhsChannel)
+            let rhsIsNovel = !recentChannelKeys.contains(rhsChannel)
+            if lhsIsNovel != rhsIsNovel {
+                return lhsIsNovel && !rhsIsNovel
+            }
+
+            switch (lhs.publishedAt, rhs.publishedAt) {
+            case let (lhsDate?, rhsDate?) where lhsDate != rhsDate:
+                return lhsDate > rhsDate
+            case (.some, .none):
+                return true
+            case (.none, .some):
+                return false
+            default:
+                break
+            }
+
+            let lhsHash = stableHash(batchID + lhs.videoID)
+            let rhsHash = stableHash(batchID + rhs.videoID)
+            if lhsHash != rhsHash {
+                return lhsHash < rhsHash
+            }
+            return lhs.videoID < rhs.videoID
+        }
+    }
+
+    private static func stableHash(_ value: String) -> UInt64 {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return hash
+    }
+
     private func fetchDocuments(modelContext: ModelContext) -> [Document] {
         let descriptor = FetchDescriptor<Document>()
         return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    private func historicalImportedVideoIDs() -> Set<String> {
+        let stored = defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? []
+        return Set(stored.filter(YouTubeVideoIDParser.isValidVideoID))
+    }
+
+    private func persistHistoricalImportedVideoIDs(_ newIDs: Set<String>) {
+        guard !newIDs.isEmpty else { return }
+        var merged = historicalImportedVideoIDs()
+        merged.formUnion(newIDs.filter(YouTubeVideoIDParser.isValidVideoID))
+        if merged.count > AutoImportSettings.maxHistoricalVideoIDs {
+            let sorted = Array(merged).sorted()
+            let keep = sorted.suffix(AutoImportSettings.maxHistoricalVideoIDs)
+            merged = Set(keep)
+        }
+        defaults.set(Array(merged), forKey: AutoImportSettings.historicalImportedVideoIDsKey)
     }
 
     private func unreadImportedLessonCount(documents: [Document]) -> Int {

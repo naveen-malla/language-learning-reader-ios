@@ -15,18 +15,22 @@ enum AutoImportTrigger: String, Sendable {
 enum AutoImportSettings {
     static let autoTopUpEnabledKey = "auto_import.enabled.v1"
     static let backgroundRefreshEnabledKey = "auto_import.background_refresh_enabled.v1"
+    static let allowRepeatImportsKey = "auto_import.allow_repeat_imports.v2"
+    static let historicalImportedVideoIDsKey = "auto_import.historical_video_ids.v1"
     static let lastAutoTopUpAttemptAtKey = "auto_import.last_attempt_at.v1"
     static let lastAutoTopUpSuccessAtKey = "auto_import.last_success_at.v1"
     static let lastAutoTopUpBatchIDKey = "auto_import.last_batch_id.v1"
 
     static let defaultAutoTopUpEnabled = true
     static let defaultBackgroundRefreshEnabled = false
+    static let defaultAllowRepeatImports = false
     static let defaultCooldownHours = 24
     static let defaultUnreadThreshold = 3
     static let defaultPackDays = 3
-    static let defaultLessonsPerDay = 2
-    static let defaultValidationBudget = 30
-    static let defaultValidationConcurrency = 4
+    static let defaultLessonsPerDay = 1
+    static let defaultValidationBudget = 60
+    static let defaultValidationConcurrency = 6
+    static let maxHistoricalVideoIDs = 4000
 
     static var smartPackTargetCount: Int {
         defaultPackDays * defaultLessonsPerDay

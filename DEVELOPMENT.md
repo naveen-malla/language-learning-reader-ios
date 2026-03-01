@@ -23,7 +23,7 @@
 - Dictionary remote prefetch dedupe and disabled fallback behavior are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
 - Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
-- YouTube import selection (track preference, missing Kannada captions, low-quality transcript rejection, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
+- YouTube import selection (track preference, missing Kannada captions, subtitles-only candidate inclusion, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
 - Dynamic discovery parsing, malformed-feed tolerance, cache reuse, cacheable-vs-transient validation-failure handling, force-refresh revalidation of cached invalid candidates, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
 - Suggestion preference ranking is covered in `LanguageReaderTests/SuggestionRankerTests.swift`.
 - Suggestion/discovery cache TTL, validation cache, trusted channels, and backoff progression are covered in `LanguageReaderTests/SuggestionCacheStoreTests.swift`.
@@ -33,20 +33,26 @@
 
 ## Reader Input Notes
 - App now opens on `Library` (not the old paste-first Reader tab).
-- `Library -> Import Content` includes:
+- `Library -> Lesson Intake` includes:
   - `Paste Text` for manual text lessons
   - `Text File` for local `.txt` lesson import
   - `YouTube URL` for subtitle-based lesson import
-- `Library -> Import Content` also includes `Get 3-Day Pack` for one-tap batch import of validated Kannada lessons.
+- `Library -> Lesson Intake` also includes `Pull 3 New Lessons` for one-tap batch import of validated Kannada lessons.
+- `Unread Lesson Queue` explicitly lists unread imported YouTube lessons.
 - `Continue Reading` only shows lessons that have been opened at least once.
-- `Suggested for Beginners` shows only subtitle-validated Kannada YouTube entries.
-- Suggested entries are discovered from channel RSS feeds and validated live (caption availability + duration guard).
-- Smart-pack planning always targets the full default pack size (`6`) on each tap; auto top-up still scales by unread queue.
+- `Discovery Feed` shows subtitle-validated Kannada YouTube entries split into `New to Import` and `Already in Library`.
+- Suggested entries are discovered from channel RSS feeds plus live YouTube search-result pages and validated live.
+- Manual pull targets 3 lessons per tap; auto top-up scales by unread queue.
+- Candidate duration window is 5 to 20 minutes.
+- Subtitle quality filtering rejects low-readable and numeric-sequence transcripts before they enter import batches.
+- Candidate import prefers direct Kannada subtitle tracks and falls back to translatable tracks rendered in Kannada when needed.
+- Repeat-import fallback is configurable in `Settings -> Auto Content`; default is disabled so pulls prioritize fresh videos.
+- Imported video history is persisted (`auto_import.historical_video_ids.v1`) so pulls avoid re-importing IDs even after library rows are removed.
 - Auto top-up runs on app launch and Library entry when enabled, with defaults:
   - cooldown: 24 hours
   - unread trigger: fewer than 3 imported YouTube lessons
-  - validation budget: 30 candidates
-  - validation concurrency: 4
+  - validation budget: 60 candidates
+  - validation concurrency: 6
 - Auto-content toggles and status live in `Settings -> Auto Content`.
 - Suggestion cards support channel follow/unfollow and re-rank using followed channels + existing import history.
 - If simulator keyboard paste is unreliable, use `Paste from Clipboard` inside `Library -> Paste Text`.
@@ -98,6 +104,7 @@ Notes:
 - Every feature should have failure-path and edge-case coverage.
 - Ensure caching/normalization and URL parsing edge cases are covered in unit tests.
 - When a production issue is observed, add a regression test in the same change.
+- For every code change, run the app on simulator (`./scripts/run.sh`) and manually verify the affected real UI/app flow before considering the change complete.
 - For reader performance issues, confirm sentence/token preprocessing does not rerun on pure scroll updates.
 - Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known+ignored filtering).
 - Manual reader checks after sentence-mode changes:
@@ -136,8 +143,10 @@ Notes:
   - confirm following/unfollowing a suggestion channel reorders cards immediately
   - confirm imported YouTube rows show thumbnail, source badge, and channel metadata
   - confirm imported item appears in `Continue Reading` only after the first reader open
-  - confirm `Get 3-Day Pack` imports a deterministic batch and opens the first imported lesson
-  - confirm a second `Get 3-Day Pack` tap revalidates discovery candidates and does not get stuck on stale invalid-cache entries
+  - confirm `Pull 3 New Lessons` imports a deterministic batch and opens the first imported lesson
+  - confirm a second `Pull 3 New Lessons` tap revalidates discovery candidates and does not get stuck on stale invalid-cache entries
+  - confirm clearing library rows does not allow immediate re-import of the exact same prior video IDs (history dedupe still applies)
+  - confirm discovery cards split correctly between `New to Import` and `Already in Library`
   - confirm auto top-up runs only when cooldown elapsed and unread threshold is below trigger
   - confirm when discovery fails, cached suggestions are still shown if available
   - confirm `Settings -> Auto Content` reflects last auto attempt/success timestamps
@@ -178,3 +187,4 @@ Language onboarding:
 ## Simulator Notes
 - Use Simulator for all testing.
 - If iPhone 14 Pro is unavailable, select the closest recent iPhone runtime.
+- Simulator acceptance is mandatory for each change: build, launch, and exercise the touched flow in the real app UI before sign-off.

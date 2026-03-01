@@ -55,6 +55,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testImportSmartPackDedupesAndPersistsBatchMetadata() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(false, forKey: AutoImportSettings.allowRepeatImportsKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -121,9 +122,10 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
         let summary = await coordinator.importSmartPack(modelContext: context)
         XCTAssertEqual(summary.mode, .smartPack)
-        XCTAssertEqual(summary.targetCount, 6)
+        XCTAssertEqual(summary.targetCount, 3)
         XCTAssertEqual(summary.attemptedCount, 2)
         XCTAssertEqual(summary.importedCount, 2)
+        XCTAssertEqual(summary.repeatedImportCount, 0)
         XCTAssertEqual(summary.skippedDuplicates, 1)
         XCTAssertNotNil(summary.batchID)
 
@@ -134,6 +136,141 @@ final class AutoImportCoordinatorTests: XCTestCase {
         XCTAssertTrue(newDocs.allSatisfy { $0.autoBatchID == summary.batchID })
         XCTAssertEqual(newDocs.first(where: { $0.sourceVideoID == "BBBBBBBBBBB" })?.sourceChannelID, "UC-ONE")
         XCTAssertEqual(newDocs.first(where: { $0.sourceVideoID == "CCCCCCCCCCC" })?.sourceChannelID, "UC-TWO")
+    }
+
+    func testImportSmartPackUsesFixedThreeLessonTarget() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "GGGGGGGGGGG",
+                title: "Queue Target",
+                channelTitle: "Channel",
+                channelID: "UC-CONFIG",
+                category: "Basics",
+                durationSeconds: 120,
+                thumbnailURL: nil,
+                publishedAt: now
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            "GGGGGGGGGGG": makeImportedContent(videoID: "GGGGGGGGGGG", channelID: "UC-CONFIG")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.importSmartPack(modelContext: context)
+        XCTAssertEqual(summary.targetCount, 3)
+    }
+
+    func testImportSmartPackFallsBackToRepeatCandidatesWhenEnabled() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(true, forKey: AutoImportSettings.allowRepeatImportsKey)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let existing = Document(
+            title: "Existing",
+            body: "Body",
+            createdAt: now,
+            updatedAt: now,
+            sourceType: .youtube,
+            sourceVideoID: "AAAAAAAAAAA",
+            sourceChannel: "Channel",
+            sourceChannelID: "UC-EXISTING"
+        )
+        context.insert(existing)
+        try context.save()
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "AAAAAAAAAAA",
+                title: "Repeat Candidate",
+                channelTitle: "Existing Channel",
+                channelID: "UC-EXISTING",
+                category: "Basics",
+                durationSeconds: 600,
+                thumbnailURL: nil,
+                publishedAt: now
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            "AAAAAAAAAAA": makeImportedContent(videoID: "AAAAAAAAAAA", channelID: "UC-EXISTING")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.importSmartPack(modelContext: context)
+        XCTAssertEqual(summary.importedCount, 1)
+        XCTAssertEqual(summary.repeatedImportCount, 1)
+        XCTAssertEqual(summary.skippedDuplicates, 0)
+    }
+
+    func testAutoTopUpFallsBackToRepeatImportsWhenEnabled() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(true, forKey: AutoImportSettings.allowRepeatImportsKey)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let existing = Document(
+            title: "Existing",
+            body: "Body",
+            createdAt: now,
+            updatedAt: now,
+            sourceType: .youtube,
+            sourceURL: "https://www.youtube.com/watch?v=AAAAAAAAAAA",
+            sourceVideoID: "AAAAAAAAAAA",
+            sourceChannel: "Existing Channel",
+            sourceChannelID: "UC-EXISTING"
+        )
+        context.insert(existing)
+        try context.save()
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "AAAAAAAAAAA",
+                title: "Repeat Candidate",
+                channelTitle: "Existing Channel",
+                channelID: "UC-EXISTING",
+                category: "Basics",
+                durationSeconds: 120,
+                thumbnailURL: nil,
+                publishedAt: now
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            "AAAAAAAAAAA": makeImportedContent(videoID: "AAAAAAAAAAA", channelID: "UC-EXISTING")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.performAutoTopUpIfNeeded(
+            modelContext: context,
+            trigger: .libraryEntry
+        )
+        XCTAssertEqual(summary?.importedCount, 1)
+        XCTAssertEqual(summary?.repeatedImportCount, 1)
+        XCTAssertEqual(summary?.skippedDuplicates, 0)
     }
 
     func testPerformAutoTopUpWritesRunMetadataWhenImportSucceeds() async throws {
@@ -285,6 +422,95 @@ final class AutoImportCoordinatorTests: XCTestCase {
         let stored = try context.fetch(FetchDescriptor<Document>())
         XCTAssertTrue(stored.isEmpty)
     }
+
+    func testAutoTopUpForcesDiscoveryRefreshWhenLibraryIsEmpty() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "JJJJJJJJJJJ",
+                title: "Fresh Candidate",
+                channelTitle: "Channel",
+                channelID: "UC-J",
+                category: "Basics",
+                durationSeconds: 600,
+                thumbnailURL: nil,
+                publishedAt: now
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            "JJJJJJJJJJJ": makeImportedContent(videoID: "JJJJJJJJJJJ", channelID: "UC-J")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        _ = await coordinator.performAutoTopUpIfNeeded(
+            modelContext: context,
+            trigger: .appLaunch
+        )
+
+        let forceRefreshFlags = await discovery.forceRefreshArguments()
+        XCTAssertEqual(forceRefreshFlags, [true])
+    }
+
+    func testImportSmartPackSkipsHistoricallyImportedVideoIDs() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(["OLDOLDOLD01"], forKey: AutoImportSettings.historicalImportedVideoIDsKey)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "OLDOLDOLD01",
+                title: "Old Historical",
+                channelTitle: "Archive Channel",
+                channelID: "UC-ARCHIVE",
+                category: "Basics",
+                durationSeconds: 600,
+                thumbnailURL: nil,
+                publishedAt: now
+            ),
+            .init(
+                videoID: "NEWNEWNEW01",
+                title: "Fresh Historical",
+                channelTitle: "Fresh Channel",
+                channelID: "UC-FRESH",
+                category: "Conversation",
+                durationSeconds: 600,
+                thumbnailURL: nil,
+                publishedAt: now
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            "NEWNEWNEW01": makeImportedContent(videoID: "NEWNEWNEW01", channelID: "UC-FRESH")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.importSmartPack(modelContext: context)
+        XCTAssertEqual(summary.importedCount, 1)
+
+        let discoveryExistingIDs = await discovery.existingVideoIDArguments().first ?? []
+        XCTAssertTrue(discoveryExistingIDs.contains("OLDOLDOLD01"))
+
+        let storedHistory = Set(defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? [])
+        XCTAssertTrue(storedHistory.contains("OLDOLDOLD01"))
+        XCTAssertTrue(storedHistory.contains("NEWNEWNEW01"))
+    }
 }
 
 private extension AutoImportCoordinatorTests {
@@ -309,6 +535,8 @@ private extension AutoImportCoordinatorTests {
 private actor CoordinatorDiscoveryStub: AutoImportSuggesting {
     private let suggestions: [YouTubeSuggestedVideo]
     private var calls = 0
+    private var forceRefreshFlags: [Bool] = []
+    private var existingVideoIDArgumentsLog: [Set<String>] = []
 
     init(suggestions: [YouTubeSuggestedVideo]) {
         self.suggestions = suggestions
@@ -319,11 +547,21 @@ private actor CoordinatorDiscoveryStub: AutoImportSuggesting {
         forceRefresh: Bool
     ) async -> [YouTubeSuggestedVideo] {
         calls += 1
+        forceRefreshFlags.append(forceRefresh)
+        existingVideoIDArgumentsLog.append(existingVideoIDs)
         return suggestions
     }
 
     func loadCallCount() -> Int {
         calls
+    }
+
+    func forceRefreshArguments() -> [Bool] {
+        forceRefreshFlags
+    }
+
+    func existingVideoIDArguments() -> [Set<String>] {
+        existingVideoIDArgumentsLog
     }
 }
 

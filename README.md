@@ -5,7 +5,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 ## Product Snapshot
 - Start from a Library-first home with import actions, beginner suggestions, and continue-reading shelves.
 - Import from in-app text paste, text file, or YouTube URL (Kannada subtitles required for YouTube import).
-- Pull a one-tap `Get 3-Day Pack` of fresh subtitle-validated Kannada lessons.
+- Pull a one-tap `Pull 3 New Lessons` run to top up subtitle-validated Kannada lessons.
 - Keep content fresh automatically with app-use top-up triggers and cooldown limits.
 - Read saved lessons in a distraction-light interface designed for long sessions.
 - Tap words to get instant meanings, pronunciation, and vocabulary actions.
@@ -27,7 +27,7 @@ An iOS reading-first language learning app (initial scope: Kannada) with offline
 | ![Flashcards tab](docs/screenshots/flashcards.jpg) | ![Settings tab](docs/screenshots/settings.jpg) |
 
 ## Core UX
-- **Library-first flow**: open to a mixed content home (`Continue Reading`, `Suggested for Beginners`, `My Library`).
+- **Library-first flow**: open to a queue-first home (`Lesson Intake`, `Unread Lesson Queue`, `Discovery Feed`, `My Library`).
 - **One-tap importing**: `Paste Text`, `Text File`, and `YouTube URL` imports are available directly on the home screen.
 - **Subtitle-gated YouTube import**: only videos with Kannada subtitle tracks are imported.
 - **Suggestion personalization**: suggestion ordering prioritizes followed channels and previously successful categories/channels from your library.
@@ -69,13 +69,19 @@ Prerequisites:
 - List simulators: `xcrun simctl list`
 
 ## YouTube Import Notes
-- Paste a full YouTube URL in `Library -> Import Content -> YouTube URL`.
-- Import accepts videos only when a Kannada subtitle track is available (`kn*`, including auto-generated tracks) and transcript quality is readable enough for study.
-- Beginner suggestions now come from dynamic channel RSS discovery (not static video IDs), then pass runtime subtitle + duration validation (`<= 12 min`) before display.
+- Paste a full YouTube URL in `Library -> Lesson Intake -> YouTube URL`.
+- Import accepts videos when subtitle extraction succeeds and transcript quality is readable for study.
+- Import prefers native Kannada subtitle tracks (`kn*`) and can fall back to translatable tracks rendered in Kannada when direct `kn` tracks are missing.
+- Import also enforces subtitle readability checks so number-only / low-text transcripts are rejected.
+- Beginner suggestions now come from dynamic channel RSS discovery plus live YouTube search-results discovery (not static video IDs).
 - Suggestion cards support channel follow/unfollow, and ranking adapts to followed channels plus your prior import history.
-- `Get 3-Day Pack` always plans the full batched smart pack (`3 days * 2 lessons/day = 6` target, partial results allowed when supply is low).
+- `Pull 3 New Lessons` targets 3 lessons per tap.
+- Candidate duration window is 5 to 20 minutes.
+- Repeat-import fallback is disabled by default so pulls prioritize fresh videos; optional fallback can still be enabled in Settings.
 - Auto top-up runs on app launch and Library entry when enabled, cooldown has elapsed (24h default), and unread imported lessons are below threshold (`< 3`).
 - Discovery and validation results are cached locally with TTL and backoff to reduce repeated network cost; force refresh revalidates previously cached invalid candidates to recover from transient failures.
+- Pull/import history is persisted locally so already-imported video IDs are avoided even if library rows are later deleted.
+- Discovery cards are split into `New to Import` and `Already in Library` so feed state is explicit.
 - Background refresh is optional and best-effort; foreground checks still enforce deterministic top-up rules.
 - Imported YouTube lessons persist on-device like any other library item.
 
@@ -128,6 +134,7 @@ In **Settings -> Translation API**, provide:
 - Deterministic domain logic where practical.
 - Strong unit coverage on tokenizer, dictionary lookup paths, vocab state resolution, and flashcard scheduling.
 - Full simulator test runs supported via `./scripts/test.sh`.
+- Every shipped change must also be verified in the running simulator app (`./scripts/run.sh`) for the affected user flow; unit tests alone are not sufficient.
 
 ## Documentation Map
 - Product plan and checkpoints: `PLANS.md`

@@ -28,7 +28,7 @@ enum YouTubeImportError: LocalizedError {
         case .transcriptUnavailable:
             return "Could not extract transcript text from subtitles."
         case .unsupportedDuration:
-            return "Video is too long for beginner feed right now."
+            return "Video must be between 5 and 20 minutes."
         case .lowQualityTranscript:
             return "Subtitles are too short or not readable enough for study."
         }
@@ -122,13 +122,17 @@ struct YouTubeVideoIDParser {
 actor YouTubeImportService {
     static let shared = YouTubeImportService()
 
-    static let maxBeginnerDurationSeconds = 720
-    static let minTranscriptCharacterCount = 140
-    static let minTranscriptLineCount = 4
-    static let minKannadaScalarCount = 60
-    static let minKannadaScalarRatio = 0.20
+    static let minLessonDurationSeconds = 300
+    static let maxLessonDurationSeconds = 1200
+    static let preferredDurationSeconds = 720
+    static let minimumReadableTranscriptLength = 60
+    static let minimumKannadaCharacterCount = 24
+    static let minimumKannadaWordCount = 6
+    static let maxDigitRatio = 0.35
+    static let maxNumericDominantLines = 12
 
     private var metadataCache: [String: VideoMetadata] = [:]
+    private var transcriptCache: [String: String] = [:]
     private let session: URLSession
     private let cacheStore: SuggestionCacheStore
     private lazy var discoveryService = YouTubeDiscoveryService(
@@ -167,14 +171,11 @@ actor YouTubeImportService {
 
     func importVideo(videoID: String) async throws -> ImportedYouTubeContent {
         let metadata = try await loadMetadata(videoID: videoID, requireKannada: true)
-        let transcript = try await fetchTranscript(from: metadata.captionTrackURL)
-
-        guard !transcript.isEmpty else {
-            throw YouTubeImportError.transcriptUnavailable
+        guard metadata.durationSeconds >= Self.minLessonDurationSeconds,
+              metadata.durationSeconds <= Self.maxLessonDurationSeconds else {
+            throw YouTubeImportError.unsupportedDuration
         }
-        guard isTranscriptReadable(transcript) else {
-            throw YouTubeImportError.lowQualityTranscript
-        }
+        let transcript = try await loadTranscript(videoID: videoID, metadata: metadata)
 
         await cacheStore.addTrustedChannel(channelID: metadata.channelID, channelTitle: metadata.channelTitle)
 
@@ -198,9 +199,11 @@ actor YouTubeImportService {
         fallbackChannelID: String?
     ) async throws -> YouTubeSuggestedVideo {
         let metadata = try await loadMetadata(videoID: videoID, requireKannada: true)
-        guard metadata.durationSeconds <= Self.maxBeginnerDurationSeconds else {
+        guard metadata.durationSeconds >= Self.minLessonDurationSeconds,
+              metadata.durationSeconds <= Self.maxLessonDurationSeconds else {
             throw YouTubeImportError.unsupportedDuration
         }
+        _ = try await loadTranscript(videoID: videoID, metadata: metadata)
 
         let resolvedTitle = metadata.title.isEmpty ? (fallbackTitle ?? "Untitled") : metadata.title
         let resolvedChannelTitle = metadata.channelTitle.isEmpty
@@ -218,6 +221,103 @@ actor YouTubeImportService {
             thumbnailURL: metadata.thumbnailURL,
             publishedAt: publishedAt
         )
+    }
+
+    private func loadTranscript(videoID: String, metadata: VideoMetadata) async throws -> String {
+        if let cached = transcriptCache[videoID], !cached.isEmpty {
+            return cached
+        }
+
+        let transcript = try await fetchTranscript(from: metadata.captionTrackURL)
+        guard Self.isTranscriptReadableForStudy(transcript) else {
+            throw YouTubeImportError.lowQualityTranscript
+        }
+        transcriptCache[videoID] = transcript
+        return transcript
+    }
+
+    private static func isTranscriptReadableForStudy(_ transcript: String) -> Bool {
+        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= minimumReadableTranscriptLength else { return false }
+
+        var letterScalars = 0
+        var digitScalars = 0
+        var kannadaScalars = 0
+
+        for scalar in trimmed.unicodeScalars {
+            if CharacterSet.letters.contains(scalar) {
+                letterScalars += 1
+            }
+            if CharacterSet.decimalDigits.contains(scalar) {
+                digitScalars += 1
+            }
+            if isKannadaScalar(scalar) {
+                kannadaScalars += 1
+            }
+        }
+
+        guard kannadaScalars >= minimumKannadaCharacterCount else { return false }
+
+        let words = trimmed.components(separatedBy: .whitespacesAndNewlines)
+        var kannadaWordCount = 0
+        var uniqueKannadaWords: Set<String> = []
+
+        for word in words {
+            let cleaned = word
+                .lowercased()
+                .replacingOccurrences(of: #"[^\p{L}]+"#, with: "", options: .regularExpression)
+            guard !cleaned.isEmpty else { continue }
+            if cleaned.unicodeScalars.contains(where: isKannadaScalar) {
+                kannadaWordCount += 1
+                uniqueKannadaWords.insert(cleaned)
+            }
+        }
+
+        guard kannadaWordCount >= minimumKannadaWordCount else { return false }
+        guard uniqueKannadaWords.count >= 4 else { return false }
+
+        var numericDominantLines = 0
+        for rawLine in trimmed.split(separator: "\n", omittingEmptySubsequences: true) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.isEmpty { continue }
+
+            var lineDigits = 0
+            var lineLetters = 0
+            var lineKannada = 0
+            for scalar in line.unicodeScalars {
+                if CharacterSet.decimalDigits.contains(scalar) {
+                    lineDigits += 1
+                }
+                if CharacterSet.letters.contains(scalar) {
+                    lineLetters += 1
+                }
+                if isKannadaScalar(scalar) {
+                    lineKannada += 1
+                }
+            }
+
+            if lineDigits > 0, lineKannada == 0, lineDigits >= lineLetters {
+                numericDominantLines += 1
+            }
+        }
+
+        if numericDominantLines >= maxNumericDominantLines {
+            return false
+        }
+
+        let alphaNumericCount = letterScalars + digitScalars
+        if alphaNumericCount > 0 {
+            let digitRatio = Double(digitScalars) / Double(alphaNumericCount)
+            if digitRatio > maxDigitRatio {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private static func isKannadaScalar(_ scalar: UnicodeScalar) -> Bool {
+        (0x0C80...0x0CFF).contains(scalar.value)
     }
 
     private func loadMetadata(videoID: String, requireKannada: Bool) async throws -> VideoMetadata {
@@ -238,10 +338,10 @@ actor YouTubeImportService {
         guard !tracks.isEmpty else {
             throw YouTubeImportError.captionsUnavailable
         }
-        guard let kannadaTrack = pickKannadaTrack(from: tracks) else {
+        guard let captionTrack = pickCaptionTrack(from: tracks, requireKannada: requireKannada) else {
             throw YouTubeImportError.kannadaCaptionsUnavailable
         }
-        guard let metadata = buildVideoMetadata(videoID: videoID, payload: playerPayload, track: kannadaTrack) else {
+        guard let metadata = buildVideoMetadata(videoID: videoID, payload: playerPayload, track: captionTrack) else {
             throw YouTubeImportError.parsingFailure
         }
 
@@ -366,21 +466,58 @@ actor YouTubeImportService {
             channelID: channelID,
             durationSeconds: durationSeconds,
             thumbnailURL: thumbnailURL,
-            languageCode: track.languageCode,
-            captionTrackURL: track.baseURL
+            languageCode: track.effectiveLanguageCode,
+            captionTrackURL: track.transcriptURL
         )
+    }
+
+    private func pickCaptionTrack(from tracks: [CaptionTrack], requireKannada: Bool) -> CaptionTrack? {
+        if let kannadaTrack = pickKannadaTrack(from: tracks) {
+            return kannadaTrack
+        }
+
+        guard requireKannada else {
+            return pickFallbackTrack(from: tracks)
+        }
+
+        guard let translatable = pickFallbackTrack(from: tracks),
+              translatable.isTranslatable else {
+            return nil
+        }
+        return translatable.translated(to: "kn")
     }
 
     private func pickKannadaTrack(from tracks: [CaptionTrack]) -> CaptionTrack? {
         let kannadaTracks = tracks.filter { $0.languageCode.lowercased().hasPrefix("kn") }
         guard !kannadaTracks.isEmpty else { return nil }
+        return prioritizedTracks(kannadaTracks).first
+    }
 
-        // Prefer manually-uploaded Kannada subtitles over auto-generated asr tracks.
-        return kannadaTracks.sorted { lhs, rhs in
-            let lhsScore = (lhs.isAutoGenerated ? 1 : 0) + (lhs.languageCode.lowercased() == "kn" ? 0 : 1)
-            let rhsScore = (rhs.isAutoGenerated ? 1 : 0) + (rhs.languageCode.lowercased() == "kn" ? 0 : 1)
-            return lhsScore < rhsScore
-        }.first
+    private func pickFallbackTrack(from tracks: [CaptionTrack]) -> CaptionTrack? {
+        guard !tracks.isEmpty else { return nil }
+        return prioritizedTracks(tracks).first
+    }
+
+    private func prioritizedTracks(_ tracks: [CaptionTrack]) -> [CaptionTrack] {
+        tracks.sorted { lhs, rhs in
+            let lhsScore = (lhs.isAutoGenerated ? 1 : 0) + languagePreferenceScore(lhs.languageCode)
+            let rhsScore = (rhs.isAutoGenerated ? 1 : 0) + languagePreferenceScore(rhs.languageCode)
+            if lhsScore != rhsScore {
+                return lhsScore < rhsScore
+            }
+            return lhs.languageCode.localizedCaseInsensitiveCompare(rhs.languageCode) == .orderedAscending
+        }
+    }
+
+    private func languagePreferenceScore(_ languageCode: String) -> Int {
+        let normalized = languageCode.lowercased()
+        if normalized == "kn" { return 0 }
+        if normalized.hasPrefix("kn-") { return 1 }
+        if normalized.hasPrefix("en") { return 2 }
+        if normalized.hasPrefix("hi") { return 3 }
+        if normalized.hasPrefix("te") { return 4 }
+        if normalized.hasPrefix("ta") { return 5 }
+        return 6
     }
 
     private func parseCaptionTracks(from payload: [String: Any]) -> [CaptionTrack] {
@@ -405,44 +542,64 @@ actor YouTubeImportService {
             }
 
             let kind = track["kind"] as? String
+            let isTranslatable = track["isTranslatable"] as? Bool ?? true
             return CaptionTrack(
                 languageCode: languageCode,
                 isAutoGenerated: kind == "asr",
+                isTranslatable: isTranslatable,
                 baseURL: url
             )
         }
     }
 
-    private func isTranscriptReadable(_ transcript: String) -> Bool {
-        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= Self.minTranscriptCharacterCount else { return false }
-
-        let lineCount = trimmed
-            .split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .count
-        guard lineCount >= Self.minTranscriptLineCount else { return false }
-
-        let scalars = trimmed.unicodeScalars.filter { scalar in
-            !CharacterSet.whitespacesAndNewlines.contains(scalar) &&
-            !CharacterSet.controlCharacters.contains(scalar)
-        }
-        guard !scalars.isEmpty else { return false }
-
-        let kannadaScalars = scalars.filter { scalar in
-            (0x0C80...0x0CFF).contains(scalar.value)
-        }.count
-        guard kannadaScalars >= Self.minKannadaScalarCount else { return false }
-
-        let kannadaRatio = Double(kannadaScalars) / Double(scalars.count)
-        return kannadaRatio >= Self.minKannadaScalarRatio
-    }
-
     private struct CaptionTrack {
         let languageCode: String
         let isAutoGenerated: Bool
+        let isTranslatable: Bool
         let baseURL: URL
+        let translatedLanguageCode: String?
+
+        init(
+            languageCode: String,
+            isAutoGenerated: Bool,
+            isTranslatable: Bool,
+            baseURL: URL,
+            translatedLanguageCode: String? = nil
+        ) {
+            self.languageCode = languageCode
+            self.isAutoGenerated = isAutoGenerated
+            self.isTranslatable = isTranslatable
+            self.baseURL = baseURL
+            self.translatedLanguageCode = translatedLanguageCode
+        }
+
+        var effectiveLanguageCode: String {
+            translatedLanguageCode ?? languageCode
+        }
+
+        var transcriptURL: URL {
+            guard let translatedLanguageCode else {
+                return baseURL
+            }
+            guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+                return baseURL
+            }
+            var queryItems = components.queryItems ?? []
+            queryItems.removeAll(where: { $0.name == "tlang" })
+            queryItems.append(URLQueryItem(name: "tlang", value: translatedLanguageCode))
+            components.queryItems = queryItems
+            return components.url ?? baseURL
+        }
+
+        func translated(to languageCode: String) -> CaptionTrack {
+            CaptionTrack(
+                languageCode: self.languageCode,
+                isAutoGenerated: isAutoGenerated,
+                isTranslatable: false,
+                baseURL: baseURL,
+                translatedLanguageCode: languageCode
+            )
+        }
     }
 
     private struct VideoMetadata: Sendable {

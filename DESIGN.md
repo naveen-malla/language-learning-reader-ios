@@ -14,13 +14,16 @@
 - Flashcards use a custom noir-glass surface with binary recall actions (`Wrong`, `Correct`) after card flip.
 - Tab bar uses translucent material treatment so navigation feels persistent but unobtrusive.
 
+## UI Validation Rule
+- Every UI/UX change must be validated in the running simulator app (not just previews or tests) by exercising the affected screen/flow end to end.
+
 ## Core Flow
 1. Open Library and choose one of three entry points:
    - import text (`Paste Text`)
    - import local text file (`Text File`)
    - import YouTube by URL
-   - import a one-tap smart pack (`Get 3-Day Pack`)
-   - open a suggested beginner video card and import in one tap
+   - run a one-tap queue pull (`Pull 3 New Lessons`)
+   - open a suggested beginner video row and import in one tap
 2. Imported lesson opens directly in Reader.
 3. Read with tappable word tokens.
 4. Tap a word to see meaning and add to vocab.
@@ -28,15 +31,21 @@
 6. Re-open saved documents from Library; `Continue Reading` includes only previously opened lessons.
 
 ## Library Home UX
-- `Import Content` card exposes `Paste Text` and `YouTube URL`.
-- `Import Content` now also supports direct `.txt` file import for faster lesson ingestion from external notes/readers.
-- `Suggested for Beginners` uses thumbnail cards and hides videos that fail live Kannada subtitle validation.
-- Suggested inventory is populated by dynamic channel RSS discovery, then filtered by runtime validation (Kannada captions + beginner duration cap).
-- Final import gate also rejects transcript bodies that are too short or non-readable to prevent noisy alphanumeric-only lessons.
+- `Lesson Intake` card exposes `Paste Text`, `YouTube URL`, and one-tap queue pull.
+- `Lesson Intake` also supports direct `.txt` file import for faster lesson ingestion from external notes/readers.
+- Primary intake action is `Pull 3 New Lessons`; secondary actions stay available for manual text/URL/file imports.
+- `Unread Lesson Queue` keeps unread imported lessons visible as a dedicated list.
+- `Discovery Feed` uses explicit vertical rows (not hidden carousels) and hides videos that fail live Kannada subtitle validation.
+- Suggested inventory is populated by dynamic channel RSS discovery plus live YouTube search-result discovery.
+- Import path requires Kannada subtitles plus readable transcript quality, including rejection of numeric-sequence subtitle dumps.
+- Import prefers native Kannada subtitle tracks and can fallback to translatable tracks rendered in Kannada when direct tracks are absent.
 - Suggested categories are mixed beginner-safe topics (`Basics`, `Grammar`, `Conversation`, `Short Stories`).
 - Suggestion cards allow follow/unfollow per channel; ranking prioritizes followed channels and previously successful category/channel history from local imports.
-- `Get 3-Day Pack` uses a fixed full-pack target (`6`) per tap; force refresh revalidates previously invalid-cached candidates instead of trusting stale negative cache entries.
-- Auto top-up checks run at app launch and Library entry (when enabled), reusing the same planner as smart pack import.
+- `Discovery Feed` is split into `New to Import` and `Already in Library`, with direct open action for imported feed items.
+- Library rows are deduplicated by `sourceVideoID` so accidental duplicate imports never clutter queue/library views.
+- `Pull 3 New Lessons` targets 3 lessons per tap; force refresh revalidates previously invalid-cached candidates instead of trusting stale negative cache entries.
+- Repeat-import fallback is off by default so pulls prioritize fresh videos; optional fallback remains available in settings.
+- Auto top-up checks run at app launch and Library entry (when enabled), reusing the same planner as manual pull.
 - Discovery failures degrade to cached suggestions with backoff to avoid repeated failing calls.
 - `My Library` merges text and YouTube lessons with source metadata.
 - `Continue Reading` is behavior-driven: item appears only after first open.

@@ -39,7 +39,7 @@
 - Keep a deliberate contrast split: light app shell for management screens, dark reader canvas for immersion and longer reading sessions.
 - Prefer rounded card surfaces and capsule controls over dense form rows to reduce interaction friction during repeated vocab updates.
 - Keep micro-interactions subtle and functional: shared press states for token taps and icon actions are preferred over heavy animation.
-- YouTube suggestion cards intentionally include thumbnails, compact metadata chips, and explicit import actions to reduce choice friction.
+- YouTube suggestion rows intentionally include thumbnails, compact metadata chips, and explicit import/open actions so new-vs-imported state stays visible without hidden horizontal carousels.
 
 ## Learning State Model
 - Canonical tracked vocab states are `level1`, `level2`, `level3`, `level4`, and `known`.
@@ -96,20 +96,25 @@
   - select Kannada subtitle tracks (`kn*`), including auto-generated `asr` tracks.
 - URL parsing accepts only real YouTube hosts (`youtube.com`/subdomains and `youtu.be`) to avoid false-positive imports from lookalike domains.
 - Transcript extraction uses subtitle XML parsing and normalization into one newline-delimited lesson body.
-- Import path enforces a transcript readability gate (minimum content + Kannada-script ratio) so low-signal alphanumeric subtitles are rejected.
-- Suggestion shelf uses dynamic channel-seed RSS discovery (not hardcoded video IDs), then performs runtime subtitle and duration validation so the UI only shows currently importable entries.
+- Import path gates on Kannada subtitles plus transcript readability heuristics, including numeric-sequence rejection.
+- Import prefers native Kannada subtitle tracks and falls back to translatable tracks rendered in Kannada when direct Kannada tracks are unavailable.
+- Suggestion shelf uses dynamic channel-seed RSS discovery plus live YouTube search-results discovery, then validates runtime subtitle availability and duration range.
+- Library discovery UI is intentionally split into `New to Import` and `Already in Library` to make feed freshness state explicit and avoid hidden duplication confusion.
 - Discovery/validation results are cached locally with TTL and exponential backoff to keep behavior deterministic during endpoint volatility.
 - Force-refresh discovery bypasses cached invalid validation records and revalidates candidates to recover from transient endpoint failures.
+- Auto-import keeps a persisted history of imported video IDs so previously imported items are still skipped even after library cleanup.
+- Library/queue presentation deduplicates rows by `sourceVideoID` to prevent duplicate visual clutter.
 - Smart pack and auto top-up share one batch planner:
-  - default target: 6 lessons (`3 days * 2/day`)
-  - duration cap: 12 minutes
-  - validation budget: 30 candidates
-  - validation concurrency: 4
+  - manual pull target: 3 new lessons per tap
+  - duration window: 5 to 20 minutes
+  - validation budget: 60 candidates
+  - validation concurrency: 6
   - auto trigger: unread imported YouTube lessons `< 3`
   - auto cooldown: 24 hours
-- Beginner feed currently enforces short-form duration guardrails (max 12 minutes) to prevent overload for new learners.
+- Repeat-import fallback is available but defaults to off so fresh imports are prioritized.
 - Background refresh is optional/best-effort and uses the same coordinator/rate limits as foreground checks.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.
 - Every user-reported bug should add a corresponding automated test before closure.
+- Simulator-first acceptance: every change must be run in the simulator and the touched flow must be verified in the actual app UI before completion.

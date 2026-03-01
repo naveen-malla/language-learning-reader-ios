@@ -14,6 +14,9 @@ struct LibraryView: View {
     @State private var isImportingSmartPack = false
     @State private var hasAttemptedLibraryAutoTopUp = false
     @State private var smartPackStatusMessage: String?
+    @State private var lastDiscoveryRefreshAt: Date?
+    @State private var nextDiscoveryRetryAt: Date?
+    @State private var libraryFilter: LibraryFilter = .all
 
     @State private var isShowingTextImport = false
     @State private var isShowingYouTubeImport = false
@@ -21,6 +24,7 @@ struct LibraryView: View {
     @State private var alertMessage: String?
     @State private var readerDestination: ReaderDestination?
     @AppStorage("library.followed_channels.v1") private var followedChannelsRaw = ""
+    @AppStorage(AutoImportSettings.allowRepeatImportsKey) private var allowRepeatImports = AutoImportSettings.defaultAllowRepeatImports
 
     static let dateFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
@@ -28,8 +32,24 @@ struct LibraryView: View {
         return formatter
     }()
 
+    private enum LibraryFilter: String, CaseIterable, Identifiable {
+        case all
+        case unread
+        case opened
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All"
+            case .unread: return "Unread"
+            case .opened: return "Opened"
+            }
+        }
+    }
+
     private var continueReadingDocuments: [Document] {
-        documents
+        uniqueLibraryDocuments
             .filter(\.isOpened)
             .sorted { ($0.lastOpenedAt ?? .distantPast) > ($1.lastOpenedAt ?? .distantPast) }
             .prefix(8)
@@ -37,11 +57,85 @@ struct LibraryView: View {
     }
 
     private var libraryDocuments: [Document] {
-        documents.sorted { $0.updatedAt > $1.updatedAt }
+        uniqueLibraryDocuments.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var filteredLibraryDocuments: [Document] {
+        switch libraryFilter {
+        case .all:
+            return libraryDocuments
+        case .unread:
+            return libraryDocuments.filter { $0.isOpened == false }
+        case .opened:
+            return libraryDocuments.filter(\.isOpened)
+        }
+    }
+
+    private var queueDocuments: [Document] {
+        uniqueLibraryDocuments
+            .filter { $0.sourceType == .youtube && $0.isOpened == false }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var totalYouTubeLessons: Int {
+        uniqueLibraryDocuments.filter { $0.sourceType == .youtube }.count
+    }
+
+    private var openedLessonCount: Int {
+        uniqueLibraryDocuments.filter(\.isOpened).count
+    }
+
+    private var pullTargetCount: Int {
+        AutoImportSettings.smartPackTargetCount
+    }
+
+    private var nextQueueDocument: Document? {
+        queueDocuments.first
     }
 
     private var importedVideoIDs: Set<String> {
-        Set(documents.compactMap(\.sourceVideoID))
+        Set(uniqueLibraryDocuments.compactMap(\.sourceVideoID))
+    }
+
+    private var knownImportedVideoIDs: Set<String> {
+        let historical = UserDefaults.standard.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? []
+        return importedVideoIDs.union(historical)
+    }
+
+    private var importedDocumentByVideoID: [String: Document] {
+        uniqueLibraryDocuments.reduce(into: [:]) { result, document in
+            guard let videoID = document.sourceVideoID else { return }
+            if let current = result[videoID], current.updatedAt > document.updatedAt {
+                return
+            }
+            result[videoID] = document
+        }
+    }
+
+    private var newFeedSuggestions: [YouTubeSuggestedVideo] {
+        suggestions.filter { !knownImportedVideoIDs.contains($0.videoID) }
+    }
+
+    private var importedFeedSuggestions: [YouTubeSuggestedVideo] {
+        suggestions.filter { knownImportedVideoIDs.contains($0.videoID) }
+    }
+
+    private var uniqueLibraryDocuments: [Document] {
+        var seenVideoIDs: Set<String> = []
+        var unique: [Document] = []
+        for document in documents.sorted(by: { $0.updatedAt > $1.updatedAt }) {
+            guard document.sourceType == .youtube,
+                  let sourceVideoID = document.sourceVideoID else {
+                unique.append(document)
+                continue
+            }
+            if seenVideoIDs.contains(sourceVideoID) {
+                continue
+            }
+            seenVideoIDs.insert(sourceVideoID)
+            unique.append(document)
+        }
+        return unique
     }
 
     private var rankingContext: SuggestionRankingContext {
@@ -97,8 +191,10 @@ struct LibraryView: View {
                 AppBackground()
 
                 ScrollView {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 16) {
+                        heroSection
                         importSection
+                        queueSection
                         continueSection
                         suggestionsSection
                         librarySection
@@ -117,7 +213,7 @@ struct LibraryView: View {
                             .font(.headline.weight(.semibold))
                     }
                     .disabled(isLoadingSuggestions)
-                    .accessibilityLabel("Refresh suggestions")
+                    .accessibilityLabel("Refresh discovery feed")
                 }
             }
             .task {
@@ -172,11 +268,44 @@ struct LibraryView: View {
     }
 
     private var importSection: some View {
-        SectionCard("Import Content") {
+        SectionCard("Lesson Intake") {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Import text or YouTube transcripts without leaving the app.")
+                Text("Press once to pull \(pullTargetCount) subtitle-ready Kannada lessons into your queue.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+
+                Text("Pull window: 5 to 20 minutes. Manual import options remain available below.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    runSmartPackImport()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isImportingSmartPack {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        Text(isImportingSmartPack ? "Pulling Lessons..." : "Pull \(pullTargetCount) New Lessons")
+                            .font(.headline.weight(.semibold))
+                        Spacer(minLength: 8)
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.headline.weight(.bold))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .foregroundStyle(.white)
+                    .background(
+                        LinearGradient(
+                            colors: [Theme.accent, Theme.accentSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isImportingSmartPack)
 
                 HStack(spacing: 10) {
                     Button {
@@ -207,29 +336,145 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button {
-                    runSmartPackImport()
-                } label: {
-                    HStack(spacing: 8) {
-                        if isImportingSmartPack {
-                            ProgressView()
-                                .tint(.white)
-                        }
-                        Label(
-                            isImportingSmartPack ? "Building Pack..." : "Get 3-Day Pack",
-                            systemImage: "wand.and.stars"
-                        )
-                    }
-                    .readerUtilityButtonStyle()
-                    .frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    LibraryCountPill(label: "Queue", value: queueDocuments.count)
+                    LibraryCountPill(label: "New Feed", value: newFeedSuggestions.count)
+                    LibraryCountPill(label: "In Library", value: importedFeedSuggestions.count)
                 }
-                .buttonStyle(.plain)
-                .disabled(isImportingSmartPack)
 
                 if let smartPackStatusMessage {
                     Text(smartPackStatusMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                if let lastDiscoveryRefreshAt {
+                    Text("Feed refreshed \(LibraryView.dateFormatter.localizedString(for: lastDiscoveryRefreshAt, relativeTo: Date())).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let nextDiscoveryRetryAt, nextDiscoveryRetryAt > Date() {
+                    Text("Network backoff active until \(nextDiscoveryRetryAt.formatted(date: .omitted, time: .shortened)).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if allowRepeatImports {
+                    Text("Lesson pull can reuse already-known videos when fresh uploads are not available.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var heroSection: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Theme.accent.opacity(0.6),
+                            Theme.accentSecondary.opacity(0.52),
+                            Color.black.opacity(0.3)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Circle()
+                .fill(Color.white.opacity(0.16))
+                .frame(width: 150, height: 150)
+                .blur(radius: 10)
+                .offset(x: 210, y: -50)
+
+            Circle()
+                .fill(Color.white.opacity(0.12))
+                .frame(width: 120, height: 120)
+                .blur(radius: 10)
+                .offset(x: -40, y: 100)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Kannada Learning Console")
+                            .font(.system(.title3, design: .rounded).weight(.bold))
+                            .foregroundStyle(.white)
+
+                        Text("Fresh subtitle-ready lessons, organized for daily momentum.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.92))
+                    }
+                    Spacer(minLength: 6)
+                    Image(systemName: "sparkles.tv.fill")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.95))
+                }
+
+                HStack(spacing: 8) {
+                    LibraryHeroMetric(label: "Unread", value: queueDocuments.count)
+                    LibraryHeroMetric(label: "Opened", value: openedLessonCount)
+                    LibraryHeroMetric(label: "Total", value: totalYouTubeLessons)
+                    LibraryHeroMetric(label: "Fresh Feed", value: newFeedSuggestions.count)
+                }
+
+                if let nextQueueDocument {
+                    Text("Up next: \(nextQueueDocument.title)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .lineLimit(1)
+                } else {
+                    Text("Queue is clear. Pull \(pullTargetCount) lessons to continue.")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+            }
+            .padding(16)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var queueSection: some View {
+        SectionCard("Unread Lesson Queue") {
+            if queueDocuments.isEmpty {
+                Text("Queue is empty right now. Pull \(pullTargetCount) lessons to refill it.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 10) {
+                    if let firstUnread = queueDocuments.first {
+                        Button {
+                            readerDestination = ReaderDestination(id: firstUnread.id, document: firstUnread)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.circle.fill")
+                                Text("Open Next Unread Lesson")
+                                Spacer(minLength: 8)
+                                Text("\(queueDocuments.count) pending")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.white.opacity(0.1), in: Capsule())
+                            }
+                            .readerUtilityButtonStyle()
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    ForEach(queueDocuments.prefix(8), id: \.id) { document in
+                        NavigationLink {
+                            DocumentReaderView(document: document)
+                        } label: {
+                            LibraryDocumentRow(document: document)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -263,9 +508,9 @@ struct LibraryView: View {
     }
 
     private var suggestionsSection: some View {
-        SectionCard("Suggested for Beginners") {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Kannada-only subtitle-verified picks across basics, grammar, and short stories.")
+        SectionCard("Discovery Feed") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Subtitle-ready videos are split into new lessons and already-imported lessons so you can see exactly what is fresh.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -279,24 +524,67 @@ struct LibraryView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 8)
                 } else if suggestions.isEmpty {
-                    Text("No subtitle-verified suggestions available right now. Tap refresh.")
+                    Text("Feed is temporarily empty. Tap refresh and pull again.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(suggestions) { suggestion in
-                                SuggestedVideoCard(
-                                    suggestion: suggestion,
-                                    isFollowingChannel: isFollowingChannel(suggestion.channelTitle),
-                                    isImporting: importingVideoIDs.contains(suggestion.videoID),
-                                    onImport: { importSuggestion(suggestion) },
-                                    onToggleFollow: { toggleFollowChannel(suggestion.channelTitle) }
-                                )
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 10) {
+                            LibraryCountPill(label: "New", value: newFeedSuggestions.count)
+                            LibraryCountPill(label: "Imported", value: importedFeedSuggestions.count)
+                            LibraryCountPill(label: "Total", value: suggestions.count)
+                        }
+
+                        Text("New to Import")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        if newFeedSuggestions.isEmpty {
+                            Text("No unseen lessons in the current feed. Pull again to refresh ranking and refill.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            VStack(spacing: 10) {
+                                ForEach(newFeedSuggestions.prefix(12)) { suggestion in
+                                    SuggestedVideoRow(
+                                        suggestion: suggestion,
+                                        isFollowingChannel: isFollowingChannel(suggestion.channelTitle),
+                                        isImporting: importingVideoIDs.contains(suggestion.videoID),
+                                        isAlreadyImported: false,
+                                        importStateText: nil,
+                                        onImport: { importSuggestion(suggestion) },
+                                        onOpenImported: nil,
+                                        onToggleFollow: { toggleFollowChannel(suggestion.channelTitle) }
+                                    )
+                                }
                             }
                         }
-                        .padding(.vertical, 2)
+
+                        if !importedFeedSuggestions.isEmpty {
+                            Divider()
+
+                            Text("Already in Library")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            VStack(spacing: 10) {
+                                ForEach(importedFeedSuggestions.prefix(10)) { suggestion in
+                                    SuggestedVideoRow(
+                                        suggestion: suggestion,
+                                        isFollowingChannel: isFollowingChannel(suggestion.channelTitle),
+                                        isImporting: false,
+                                        isAlreadyImported: true,
+                                        importStateText: importStatusText(for: suggestion.videoID),
+                                        onImport: nil,
+                                        onOpenImported: importedDocumentByVideoID[suggestion.videoID] == nil
+                                            ? nil
+                                            : { openImportedSuggestion(suggestion.videoID) },
+                                        onToggleFollow: { toggleFollowChannel(suggestion.channelTitle) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -311,13 +599,28 @@ struct LibraryView: View {
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 10) {
-                    ForEach(libraryDocuments, id: \.id) { document in
-                        NavigationLink {
-                            DocumentReaderView(document: document)
-                        } label: {
-                            LibraryDocumentRow(document: document)
+                    Picker("Library Filter", selection: $libraryFilter) {
+                        ForEach(LibraryFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
                         }
-                        .buttonStyle(.plain)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if filteredLibraryDocuments.isEmpty {
+                        Text("No lessons in this filter.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                    } else {
+                        ForEach(filteredLibraryDocuments, id: \.id) { document in
+                            NavigationLink {
+                                DocumentReaderView(document: document)
+                            } label: {
+                                LibraryDocumentRow(document: document)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
@@ -328,10 +631,12 @@ struct LibraryView: View {
         guard force || !hasLoadedSuggestions else { return }
         isLoadingSuggestions = true
         let loaded = await YouTubeDiscoveryService.shared.loadSuggestions(
-            existingVideoIDs: importedVideoIDs,
+            existingVideoIDs: [],
             forceRefresh: force
         )
         suggestions = SuggestionRanker.rank(loaded, context: rankingContext)
+        lastDiscoveryRefreshAt = await SuggestionCacheStore.shared.lastRefreshDate()
+        nextDiscoveryRetryAt = await SuggestionCacheStore.shared.nextRetryDate()
         hasLoadedSuggestions = true
         isLoadingSuggestions = false
     }
@@ -362,6 +667,18 @@ struct LibraryView: View {
             smartPackStatusMessage = summary.statusMessage
             await refreshSuggestions(force: true)
         }
+    }
+
+    private func openImportedSuggestion(_ videoID: String) {
+        guard let document = importedDocumentByVideoID[videoID] else { return }
+        readerDestination = ReaderDestination(id: document.id, document: document)
+    }
+
+    private func importStatusText(for videoID: String) -> String {
+        guard let document = importedDocumentByVideoID[videoID] else {
+            return "Seen"
+        }
+        return document.isOpened ? "Opened" : "Unread"
     }
 
     private func importSuggestion(_ suggestion: YouTubeSuggestedVideo) {
@@ -422,6 +739,7 @@ struct LibraryView: View {
         )
 
         modelContext.insert(document)
+        markVideoAsHistoricallyImported(content.videoID)
         updateFollowedChannelsFromImport(channelTitle: content.channelTitle)
         suggestions = SuggestionRanker.rank(suggestions, context: rankingContext)
 
@@ -510,6 +828,21 @@ struct LibraryView: View {
         followedChannelsRaw = channels.sorted().joined(separator: "|")
     }
 
+    private func markVideoAsHistoricallyImported(_ videoID: String) {
+        guard YouTubeVideoIDParser.isValidVideoID(videoID) else { return }
+
+        let defaults = UserDefaults.standard
+        var history = Set(defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? [])
+        history.insert(videoID)
+
+        if history.count > AutoImportSettings.maxHistoricalVideoIDs {
+            let sorted = Array(history).sorted()
+            history = Set(sorted.suffix(AutoImportSettings.maxHistoricalVideoIDs))
+        }
+
+        defaults.set(Array(history), forKey: AutoImportSettings.historicalImportedVideoIDsKey)
+    }
+
     private struct ReaderDestination: Identifiable {
         let id: UUID
         let document: Document
@@ -570,99 +903,178 @@ private struct ContinueReadingCard: View {
     }
 }
 
-private struct SuggestedVideoCard: View {
+private struct LibraryCountPill: View {
+    let label: String
+    let value: Int
+
+    var body: some View {
+        Text("\(label): \(value)")
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Color.white.opacity(0.1), in: Capsule())
+    }
+}
+
+private struct LibraryHeroMetric: View {
+    let label: String
+    let value: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("\(value)")
+                .font(.system(.headline, design: .rounded).weight(.bold))
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.82))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct SuggestedVideoRow: View {
     let suggestion: YouTubeSuggestedVideo
     let isFollowingChannel: Bool
     let isImporting: Bool
-    let onImport: () -> Void
+    let isAlreadyImported: Bool
+    let importStateText: String?
+    let onImport: (() -> Void)?
+    let onOpenImported: (() -> Void)?
     let onToggleFollow: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            AsyncImage(url: suggestion.thumbnailURL) { phase in
-                switch phase {
-                case .empty:
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .failure:
-                    Image(systemName: "play.rectangle.fill")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                @unknown default:
-                    EmptyView()
+            HStack(alignment: .top, spacing: 10) {
+                AsyncImage(url: suggestion.thumbnailURL) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
+                .frame(width: 128, height: 72)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(suggestion.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+
+                    Text(suggestion.channelTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Text(suggestion.category.uppercased())
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.1), in: Capsule())
+
+                        Text(formattedDuration(seconds: suggestion.durationSeconds))
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(Theme.accent.opacity(0.16), in: Capsule())
+
+                        Text("Subtitles")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(Theme.accentSecondary.opacity(0.15), in: Capsule())
+
+                        if isAlreadyImported {
+                            Text(importStateText ?? "Imported")
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.1), in: Capsule())
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: 236, height: 132)
-            .background(Color.white.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            Text(suggestion.category.uppercased())
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Text(suggestion.title)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(2)
-
-            Text(suggestion.channelTitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            Button {
-                onToggleFollow()
-            } label: {
-                Text(isFollowingChannel ? "Following" : "Follow channel")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(isFollowingChannel ? Theme.accentSecondary : .secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        (isFollowingChannel ? Theme.accentSecondary.opacity(0.2) : Color.white.opacity(0.08)),
-                        in: Capsule()
-                    )
-            }
-            .buttonStyle(.plain)
 
             HStack(spacing: 8) {
-                Text(formattedDuration(seconds: suggestion.durationSeconds))
-                    .font(.caption2.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Theme.accent.opacity(0.16), in: Capsule())
-
-                Text("Kannada subtitles")
-                    .font(.caption2.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Theme.accentSecondary.opacity(0.15), in: Capsule())
-            }
-
-            Button {
-                onImport()
-            } label: {
-                HStack(spacing: 6) {
-                    if isImporting {
-                        ProgressView()
-                            .tint(.white)
-                    }
-                    Text(isImporting ? "Importing..." : "Import")
-                        .font(.subheadline.weight(.semibold))
+                Button {
+                    onToggleFollow()
+                } label: {
+                    Label(
+                        isFollowingChannel ? "Following" : "Follow",
+                        systemImage: isFollowingChannel ? "checkmark.circle.fill" : "plus.circle"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(
+                        (isFollowingChannel ? Theme.accentSecondary.opacity(0.24) : Color.white.opacity(0.08)),
+                        in: Capsule()
+                    )
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .foregroundStyle(.white)
-                .background(Theme.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .buttonStyle(.plain)
+
+                Spacer(minLength: 8)
+
+                if isAlreadyImported {
+                    if let onOpenImported {
+                        Button {
+                            onOpenImported()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "book")
+                                Text("Open")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(.primary)
+                            .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text("Seen in past pulls")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button {
+                        onImport?()
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isImporting {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                            Text(isImporting ? "Importing..." : "Import")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(.white)
+                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isImporting)
+                }
             }
-            .buttonStyle(.plain)
-            .disabled(isImporting)
         }
-        .frame(width: 236, alignment: .leading)
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
@@ -921,7 +1333,7 @@ private struct YouTubeURLImportSheet: View {
                     VStack(spacing: 14) {
                         SectionCard("Import YouTube Transcript") {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Paste a YouTube URL. Import works only when Kannada subtitles are available.")
+                                Text("Paste a YouTube URL. Import requires Kannada subtitles and an extractable transcript.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 

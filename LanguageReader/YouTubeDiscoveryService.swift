@@ -6,6 +6,12 @@ struct YouTubeChannelSeed: Sendable, Hashable {
     let priority: Int
 }
 
+struct YouTubeSearchSeed: Sendable, Hashable {
+    let query: String
+    let category: String
+    let priority: Int
+}
+
 protocol YouTubeCandidateValidating: Sendable {
     func validateCandidate(
         videoID: String,
@@ -37,6 +43,26 @@ actor YouTubeDiscoveryService {
         .init(channelID: "UCqZRKIkmWX2L2iAIDjYi0Fw", category: "Short Stories", priority: 4),
         .init(channelID: "UCe-zK4ux-tMl9Y8JJJqxL7Q", category: "Alphabet", priority: 5),
         .init(channelID: "UCOG5uDioDLiIZsSmyYSKYHw", category: "Beginner Intro", priority: 6)
+    ]
+    static let defaultSearchSeeds: [YouTubeSearchSeed] = [
+        .init(query: "learn kannada with subtitles", category: "Learn Kannada", priority: 2),
+        .init(query: "kannada conversation subtitles", category: "Conversation", priority: 3),
+        .init(query: "kannada stories with subtitles", category: "Stories", priority: 4),
+        .init(query: "kannada podcast subtitles", category: "Podcast", priority: 5),
+        .init(query: "kannada vlog subtitles", category: "Vlog", priority: 6),
+        .init(query: "kannada news subtitles", category: "News", priority: 7),
+        .init(query: "kannada interview subtitles", category: "Interview", priority: 5),
+        .init(query: "kannada travel vlog subtitles", category: "Travel", priority: 6),
+        .init(query: "kannada documentary subtitles", category: "Documentary", priority: 6),
+        .init(query: "kannada cooking subtitles", category: "Lifestyle", priority: 7),
+        .init(query: "kannada comedy subtitles", category: "Entertainment", priority: 8),
+        .init(query: "kannada motivation subtitles", category: "Motivation", priority: 8),
+        .init(query: "spoken kannada practice subtitles", category: "Conversation", priority: 4),
+        .init(query: "kannada beginner lesson subtitles", category: "Learn Kannada", priority: 3),
+        .init(query: "ಕನ್ನಡ ಉಪಶೀರ್ಷಿಕೆ ಕಥೆ", category: "Stories", priority: 5),
+        .init(query: "ಕನ್ನಡ ಸಂಭಾಷಣೆ ಉಪಶೀರ್ಷಿಕೆ", category: "Conversation", priority: 5),
+        .init(query: "ಕನ್ನಡ ಪಾಡ್ಕಾಸ್ಟ್ ಉಪಶೀರ್ಷಿಕೆ", category: "Podcast", priority: 6),
+        .init(query: "ಕನ್ನಡ ಸುದ್ದಿ ಉಪಶೀರ್ಷಿಕೆ", category: "News", priority: 7)
     ]
 
     private let session: URLSession
@@ -74,13 +100,21 @@ actor YouTubeDiscoveryService {
         }
 
         let seeds = await mergedSeeds()
-        let feedResult = await fetchCandidates(from: seeds, existingVideoIDs: existingVideoIDs)
+        let feedResult = await fetchCandidates(
+            from: seeds,
+            searchSeeds: Self.defaultSearchSeeds,
+            existingVideoIDs: existingVideoIDs
+        )
 
-        let budgeted = Array(feedResult.candidates.prefix(AutoImportSettings.defaultValidationBudget))
+        let budgeted = Self.selectValidationBudget(
+            from: feedResult.candidates,
+            limit: AutoImportSettings.defaultValidationBudget
+        )
         let validated = await validateCandidates(
             budgeted,
             existingVideoIDs: existingVideoIDs,
-            allowCachedFailures: !forceRefresh
+            allowCachedFailures: !forceRefresh,
+            useValidationCache: !forceRefresh
         )
 
         if !validated.isEmpty {
@@ -115,6 +149,7 @@ actor YouTubeDiscoveryService {
 
     private func fetchCandidates(
         from seeds: [YouTubeChannelSeed],
+        searchSeeds: [YouTubeSearchSeed],
         existingVideoIDs: Set<String>
     ) async -> (candidates: [FeedCandidate], didFail: Bool) {
         var merged: [String: FeedCandidate] = [:]
@@ -125,6 +160,28 @@ actor YouTubeDiscoveryService {
                 group.addTask {
                     do {
                         let entries = try await self.fetchFeed(seed: seed)
+                        let candidates = entries.map { entry in
+                            FeedCandidate(
+                                videoID: entry.videoID,
+                                title: entry.title,
+                                channelTitle: entry.channelTitle,
+                                channelID: entry.channelID,
+                                category: seed.category,
+                                priority: seed.priority,
+                                publishedAt: entry.publishedAt
+                            )
+                        }
+                        return (candidates, false)
+                    } catch {
+                        return ([], true)
+                    }
+                }
+            }
+
+            for seed in searchSeeds {
+                group.addTask {
+                    do {
+                        let entries = try await self.fetchSearchFeed(seed: seed)
                         let candidates = entries.map { entry in
                             FeedCandidate(
                                 videoID: entry.videoID,
@@ -191,7 +248,8 @@ actor YouTubeDiscoveryService {
     private func validateCandidates(
         _ candidates: [FeedCandidate],
         existingVideoIDs: Set<String>,
-        allowCachedFailures: Bool
+        allowCachedFailures: Bool,
+        useValidationCache: Bool
     ) async -> [YouTubeSuggestedVideo] {
         var suggestions: [YouTubeSuggestedVideo] = []
 
@@ -204,13 +262,15 @@ actor YouTubeDiscoveryService {
                             return (absoluteIndex, nil)
                         }
 
-                        if let cached = await self.cacheStore.cachedValidation(for: candidate.videoID) {
-                            if let cachedSuggestion = cached {
-                                let hydrated = await self.applyCandidateMetadata(candidate, to: cachedSuggestion)
-                                return (absoluteIndex, hydrated)
-                            }
-                            if allowCachedFailures {
-                                return (absoluteIndex, nil)
+                        if useValidationCache {
+                            if let cached = await self.cacheStore.cachedValidation(for: candidate.videoID) {
+                                if let cachedSuggestion = cached {
+                                    let hydrated = await self.applyCandidateMetadata(candidate, to: cachedSuggestion)
+                                    return (absoluteIndex, hydrated)
+                                }
+                                if allowCachedFailures {
+                                    return (absoluteIndex, nil)
+                                }
                             }
                         }
 
@@ -278,11 +338,110 @@ actor YouTubeDiscoveryService {
         return feedParser.parse(data: data)
     }
 
+    private func fetchSearchFeed(seed: YouTubeSearchSeed) async throws -> [YouTubeFeedEntry] {
+        do {
+            let liveEntries = try await fetchSearchResultsPage(seed: seed)
+            if !liveEntries.isEmpty {
+                return liveEntries
+            }
+        } catch {
+            // Fall back to RSS-style search feed for compatibility and tests.
+        }
+
+        return try await fetchSearchFeedRSS(seed: seed)
+    }
+
+    private func fetchSearchFeedRSS(seed: YouTubeSearchSeed) async throws -> [YouTubeFeedEntry] {
+        guard var components = URLComponents(string: "https://www.youtube.com/feeds/videos.xml") else {
+            throw URLError(.badURL)
+        }
+        components.queryItems = [URLQueryItem(name: "search_query", value: seed.query)]
+        guard let url = components.url else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+
+        return feedParser.parse(data: data)
+    }
+
+    private func fetchSearchResultsPage(seed: YouTubeSearchSeed) async throws -> [YouTubeFeedEntry] {
+        guard var components = URLComponents(string: "https://www.youtube.com/results") else {
+            throw URLError(.badURL)
+        }
+        components.queryItems = [
+            URLQueryItem(name: "search_query", value: seed.query)
+        ]
+        guard let url = components.url else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        guard let html = String(data: data, encoding: .utf8), !html.isEmpty else {
+            throw URLError(.cannotDecodeRawData)
+        }
+        return YouTubeSearchResultsParser.parse(html: html)
+    }
+
     private func filtered(
         _ suggestions: [YouTubeSuggestedVideo],
         excluding existingVideoIDs: Set<String>
     ) -> [YouTubeSuggestedVideo] {
         suggestions.filter { !existingVideoIDs.contains($0.videoID) }
+    }
+
+    private static func selectValidationBudget(
+        from candidates: [FeedCandidate],
+        limit: Int
+    ) -> [FeedCandidate] {
+        guard limit > 0, !candidates.isEmpty else { return [] }
+
+        var buckets: [String: [FeedCandidate]] = [:]
+        var orderedChannels: [String] = []
+
+        for candidate in candidates {
+            let channelKey = candidate.channelID.isEmpty ? "unknown-\(candidate.videoID)" : candidate.channelID
+            if buckets[channelKey] == nil {
+                buckets[channelKey] = []
+                orderedChannels.append(channelKey)
+            }
+            buckets[channelKey]?.append(candidate)
+        }
+
+        var selected: [FeedCandidate] = []
+        var index = 0
+        while selected.count < limit {
+            var pickedInRound = false
+            for channelKey in orderedChannels {
+                guard let bucket = buckets[channelKey], !bucket.isEmpty else { continue }
+                if index >= bucket.count {
+                    continue
+                }
+                selected.append(bucket[index])
+                pickedInRound = true
+                if selected.count >= limit {
+                    break
+                }
+            }
+            if !pickedInRound {
+                break
+            }
+            index += 1
+        }
+
+        return selected
     }
 
     private static func shouldCacheValidationFailure(_ error: Error) -> Bool {
@@ -470,6 +629,173 @@ private final class YouTubeFeedXMLDelegate: NSObject, XMLParserDelegate {
             return ""
         }
         return components[channelIndex + 1]
+    }
+}
+
+private enum YouTubeSearchResultsParser {
+    static func parse(html: String) -> [YouTubeFeedEntry] {
+        guard let initialData = extractInitialData(from: html),
+              let data = initialData.data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) else {
+            return []
+        }
+
+        var renderers: [[String: Any]] = []
+        collectVideoRenderers(in: root, output: &renderers)
+
+        var seenVideoIDs: Set<String> = []
+        var entries: [YouTubeFeedEntry] = []
+
+        for renderer in renderers {
+            guard let videoID = renderer["videoId"] as? String,
+                  YouTubeVideoIDParser.isValidVideoID(videoID),
+                  !seenVideoIDs.contains(videoID) else {
+                continue
+            }
+
+            let title = extractText(from: renderer["title"]) ?? ""
+            guard !title.isEmpty else { continue }
+
+            let channelTitle = extractText(from: renderer["ownerText"])
+                ?? extractText(from: renderer["longBylineText"])
+                ?? "Unknown Channel"
+            let channelID = extractBrowseID(from: renderer["ownerText"])
+                ?? extractBrowseID(from: renderer["longBylineText"])
+                ?? "search-\(videoID)"
+
+            seenVideoIDs.insert(videoID)
+            entries.append(
+                YouTubeFeedEntry(
+                    videoID: videoID,
+                    title: title,
+                    channelTitle: channelTitle,
+                    channelID: channelID,
+                    publishedAt: nil
+                )
+            )
+        }
+
+        return entries
+    }
+
+    private static func extractInitialData(from html: String) -> String? {
+        guard let markerRange = html.range(of: "var ytInitialData = ") else {
+            return nil
+        }
+
+        let suffix = html[markerRange.upperBound...]
+        guard let start = suffix.firstIndex(of: "{") else {
+            return nil
+        }
+
+        var depth = 0
+        var end: String.Index?
+        var index = start
+        while index < suffix.endIndex {
+            let character = suffix[index]
+            if character == "{" {
+                depth += 1
+            } else if character == "}" {
+                depth -= 1
+                if depth == 0 {
+                    end = index
+                    break
+                }
+            }
+            index = suffix.index(after: index)
+        }
+
+        guard let end else { return nil }
+        return String(suffix[start...end])
+    }
+
+    private static func collectVideoRenderers(in value: Any, output: inout [[String: Any]]) {
+        if let dictionary = value as? [String: Any] {
+            if let renderer = dictionary["videoRenderer"] as? [String: Any] {
+                output.append(renderer)
+            }
+            for nested in dictionary.values {
+                collectVideoRenderers(in: nested, output: &output)
+            }
+            return
+        }
+
+        if let array = value as? [Any] {
+            for nested in array {
+                collectVideoRenderers(in: nested, output: &output)
+            }
+        }
+    }
+
+    private static func extractText(from value: Any?) -> String? {
+        guard let value else { return nil }
+
+        if let text = value as? String {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        if let dictionary = value as? [String: Any] {
+            if let simpleText = dictionary["simpleText"] as? String {
+                return simpleText.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            if let runs = dictionary["runs"] as? [[String: Any]] {
+                let joined = runs
+                    .compactMap { $0["text"] as? String }
+                    .joined()
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return joined.isEmpty ? nil : joined
+            }
+
+            for nested in dictionary.values {
+                if let extracted = extractText(from: nested), !extracted.isEmpty {
+                    return extracted
+                }
+            }
+        }
+
+        if let array = value as? [Any] {
+            for nested in array {
+                if let extracted = extractText(from: nested), !extracted.isEmpty {
+                    return extracted
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private static func extractBrowseID(from value: Any?) -> String? {
+        guard let value else { return nil }
+
+        if let dictionary = value as? [String: Any] {
+            if let runs = dictionary["runs"] as? [[String: Any]] {
+                for run in runs {
+                    if let endpoint = run["navigationEndpoint"] as? [String: Any],
+                       let browseEndpoint = endpoint["browseEndpoint"] as? [String: Any],
+                       let browseID = browseEndpoint["browseId"] as? String,
+                       !browseID.isEmpty {
+                        return browseID
+                    }
+                }
+            }
+
+            for nested in dictionary.values {
+                if let browseID = extractBrowseID(from: nested) {
+                    return browseID
+                }
+            }
+        }
+
+        if let array = value as? [Any] {
+            for nested in array {
+                if let browseID = extractBrowseID(from: nested) {
+                    return browseID
+                }
+            }
+        }
+
+        return nil
     }
 }
 

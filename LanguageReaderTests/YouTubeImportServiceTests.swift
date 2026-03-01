@@ -127,7 +127,7 @@ final class YouTubeImportServiceTests: XCTestCase {
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
                     channelID: channelID,
-                    durationSeconds: 120,
+                    durationSeconds: 600,
                     thumbnailWidths: [120, 640],
                     tracks: [
                         self.makeCaptionTrack(
@@ -162,7 +162,7 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(content.title, "Test Video \(videoID)")
         XCTAssertEqual(content.channelTitle, "Channel \(videoID)")
         XCTAssertEqual(content.channelID, channelID)
-        XCTAssertEqual(content.durationSeconds, 120)
+        XCTAssertEqual(content.durationSeconds, 600)
         XCTAssertEqual(content.thumbnailURL?.absoluteString, "https://example.com/thumb-640.jpg")
         XCTAssertEqual(content.transcript, manualTranscript)
     }
@@ -181,13 +181,14 @@ final class YouTubeImportServiceTests: XCTestCase {
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
                     channelID: "channel-\(videoID)",
-                    durationSeconds: 120,
+                    durationSeconds: 600,
                     thumbnailWidths: [120],
                     tracks: [
                         self.makeCaptionTrack(
                             languageCode: "en",
                             baseURL: "https://example.com/en.xml",
-                            kind: nil
+                            kind: nil,
+                            isTranslatable: false
                         )
                     ]
                 )
@@ -208,7 +209,7 @@ final class YouTubeImportServiceTests: XCTestCase {
         }
     }
 
-    func testImportVideoThrowsWhenTranscriptIsLowQuality() async {
+    func testImportVideoUsesKannadaTranslationWhenOnlyTranslatableTrackExists() async throws {
         let videoID = "KaBYEZ6q2tY"
         let session = makeStubbedSession { request in
             let url = try XCTUnwrap(request.url)
@@ -222,7 +223,56 @@ final class YouTubeImportServiceTests: XCTestCase {
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
                     channelID: "channel-\(videoID)",
-                    durationSeconds: 120,
+                    durationSeconds: 600,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "en",
+                            baseURL: "https://example.com/en.xml",
+                            kind: nil,
+                            isTranslatable: true
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("en.xml") {
+                guard let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+                      query.contains(where: { $0.name == "tlang" && $0.value == "kn" }) else {
+                    throw URLError(.badURL)
+                }
+                let xml = self.makeTranscriptXML(lines: [
+                    "ಇದು ಕನ್ನಡದಲ್ಲಿ ಅನುವಾದಿತ ಉಪಶೀರ್ಷಿಕೆಯ ಪಾಠವಾಗಿದೆ.",
+                    "ವಾಕ್ಯಗಳನ್ನು ನಿಧಾನವಾಗಿ ಓದಿ ಪದಗಳ ಅರ್ಥವನ್ನು ಗಮನಿಸಿ.",
+                    "ಈ ಅಭ್ಯಾಸವು ಓದುಗನಿಗೆ ಸರಳವಾಗಿ ಗ್ರಹಿಸಲು ಸಹಾಯ ಮಾಡುತ್ತದೆ.",
+                    "ಪ್ರತಿದಿನ ಓದಿದರೆ ಭಾಷೆಯ ನೆನಪು ಮತ್ತು ವೇಗ ಎರಡೂ ಉತ್ತಮವಾಗುತ್ತವೆ."
+                ])
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+        let content = try await service.importVideo(videoID: videoID)
+        XCTAssertEqual(content.videoID, videoID)
+        XCTAssertFalse(content.transcript.isEmpty)
+    }
+
+    func testImportVideoRejectsLowQualityTranscriptEvenWhenKannadaCaptionsExist() async {
+        let videoID = "KaBYEZ6q2tY"
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 600,
                     thumbnailWidths: [120],
                     tracks: [
                         self.makeCaptionTrack(
@@ -245,7 +295,7 @@ final class YouTubeImportServiceTests: XCTestCase {
 
         do {
             _ = try await service.importVideo(videoID: videoID)
-            XCTFail("Expected low quality transcript to be rejected")
+            XCTFail("Expected importVideo to reject low quality transcript")
         } catch let error as YouTubeImportError {
             XCTAssertEqual(error, .lowQualityTranscript)
         } catch {
@@ -253,8 +303,58 @@ final class YouTubeImportServiceTests: XCTestCase {
         }
     }
 
-    func testLoadBeginnerSuggestionsFiltersOverlongVideosAndKeepsRankOrder() async {
-        let overlongID = "RpJ-qH_vfD8"
+    func testImportVideoRejectsNumericSequenceTranscript() async {
+        let videoID = "KaBYEZ6q2tY"
+        let numericLines = (1...70).map(String.init)
+        let transcriptLines = [
+            "ಇದು ಸಂಖ್ಯೆಗಳ ಅಭ್ಯಾಸದ ವಿಡಿಯೋ.",
+            "ಕನ್ನಡದಲ್ಲಿ ಕೆಲವು ಸೂಚನೆಗಳು ಇವೆ."
+        ] + numericLines
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 600,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/kn-numeric.xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("kn-numeric.xml") {
+                let xml = self.makeTranscriptXML(lines: transcriptLines)
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+
+        do {
+            _ = try await service.importVideo(videoID: videoID)
+            XCTFail("Expected importVideo to reject numeric sequence transcript")
+        } catch let error as YouTubeImportError {
+            XCTAssertEqual(error, .lowQualityTranscript)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testLoadBeginnerSuggestionsFiltersOutsideDurationRangeAndKeepsRankOrder() async {
         let channelToVideoID = [
             "UChsgGgFHYTBL4m0dgRc78PQ": "KaBYEZ6q2tY",
             "UClhQBYN17XW_lA4568Qtu3A": "Pho7XZTsPis",
@@ -262,6 +362,12 @@ final class YouTubeImportServiceTests: XCTestCase {
             "UCqZRKIkmWX2L2iAIDjYi0Fw": "UKWBtAYAo5I",
             "UCe-zK4ux-tMl9Y8JJJqxL7Q": "ebQ0LPgoFkQ",
             "UCOG5uDioDLiIZsSmyYSKYHw": "m4llekMMKEg"
+        ]
+        let transcriptLines = [
+            "ಇದು ಕನ್ನಡ ಅಭ್ಯಾಸಕ್ಕೆ ಉಪಯುಕ್ತವಾದ ಚಿಕ್ಕ ಪಾಠವಾಗಿದೆ.",
+            "ಪ್ರತಿ ವಾಕ್ಯವನ್ನು ನಿಧಾನವಾಗಿ ಓದಿ ಅರ್ಥ ಮಾಡಿಕೊಂಡು ಮುಂದೆ ಸಾಗಿರಿ.",
+            "ಕೇಳಿ, ಓದಿ, ಮತ್ತೆ ಪುನರಾವರ್ತನೆ ಮಾಡಿದರೆ ನೆನಪು ಗಟ್ಟಿಯಾಗುತ್ತದೆ.",
+            "ಈ ಭಾಗವು ಪದಸಂಪತ್ತಿ ಮತ್ತು ಸರಳ ವ್ಯಾಕರಣವನ್ನು ಒಟ್ಟಿಗೆ ಅಭ್ಯಾಸ ಮಾಡಿಸುತ್ತದೆ."
         ]
 
         let session = makeStubbedSession { request in
@@ -287,7 +393,7 @@ final class YouTubeImportServiceTests: XCTestCase {
             }
             if url.absoluteString.contains("youtubei/v1/player") {
                 let videoID = try self.extractVideoID(from: request)
-                let duration = videoID == overlongID ? 999 : 120
+                let duration = videoID == "RpJ-qH_vfD8" ? 1500 : 600
                 let payload = self.makePlayerPayload(
                     videoID: videoID,
                     channelID: "channel-\(videoID)",
@@ -303,6 +409,11 @@ final class YouTubeImportServiceTests: XCTestCase {
                 )
                 return StubbedURLProtocol.response(for: url, data: payload)
             }
+            if url.absoluteString.contains("example.com/"),
+               url.pathExtension == "xml" {
+                let xml = self.makeTranscriptXML(lines: transcriptLines)
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
             throw URLError(.badURL)
         }
 
@@ -310,7 +421,6 @@ final class YouTubeImportServiceTests: XCTestCase {
         let suggestions = await service.loadBeginnerSuggestions(forceRefresh: true)
         let ids = suggestions.map(\.videoID)
 
-        XCTAssertFalse(ids.contains(overlongID))
         XCTAssertEqual(
             ids,
             [
@@ -321,6 +431,140 @@ final class YouTubeImportServiceTests: XCTestCase {
                 "m4llekMMKEg"
             ]
         )
+    }
+
+    func testLoadBeginnerSuggestionsFiltersLowQualityTranscriptCandidates() async {
+        let validID = "KaBYEZ6q2tY"
+        let lowQualityID = "UKWBtAYAo5I"
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/feeds/videos.xml") {
+                let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?
+                    .first(where: { $0.name == "channel_id" })?
+                    .value
+                let xml = self.makeFeedXML(
+                    channelID: channelID ?? "missing",
+                    channelTitle: "Feed \(channelID ?? "missing")",
+                    videos: channelID == "UChsgGgFHYTBL4m0dgRc78PQ"
+                        ? [
+                            (validID, "Valid", "2026-02-26T00:00:00+00:00"),
+                            (lowQualityID, "Low Quality", "2026-02-25T00:00:00+00:00")
+                        ]
+                        : []
+                )
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let videoID = try self.extractVideoID(from: request)
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 600,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/\(videoID).xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("\(validID).xml") {
+                let xml = self.makeTranscriptXML(lines: [
+                    "ಇದು ಕನ್ನಡದಲ್ಲಿ ಸ್ಪಷ್ಟವಾಗಿ ಓದಬಹುದಾದ ಪಾಠವಾಗಿದೆ.",
+                    "ಈ ವಾಕ್ಯಗಳು ಆರಂಭಿಕರಿಗೆ ಸರಳವಾಗಿ ಅರ್ಥವಾಗುವಂತೆ ರಚಿಸಲಾಗಿದೆ.",
+                    "ಪ್ರತಿದಿನ ಅಭ್ಯಾಸ ಮಾಡಿದರೆ ಓದುವ ವೇಗವೂ ಅರ್ಥೈಸುವ ಶಕ್ತಿಯೂ ಹೆಚ್ಚುತ್ತದೆ.",
+                    "ಪದಗಳನ್ನು ಉಚ್ಚರಿಸಿ ಪುನರಾವರ್ತಿಸುವುದು ನೆನಪನ್ನು ಬಲಪಡಿಸುತ್ತದೆ."
+                ])
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            if url.absoluteString.contains("\(lowQualityID).xml") {
+                let xml = "<transcript><text>123 ABC</text></transcript>"
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+        let suggestions = await service.loadBeginnerSuggestions(forceRefresh: true)
+
+        XCTAssertEqual(suggestions.map(\.videoID), [validID])
+    }
+
+    func testLoadBeginnerSuggestionsFiltersVideosShorterThanFiveMinutes() async {
+        let shortID = "ShrtA000001"
+        let validID = "ValdA000001"
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/feeds/videos.xml") {
+                let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?
+                    .first(where: { $0.name == "channel_id" })?
+                    .value
+                let xml = self.makeFeedXML(
+                    channelID: channelID ?? "missing",
+                    channelTitle: "Feed \(channelID ?? "missing")",
+                    videos: channelID == "UChsgGgFHYTBL4m0dgRc78PQ"
+                        ? [
+                            (shortID, "Too Short", "2026-02-26T00:00:00+00:00"),
+                            (validID, "Valid", "2026-02-25T00:00:00+00:00")
+                        ]
+                        : []
+                )
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let videoID = try self.extractVideoID(from: request)
+                let duration = videoID == shortID ? 240 : 600
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: duration,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/\(videoID).xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("example.com/"),
+               url.pathExtension == "xml" {
+                let xml = self.makeTranscriptXML(lines: [
+                    "ಇದು ಕನ್ನಡ ಓದುವ ಅಭ್ಯಾಸಕ್ಕೆ ರೂಪಿಸಿದ ಸ್ಪಷ್ಟ ಮತ್ತು ಹಂತಹಂತದ ಪಾಠವಾಗಿದೆ.",
+                    "ಪ್ರತಿ ವಾಕ್ಯವನ್ನು ಎರಡು ಬಾರಿ ಓದಿ ಪದಗಳ ಅರ್ಥವನ್ನು ಮನಸ್ಸಿನಲ್ಲಿ ದೃಢಪಡಿಸಿ.",
+                    "ಶ್ರವಣದೊಂದಿಗೆ ಓದುವಿಕೆಯನ್ನೂ ಸೇರಿಸಿದರೆ ಭಾಷೆಯ ಅರಿವು ವೇಗವಾಗಿ ಹೆಚ್ಚುತ್ತದೆ.",
+                    "ಪ್ರತಿದಿನ ಈ ರೀತಿಯ ಚಿಕ್ಕ ಅಭ್ಯಾಸ ಮಾಡಿದರೆ ಕನ್ನಡದಲ್ಲಿ ಆತ್ಮವಿಶ್ವಾಸ ಹೆಚ್ಚುತ್ತದೆ."
+                ])
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+        let suggestions = await service.loadBeginnerSuggestions(forceRefresh: true)
+
+        XCTAssertEqual(suggestions.map(\.videoID), [validID])
     }
 }
 
@@ -423,6 +667,19 @@ private extension YouTubeImportServiceTests {
         ]
         if let kind {
             track["kind"] = kind
+        }
+        return track
+    }
+
+    func makeCaptionTrack(
+        languageCode: String,
+        baseURL: String,
+        kind: String?,
+        isTranslatable: Bool?
+    ) -> [String: Any] {
+        var track = makeCaptionTrack(languageCode: languageCode, baseURL: baseURL, kind: kind)
+        if let isTranslatable {
+            track["isTranslatable"] = isTranslatable
         }
         return track
     }
