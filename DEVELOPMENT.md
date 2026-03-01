@@ -66,6 +66,7 @@
 - Translation text appears inline in the same top canvas (no separate translation scroll box).
 - Top canvas uses adaptive top alignment so long sentence/translation content stays high on screen with less forced scrolling.
 - Sentence translate action uses Azure Translator when configured in Settings; otherwise it falls back to offline gloss.
+- Sentence translation accepts output only when readability gates pass (applies to Azure/public/fallback paths).
 - Sentence page now uses reduced side insets and no floating card container so more of the screen is usable.
 - Reader top bar is compact and pinned higher to reduce dead space above the progress slider.
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
@@ -77,6 +78,7 @@
 2. Enter endpoint, source/target language codes, and Key 1 from Azure Translator. Region is optional for global resources.
 3. Save settings; key is stored in Keychain.
 4. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
+5. If Azure is unavailable, sentence translation should still attempt public web fallback before showing unavailable state.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -122,6 +124,9 @@ Notes:
   - confirm translation still works (fallback gloss) if API key is missing/cleared
   - confirm translation works when API key is present even if region is blank (global resource path)
   - confirm translator retries without `from` when source-language config is invalid and still returns a cloud translation
+  - confirm translation attempts public web fallback when Azure is not configured or transiently fails
+  - confirm mixed Kannada+English gloss-like output is not shown as sentence translation; unavailable message appears instead
+  - confirm tapping `Translate sentence` again after an unavailable result reattempts translation (unavailable outcomes are not cached)
   - confirm tapping a listed word still opens the word detail sheet
   - confirm the same word uses the same highlight state in text view and sentence view
   - confirm new-word quick actions exist (`+`, `✓`, `delete`) and apply immediately

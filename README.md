@@ -131,6 +131,13 @@ In **Settings -> Translation API**, provide:
 - Region (optional for global translator resources)
 - API key (stored in Keychain)
 
+Sentence translation behavior:
+- First preference: Azure Translator when configured.
+- If Azure is unavailable, app attempts a public web translation fallback automatically.
+- Readability checks apply to Azure/public/offline outputs; mixed-script or unchanged low-quality results are rejected.
+- Low-quality fallback gloss output is suppressed; when translation quality is too low, the reader shows a clear unavailable message instead of misleading text.
+- Unavailable translation outcomes are not cached, so a new tap retries network translators.
+
 ## Quality Bar
 - Deterministic domain logic where practical.
 - Strong unit coverage on tokenizer, dictionary lookup paths, vocab state resolution, and flashcard scheduling.

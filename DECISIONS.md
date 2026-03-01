@@ -86,9 +86,12 @@
 - Azure Translator is the first network provider for sentence translation (`kn -> en`) when configured.
 - Endpoint + source/target language are stored in `UserDefaults`; API key remains in Keychain. Region is stored when provided and treated as optional for global translator resources.
 - Translator endpoint must be an absolute `http/https` URL with a host to avoid invalid runtime configurations.
+- Sentence translation has a secondary public web fallback provider so no-key setups still get best-effort translations at tap time.
 - Translator client retries with auto-detected source language when explicit `from` language configuration fails or returns unchanged Kannada text, to reduce silent fallback-to-gloss behavior.
 - Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
-- If network translation is unavailable, reader falls back to the existing offline dictionary gloss.
+- Cloud/public/fallback outputs all pass the same readability gate before display, so mixed Kannada+English sentence output is rejected.
+- Failed/unavailable sentence translation outcomes are intentionally not cached, so a new tap reattempts network paths.
+- If network translation is unavailable, reader falls back to offline gloss only when gloss readability is high; otherwise it returns explicit unavailable status text instead of mixed-script output.
 - For missing single-word meanings, optional Azure-backed fallback is used and persisted locally so repeated lookups stay offline after first fetch.
 
 ## YouTube Import Architecture

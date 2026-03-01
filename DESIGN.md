@@ -95,9 +95,11 @@
 ## Sentence Translation (Gloss)
 - Triggered explicitly by user action (no auto-translate).
 - Uses Azure Translator (`kn -> en`) when endpoint + key are configured. Region is optional for global resources.
+- If Azure is unavailable, attempts public web translation fallback before dropping to offline behavior.
 - If explicit source language translation fails, retries once with auto-detected source to reduce silent fallback behavior.
 - If Kannada cloud output is unchanged from the source text, retries once with auto-detected source before accepting the result.
-- Falls back to offline dictionary gloss if config is missing or API request fails.
+- Falls back to offline dictionary gloss only when readability is high; low-quality mixed-script gloss output is suppressed.
+- If neither cloud/public/fallback quality checks pass, reader shows a clear unavailable message.
 - Translation text remains a rough aid and not a full grammar-aware translation engine.
 
 ## Dictionary Normalization
