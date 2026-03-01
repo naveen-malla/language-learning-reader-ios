@@ -110,6 +110,7 @@
 - Clean dictionary meanings that are redirect-like (values starting with `=`) by resolving a single redirect hop when possible.
 - Clean dictionary meanings for readability (remove leading metadata markers and trim long multi-sense tails).
 - If no local meaning exists and cloud fallback is enabled, fetch one-word translation and store it in local cache.
+- Dictionary Quality `Refresh quality` runs an aggressive enrichment pass over unresolved corpus words before scoring, then reports gate status from enriched coverage.
 - Optional diagnostics mode shows lookup path (`direct`, `suffix`, `redirect`, `override`, `cache`, `remote`, `none`).
 - Missing-word reports are expected to feed a lightweight cleanup loop: frequency summary -> fixture regression -> dictionary/profile fix.
 

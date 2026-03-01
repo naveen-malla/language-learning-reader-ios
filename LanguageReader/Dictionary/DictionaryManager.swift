@@ -135,20 +135,10 @@ final class DictionaryManager {
         fixture: DictionaryQualityFixture? = nil,
         tokenizer: Tokenizer = Tokenizer()
     ) -> DictionaryQualitySnapshot {
-        let requestedLanguageCode: String
-        let selectedFixture: DictionaryQualityFixture
-        let usedFallbackFixture: Bool
-
-        if let fixture {
-            requestedLanguageCode = fixture.languageCode
-            selectedFixture = fixture
-            usedFallbackFixture = false
-        } else {
-            requestedLanguageCode = activeSourceLanguageCode
-            let selection = DictionaryQualityFixture.select(for: requestedLanguageCode)
-            selectedFixture = selection.fixture
-            usedFallbackFixture = selection.usedFallbackFixture
-        }
+        let selection = resolveQualityFixtureSelection(fixture)
+        let requestedLanguageCode = selection.requestedLanguageCode
+        let selectedFixture = selection.fixture
+        let usedFallbackFixture = selection.usedFallbackFixture
 
         var tokenTotal = 0
         var tokenHits = 0
@@ -259,6 +249,32 @@ final class DictionaryManager {
         )
     }
 
+    func evaluateQualityWithRemoteEnrichment(
+        fixture: DictionaryQualityFixture? = nil,
+        tokenizer: Tokenizer = Tokenizer()
+    ) async -> DictionaryQualitySnapshot {
+        let selection = resolveQualityFixtureSelection(fixture)
+        let selectedFixture = selection.fixture
+
+        let sourceLanguage = normalizeLanguageCode(selectedFixture.languageCode)
+        if isCloudFallbackEnabled && sourceLanguage == activeSourceLanguageCode {
+            let corpusWords = collectUniqueWords(
+                from: selectedFixture.corpusSentences,
+                tokenizer: tokenizer
+            )
+            let goldWords = collectUniqueWords(
+                from: selectedFixture.goldEntries.map(\.word),
+                tokenizer: tokenizer
+            )
+            let allWords = Set(corpusWords).union(goldWords)
+            if !allWords.isEmpty {
+                await prefetchRemoteMeanings(for: Array(allWords))
+            }
+        }
+
+        return evaluateQuality(fixture: selectedFixture, tokenizer: tokenizer)
+    }
+
     var isCloudFallbackEnabled: Bool {
         if defaults.object(forKey: Self.cloudFallbackEnabledKey) == nil {
             return true
@@ -277,6 +293,33 @@ final class DictionaryManager {
             : targetLanguageProvider()
         let normalized = normalizeLanguageCode(raw)
         return normalized.isEmpty ? "en" : normalized
+    }
+
+    private func resolveQualityFixtureSelection(
+        _ fixture: DictionaryQualityFixture?
+    ) -> (requestedLanguageCode: String, fixture: DictionaryQualityFixture, usedFallbackFixture: Bool) {
+        if let fixture {
+            return (fixture.languageCode, fixture, false)
+        }
+
+        let requestedLanguageCode = activeSourceLanguageCode
+        let selection = DictionaryQualityFixture.select(for: requestedLanguageCode)
+        return (requestedLanguageCode, selection.fixture, selection.usedFallbackFixture)
+    }
+
+    private func collectUniqueWords(
+        from sentences: [String],
+        tokenizer: Tokenizer
+    ) -> [String] {
+        var unique: Set<String> = []
+        for sentence in sentences {
+            for token in tokenizer.tokenize(sentence) where token.isWord {
+                let normalized = normalizer.normalize(token.text)
+                guard !normalized.isEmpty else { continue }
+                unique.insert(normalized)
+            }
+        }
+        return Array(unique)
     }
 
     private func lookupDetailed(

@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
     @AppStorage(AutoImportSettings.autoTopUpEnabledKey) private var autoTopUpEnabled = AutoImportSettings.defaultAutoTopUpEnabled
     @AppStorage(AutoImportSettings.backgroundRefreshEnabledKey) private var backgroundRefreshEnabled = AutoImportSettings.defaultBackgroundRefreshEnabled
+    @AppStorage(AutoImportSettings.allowRepeatImportsKey) private var allowRepeatImports = AutoImportSettings.defaultAllowRepeatImports
     @State private var endpointText = ""
     @State private var regionText = ""
     @State private var sourceLanguageText = ""
@@ -107,6 +108,9 @@ struct SettingsView: View {
                             Toggle("Auto top-up Kannada lessons", isOn: $autoTopUpEnabled)
                                 .toggleStyle(.switch)
 
+                            Toggle("Allow repeat imports when feed is dry", isOn: $allowRepeatImports)
+                                .toggleStyle(.switch)
+
                             Toggle("Allow background refresh", isOn: $backgroundRefreshEnabled)
                                 .toggleStyle(.switch)
                                 .onChange(of: backgroundRefreshEnabled) { _, enabled in
@@ -115,7 +119,7 @@ struct SettingsView: View {
                                     }
                                 }
 
-                            Text("Defaults: 6 lessons per pack, 24h cooldown, trigger when unread imported lessons are below 3.")
+                            Text("Defaults: each manual pull targets 3 lessons, duration window is 5-20 minutes, and auto trigger runs when unread imported lessons are below 3.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
 
@@ -131,7 +135,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                             }
 
-                            Button(isRunningAutoImport ? "Running..." : "Run 3-Day Pack Now") {
+                            Button(isRunningAutoImport ? "Running..." : "Run Pull Now") {
                                 runAutoImportPackNow()
                             }
                             .buttonStyle(.borderedProminent)
@@ -150,13 +154,13 @@ struct SettingsView: View {
                                     .font(.subheadline.weight(.semibold))
                                 Spacer()
                                 Button(isEvaluatingQuality ? "Evaluating..." : "Refresh quality") {
-                                    evaluateDictionaryQuality()
+                                    evaluateDictionaryQuality(enrichFromRemote: true)
                                 }
                                 .buttonStyle(.bordered)
                                 .disabled(isEvaluatingQuality)
                             }
 
-                            Text("Based on your saved documents and saved vocab meanings.")
+                            Text("Based on your saved documents and saved vocab meanings. Refresh quality will also fill missing Kannada meanings from cloud fallback before scoring.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
 
@@ -219,7 +223,7 @@ struct SettingsView: View {
                                 .autocorrectionDisabled()
                                 .glassInputFieldStyle()
 
-                            TextField("Region", text: $regionText)
+                            TextField("Region (optional)", text: $regionText)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .glassInputFieldStyle()
@@ -266,7 +270,7 @@ struct SettingsView: View {
                                     )
                             }
 
-                            Text("Cloud fallback translates missing words using your configured source and target language, then stores the result in local cache.")
+                            Text("Cloud fallback translates missing words using your configured source and target language, then stores the result in local cache. Region is optional for global translator resources.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
@@ -306,12 +310,12 @@ struct SettingsView: View {
             do {
                 try store.saveAPIKey(apiKeyInput)
                 apiKeyInput = ""
-                translationStatusMessage = "Saved endpoint, region, and API key."
+                translationStatusMessage = "Saved endpoint, language codes, and API key."
             } catch {
                 translationStatusMessage = "Failed to save API key."
             }
         } else {
-            translationStatusMessage = "Saved endpoint and region."
+            translationStatusMessage = "Saved endpoint and language codes."
         }
 
         hasStoredAPIKey = store.hasAPIKey
@@ -347,15 +351,24 @@ struct SettingsView: View {
         }
     }
 
-    private func evaluateDictionaryQuality() {
+    private func evaluateDictionaryQuality(enrichFromRemote: Bool = false) {
         isEvaluatingQuality = true
-        qualityStatusMessage = nil
+        qualityStatusMessage = enrichFromRemote
+            ? "Filling missing meanings from your library, then recalculating quality..."
+            : nil
 
         Task {
-            let snapshot = dictionaryManager.evaluateQuality(fixture: makeLibraryQualityFixture())
+            let fixture = makeLibraryQualityFixture()
+            let snapshot: DictionaryQualitySnapshot
+            if enrichFromRemote {
+                snapshot = await dictionaryManager.evaluateQualityWithRemoteEnrichment(fixture: fixture)
+            } else {
+                snapshot = dictionaryManager.evaluateQuality(fixture: fixture)
+            }
             await MainActor.run {
                 qualitySnapshot = snapshot
                 isEvaluatingQuality = false
+                qualityStatusMessage = nil
             }
         }
     }

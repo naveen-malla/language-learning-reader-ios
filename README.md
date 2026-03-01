@@ -117,6 +117,7 @@ python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.
   - gold hit rate
   - gold accuracy
   - quality gate pass/fail and top unresolved words
+- `Refresh quality` now aggressively enriches missing Kannada words from your saved corpus using cloud fallback (when enabled/configured) before recalculating quality metrics.
 - Dictionary settings intentionally keep this area quality-focused to reduce noise in the reading workflow.
 - Settings quality uses your saved documents for coverage and your saved vocab meanings for accuracy.
 - If you have no local documents/vocab yet, quality falls back to a built-in language fixture baseline.

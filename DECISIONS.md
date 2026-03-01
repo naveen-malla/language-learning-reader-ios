@@ -78,6 +78,7 @@
 - SQLite-backed dictionary lookups run through a serialized queue and use per-lookup prepared statements to prevent shared-statement races under concurrent sentence prefetch.
 - Lookup priority is: override -> local dictionary candidates -> cloud cache -> optional remote fallback.
 - Settings quality metrics are computed from local app data (saved documents + saved vocab meanings) so the score reflects each user’s actual library, with fixture fallback only when local data is empty.
+- Manual `Refresh quality` now runs a remote enrichment pass over unresolved corpus words before computing the gate, prioritizing correctness for real personal libraries over request minimization.
 - New language additions follow a repeatable onboarding checklist (`docs/LANGUAGE_ONBOARDING_CHECKLIST.md`) to avoid per-language re-engineering.
 
 ## Translation APIs

@@ -179,6 +179,7 @@ Dictionary quality notes:
 - Runtime lookup path is language-profile based (`kn` has inflection rules; other languages use generic exact lookup by default).
 - Missing-word cloud fallback results are cached in `Documents/dictionary_cloud_cache.tsv`.
 - Settings -> Dictionary Quality evaluates your local saved documents (coverage) and saved vocab meanings (accuracy).
+- `Refresh quality` performs aggressive remote enrichment from the current corpus before scoring (no fixed candidate cap), then reuses cached meanings on later runs.
 - Summarize local missing words by frequency:
   `python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20`
 - Known missing-word regressions are fixture-driven:

@@ -356,6 +356,98 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertEqual(result.glossedWordCount, 1)
         XCTAssertEqual(result.coverage, 0.5, accuracy: 0.001)
     }
+
+    func testEvaluateQualityWithRemoteEnrichmentScalesToLargeCorpus() async {
+        let syllables = ["ka", "na", "da", "ra", "ma", "la", "sa", "ta", "pa", "ga"]
+        var words: [String] = []
+        for left in syllables {
+            for right in syllables {
+                words.append(left + right)
+            }
+        }
+        XCTAssertEqual(words.count, 100)
+
+        let localKnown = Dictionary(uniqueKeysWithValues: words.prefix(10).map { ($0, "local-\($0)") })
+        let remoteKnown = Dictionary(uniqueKeysWithValues: words.map { ($0, "remote-\($0)") })
+        let remote = FakeRemoteWordMeaningProvider(resultsByWord: remoteKnown)
+
+        let manager = makeManager(
+            entries: localKnown,
+            remoteProvider: remote,
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        let corpusSentences = [
+            words.prefix(50).joined(separator: " "),
+            words.suffix(50).joined(separator: " "),
+            words.shuffled().joined(separator: " ")
+        ]
+        let fixture = DictionaryQualityFixture(
+            name: "Scale Fixture",
+            languageCode: "kn",
+            corpusSentences: corpusSentences,
+            goldEntries: words.map { .init(word: $0, acceptedMeanings: ["-\($0)"], matchMode: .contains) },
+            thresholds: DictionaryQualityThresholds(
+                tokenCoverageMinimum: 0.95,
+                uniqueCoverageMinimum: 0.95,
+                goldHitRateMinimum: 0.95,
+                goldAccuracyMinimum: 0.95
+            )
+        )
+
+        let before = manager.evaluateQuality(fixture: fixture)
+        XCTAssertFalse(before.thresholdPassed)
+        XCTAssertLessThan(before.tokenCoverage, 0.5)
+        XCTAssertLessThan(before.uniqueCoverage, 0.5)
+
+        let after = await manager.evaluateQualityWithRemoteEnrichment(fixture: fixture)
+        XCTAssertTrue(after.thresholdPassed)
+        XCTAssertEqual(after.tokenCoverage, 1.0, accuracy: 0.001)
+        XCTAssertEqual(after.uniqueCoverage, 1.0, accuracy: 0.001)
+        XCTAssertEqual(after.goldHitRate, 1.0, accuracy: 0.001)
+        XCTAssertEqual(after.goldAccuracy, 1.0, accuracy: 0.001)
+
+        let remoteCalls = await remote.lookupCallCount()
+        XCTAssertEqual(remoteCalls, 90)
+    }
+
+    func testEvaluateQualityWithRemoteEnrichmentReusesCacheOnRepeatRuns() async {
+        let remote = FakeRemoteWordMeaningProvider(resultsByWord: [
+            "hola": "hello",
+            "mundo": "world"
+        ])
+        let manager = makeManager(
+            entries: [:],
+            remoteProvider: remote,
+            sourceLanguage: "es",
+            targetLanguage: "en"
+        )
+
+        let fixture = DictionaryQualityFixture(
+            name: "Repeat Enrichment",
+            languageCode: "es",
+            corpusSentences: ["hola mundo hola"],
+            goldEntries: [
+                .init(word: "hola", acceptedMeanings: ["hello"], matchMode: .contains),
+                .init(word: "mundo", acceptedMeanings: ["world"], matchMode: .contains)
+            ],
+            thresholds: DictionaryQualityThresholds(
+                tokenCoverageMinimum: 1.0,
+                uniqueCoverageMinimum: 1.0,
+                goldHitRateMinimum: 1.0,
+                goldAccuracyMinimum: 1.0
+            )
+        )
+
+        _ = await manager.evaluateQualityWithRemoteEnrichment(fixture: fixture)
+        let callsAfterFirst = await remote.lookupCallCount()
+        _ = await manager.evaluateQualityWithRemoteEnrichment(fixture: fixture)
+        let callsAfterSecond = await remote.lookupCallCount()
+
+        XCTAssertEqual(callsAfterFirst, 2)
+        XCTAssertEqual(callsAfterSecond, 2)
+    }
 }
 
 private actor FakeRemoteWordMeaningProvider: RemoteWordMeaningProviding {
