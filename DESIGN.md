@@ -70,7 +70,7 @@
   - per-word meaning + pronunciation list for unresolved words
 - Sentence, transliteration, and translation now use one unified reading size (`17pt`) to reduce visual jumps.
 - Header region is one scrollable canvas; sentence/transliteration/translation are not split into separate scroll panes.
-- Header region keeps a stable upper-center anchor: translation is usually visible without scrolling, and vertical shift stays minimal when overflow requires it.
+- Header region uses adaptive top alignment: long sentence/translation content is anchored higher to reduce forced scrolling, while short content keeps light breathing room.
 - Header region height is capped so long sentences do not squeeze the unresolved-words list.
 - Sentence page no longer uses a floating card container; content spans more of the screen width to reduce unused margins.
 - Known and ignored words are intentionally hidden in the in-page sentence word list.

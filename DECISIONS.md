@@ -29,7 +29,7 @@
 - Sentence mode uses a horizontal one-sentence pager for focused review.
 - Sentence detail content is integrated directly into each sentence page (no extra overlay panel).
 - Sentence page layout favors screen usage over card chrome: reduced horizontal inset, compact top bar, and a capped/scrollable sentence header region.
-- Sentence header uses a stable upper-center anchor so translated lines are visible more often, with only overflow-driven upward adjustment.
+- Sentence header uses adaptive top alignment so long lines are anchored higher and do not waste vertical space above the sentence.
 - Sentence pages show pronunciation in Latin script using the same `Transliterator` used for word-level pronunciation, keeping pronunciation rules consistent.
 - Sentence word list omits `known` and ignored words to reduce noise and emphasize unresolved vocabulary.
 - Sentence paging/progress/filter logic lives in a small model (`SentenceReaderModel`) so it can be tested without UI harnesses.

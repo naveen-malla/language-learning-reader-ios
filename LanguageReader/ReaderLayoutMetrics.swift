@@ -6,6 +6,7 @@ enum SentenceTopContentMode {
 
 enum SentenceTopCanvasPlacement {
     case centered
+    case topAligned
 }
 
 struct ReaderLayoutMetrics {
@@ -20,8 +21,10 @@ struct ReaderLayoutMetrics {
     static let sentenceWordsSectionMaxHeight: CGFloat = 290
     static let sentenceWordsSectionRatio: CGFloat = 0.34
     static let sentenceHorizontalPadding: CGFloat = 6
-    static let sentenceTopCanvasPlacement: SentenceTopCanvasPlacement = .centered
+    static let sentenceTopCanvasPlacement: SentenceTopCanvasPlacement = .topAligned
     static let sentenceTopCanvasMinTopPadding: CGFloat = 8
+    static let sentenceTopCanvasMaxTopPadding: CGFloat = 26
+    static let sentenceTopCanvasAdaptivePaddingRatio: CGFloat = 0.12
     static let sentenceTopCanvasAnchorRatio: CGFloat = 0.38
 
     static func sentenceWordsSectionHeight(for containerHeight: CGFloat) -> CGFloat {
@@ -40,13 +43,24 @@ struct ReaderLayoutMetrics {
 
         let clampedBase = max(baseContentHeight, 0)
         let clampedExtra = max(extraContentHeight, 0)
-        let anchoredBasePadding = max(
-            (containerHeight - clampedBase) * sentenceTopCanvasAnchorRatio,
-            sentenceTopCanvasMinTopPadding
-        )
-        let availableBelowBase = max(containerHeight - anchoredBasePadding - clampedBase, 0)
-        let overflow = max(clampedExtra - availableBelowBase, 0)
-
-        return max(sentenceTopCanvasMinTopPadding, anchoredBasePadding - overflow)
+        switch sentenceTopCanvasPlacement {
+        case .centered:
+            let anchoredBasePadding = max(
+                (containerHeight - clampedBase) * sentenceTopCanvasAnchorRatio,
+                sentenceTopCanvasMinTopPadding
+            )
+            let availableBelowBase = max(containerHeight - anchoredBasePadding - clampedBase, 0)
+            let overflow = max(clampedExtra - availableBelowBase, 0)
+            return max(sentenceTopCanvasMinTopPadding, anchoredBasePadding - overflow)
+        case .topAligned:
+            let totalContentHeight = clampedBase + clampedExtra
+            let freeSpace = max(containerHeight - totalContentHeight, 0)
+            let adaptiveRange = max(
+                sentenceTopCanvasMaxTopPadding - sentenceTopCanvasMinTopPadding,
+                0
+            )
+            let adaptivePadding = min(adaptiveRange, freeSpace * sentenceTopCanvasAdaptivePaddingRatio)
+            return sentenceTopCanvasMinTopPadding + adaptivePadding
+        }
     }
 }

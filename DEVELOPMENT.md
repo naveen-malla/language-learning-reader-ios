@@ -64,7 +64,7 @@
 - Sentence content uses one unified reading size (`17pt`) across sentence, transliteration, and translation.
 - Sentence header now includes a transliterated pronunciation line under the sentence.
 - Translation text appears inline in the same top canvas (no separate translation scroll box).
-- Top canvas uses a stable upper-center anchor so translation stays visible more often (minimal shift only when overflowed).
+- Top canvas uses adaptive top alignment so long sentence/translation content stays high on screen with less forced scrolling.
 - Sentence translate action uses Azure Translator when configured in Settings; otherwise it falls back to offline gloss.
 - Sentence page now uses reduced side insets and no floating card container so more of the screen is usable.
 - Reader top bar is compact and pinned higher to reduce dead space above the progress slider.
@@ -113,7 +113,7 @@ Notes:
   - confirm sentence mode fills more horizontal space and does not look boxed-in
   - confirm top progress bar is positioned higher with reduced extra padding
   - confirm sentence/transliteration/translation share one top canvas scroll area
-  - confirm top canvas stays visually stable after translation appears (no big upward jump)
+  - confirm top canvas stays top-aligned after translation appears (no large dead space above sentence text)
   - confirm translate action and unresolved word list are visible in the same page
   - confirm sentence transliteration is visible under the sentence and stays readable on long lines
   - confirm translate action shows a loading state and resolves into wrapped inline text
