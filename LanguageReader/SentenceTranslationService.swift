@@ -52,7 +52,8 @@ actor SentenceTranslationService {
     private func cacheKey(sentence: String, config: AzureTranslatorConfiguration?) -> String {
         let prefix: String
         if let config {
-            prefix = "\(config.endpoint.absoluteString)|\(config.sourceLanguage)|\(config.targetLanguage)|\(config.region)"
+            let region = config.region ?? ""
+            prefix = "\(config.endpoint.absoluteString)|\(config.sourceLanguage)|\(config.targetLanguage)|\(region)"
         } else {
             prefix = "offline"
         }

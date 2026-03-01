@@ -128,7 +128,7 @@ Translation is optional and not required for core functionality.
 
 In **Settings -> Translation API**, provide:
 - Endpoint (example): `https://api.cognitive.microsofttranslator.com`
-- Region
+- Region (optional for global translator resources)
 - API key (stored in Keychain)
 
 ## Quality Bar
@@ -136,6 +136,8 @@ In **Settings -> Translation API**, provide:
 - Strong unit coverage on tokenizer, dictionary lookup paths, vocab state resolution, and flashcard scheduling.
 - Full simulator test runs supported via `./scripts/test.sh`.
 - Every shipped change must also be verified in the running simulator app (`./scripts/run.sh`) for the affected user flow; unit tests alone are not sufficient.
+- Reliability-first policy: if iPhone 14 Pro handles it smoothly, prefer stronger correctness and resilience over reducing storage/network/cost.
+- Every user-visible regression must add an automated reproduction test for the specific failure mode before the fix is considered complete.
 
 ## Documentation Map
 - Product plan and checkpoints: `PLANS.md`

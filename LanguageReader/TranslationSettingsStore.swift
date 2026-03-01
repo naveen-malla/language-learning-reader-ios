@@ -2,7 +2,7 @@ import Foundation
 
 struct AzureTranslatorConfiguration {
     let endpoint: URL
-    let region: String
+    let region: String?
     let apiKey: String
     let sourceLanguage: String
     let targetLanguage: String
@@ -92,9 +92,6 @@ struct TranslationSettingsStore {
         }
 
         let region = regionText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !region.isEmpty else {
-            return nil
-        }
 
         let endpoint = normalizeEndpointText(endpointText)
         guard let endpointURL = validatedEndpointURL(endpoint) else {
@@ -109,7 +106,7 @@ struct TranslationSettingsStore {
 
         return AzureTranslatorConfiguration(
             endpoint: endpointURL,
-            region: region,
+            region: region.isEmpty ? nil : region,
             apiKey: apiKey,
             sourceLanguage: source,
             targetLanguage: target

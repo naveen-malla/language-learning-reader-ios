@@ -14,6 +14,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Prefer small, inspectable changes and clear structure.
 - Keep commits small and focused.
 - Build with learning psychology in mind: reduce friction, reinforce recall, and keep the reading flow smooth.
+- Reliability-first over optimization: if a heavier but more reliable approach still runs well on iPhone 14 Pro, prefer reliability and correctness over saving storage/network/cost.
 
 ## Git Cadence (Default)
 - Commit and push logical checkpoints immediately without waiting for manual approval.
@@ -35,6 +36,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Test quality is a priority from the start: cover edge cases, failure paths, and regressions, not just happy paths.
 - When a bug is found, add a failing test first (or in the same change) before shipping the fix.
 - Prefer behavior-level tests with realistic text fixtures over trivial property assertions.
+- For user-visible failures (for example translation/import/reader regressions), add scenario tests that reproduce the exact failure mode and verify the expected recovery path.
 
 ## Testing
 - Use iOS Simulator for all runs.

@@ -32,17 +32,59 @@ struct AzureTranslatorClient: AzureSentenceTranslating {
     }
 
     func translate(text: String, configuration: AzureTranslatorConfiguration) async throws -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw ClientError.emptyResponse
+        }
+
+        do {
+            let translated = try await performTranslation(
+                text: trimmed,
+                configuration: configuration,
+                sourceLanguage: normalizedLanguageCode(configuration.sourceLanguage)
+            )
+
+            if shouldRetryWithAutoDetect(
+                sourceText: trimmed,
+                translatedText: translated,
+                configuration: configuration
+            ) {
+                return try await performTranslation(
+                    text: trimmed,
+                    configuration: configuration,
+                    sourceLanguage: nil
+                )
+            }
+
+            return translated
+        } catch let error as ClientError where shouldRetryWithoutSource(error, configuration: configuration) {
+            return try await performTranslation(
+                text: trimmed,
+                configuration: configuration,
+                sourceLanguage: nil
+            )
+        }
+    }
+
+    private func performTranslation(
+        text: String,
+        configuration: AzureTranslatorConfiguration,
+        sourceLanguage: String?
+    ) async throws -> String {
         guard var components = URLComponents(
             url: configuration.endpoint.appendingPathComponent("translate"),
             resolvingAgainstBaseURL: false
         ) else {
             throw ClientError.invalidEndpoint
         }
-        components.queryItems = [
+        var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "api-version", value: "3.0"),
-            URLQueryItem(name: "from", value: configuration.sourceLanguage),
             URLQueryItem(name: "to", value: configuration.targetLanguage)
         ]
+        if let sourceLanguage {
+            queryItems.append(URLQueryItem(name: "from", value: sourceLanguage))
+        }
+        components.queryItems = queryItems
         guard let url = components.url else {
             throw ClientError.invalidEndpoint
         }
@@ -51,7 +93,9 @@ struct AzureTranslatorClient: AzureSentenceTranslating {
         request.httpMethod = "POST"
         request.timeoutInterval = 12
         request.setValue(configuration.apiKey, forHTTPHeaderField: "Ocp-Apim-Subscription-Key")
-        request.setValue(configuration.region, forHTTPHeaderField: "Ocp-Apim-Subscription-Region")
+        if let region = configuration.region, !region.isEmpty {
+            request.setValue(region, forHTTPHeaderField: "Ocp-Apim-Subscription-Region")
+        }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode([TranslateRequestBody(text: text)])
 
@@ -71,6 +115,66 @@ struct AzureTranslatorClient: AzureSentenceTranslating {
             throw ClientError.emptyResponse
         }
         return translated
+    }
+
+    private func normalizedLanguageCode(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func shouldRetryWithoutSource(
+        _ error: ClientError,
+        configuration: AzureTranslatorConfiguration
+    ) -> Bool {
+        guard normalizedLanguageCode(configuration.sourceLanguage) != nil else {
+            return false
+        }
+
+        guard case .serviceError(let message) = error else {
+            return false
+        }
+
+        let normalized = message.lowercased()
+        if normalized.contains("(400)") || normalized.contains("failed (400)") {
+            return true
+        }
+
+        if normalized.contains("source language")
+            || normalized.contains("language code")
+            || normalized.contains("from language")
+            || normalized.contains("from parameter")
+            || normalized.contains("translation from") {
+            return true
+        }
+
+        return normalized.contains("from") && normalized.contains("language")
+    }
+
+    private func shouldRetryWithAutoDetect(
+        sourceText: String,
+        translatedText: String,
+        configuration: AzureTranslatorConfiguration
+    ) -> Bool {
+        guard normalizedLanguageCode(configuration.sourceLanguage) != nil else {
+            return false
+        }
+
+        guard configuration.sourceLanguage.caseInsensitiveCompare(configuration.targetLanguage) != .orderedSame else {
+            return false
+        }
+
+        guard sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(translatedText.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame else {
+            return false
+        }
+
+        return containsKannadaScript(in: sourceText)
+    }
+
+    private func containsKannadaScript(in text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            (0x0C80...0x0CFF).contains(Int(scalar.value))
+        }
     }
 
     func parseTranslation(data: Data) throws -> String {

@@ -84,8 +84,9 @@
 - Optional only; no runtime dependency in MVP.
 - API key stored in Keychain.
 - Azure Translator is the first network provider for sentence translation (`kn -> en`) when configured.
-- Endpoint + region are stored in `UserDefaults`; API key remains in Keychain.
+- Endpoint + source/target language are stored in `UserDefaults`; API key remains in Keychain. Region is stored when provided and treated as optional for global translator resources.
 - Translator endpoint must be an absolute `http/https` URL with a host to avoid invalid runtime configurations.
+- Translator client retries with auto-detected source language when explicit `from` language configuration fails or returns unchanged Kannada text, to reduce silent fallback-to-gloss behavior.
 - Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
 - If network translation is unavailable, reader falls back to the existing offline dictionary gloss.
 - For missing single-word meanings, optional Azure-backed fallback is used and persisted locally so repeated lookups stay offline after first fetch.
@@ -119,3 +120,4 @@
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.
 - Every user-reported bug should add a corresponding automated test before closure.
 - Simulator-first acceptance: every change must be run in the simulator and the touched flow must be verified in the actual app UI before completion.
+- Reliability-first tradeoff policy: if iPhone 14 Pro can run the solution comfortably, prefer robustness/coverage over storage or cost optimizations.

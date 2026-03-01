@@ -22,14 +22,11 @@ final class TranslationSettingsStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    func testConfigurationRequiresKeyAndRegion() throws {
+    func testConfigurationRequiresKey() throws {
         let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
         XCTAssertNil(store.configuration())
 
         try store.saveAPIKey("secret")
-        XCTAssertNil(store.configuration())
-
-        store.regionText = "germanywestcentral"
         XCTAssertNotNil(store.configuration())
     }
 
@@ -115,6 +112,15 @@ final class TranslationSettingsStoreTests: XCTestCase {
         XCTAssertEqual(config.sourceLanguage, "kn")
         XCTAssertEqual(config.targetLanguage, "en")
         XCTAssertEqual(config.apiKey, "secret")
+    }
+
+    func testConfigurationAllowsMissingRegion() throws {
+        let store = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        store.regionText = "  "
+        try store.saveAPIKey("secret")
+
+        let config = try XCTUnwrap(store.configuration())
+        XCTAssertNil(config.region)
     }
 }
 

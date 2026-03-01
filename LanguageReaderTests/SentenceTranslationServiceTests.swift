@@ -31,6 +31,24 @@ final class SentenceTranslationServiceTests: XCTestCase {
         XCTAssertEqual(fake.callCount, 1)
     }
 
+    func testUsesCloudTranslatorWhenConfiguredWithoutRegion() async throws {
+        let defaults = testDefaults()
+        let keychain = InMemorySecretStore()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        settings.regionText = " "
+        try settings.saveAPIKey("secret")
+
+        let fake = FakeAzureTranslatorClient(result: .success("cloud translation"))
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: fake
+        )
+
+        let translated = await service.translate(sentence: "ಈ ವಾಕ್ಯ")
+        XCTAssertEqual(translated, "cloud translation")
+        XCTAssertEqual(fake.callCount, 1)
+    }
+
     func testCachesRepeatedCloudTranslations() async throws {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()

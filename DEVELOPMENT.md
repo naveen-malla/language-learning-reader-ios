@@ -74,7 +74,7 @@
 
 ## Translation API Setup
 1. Open Settings -> Translation API.
-2. Enter endpoint, region, and Key 1 from Azure Translator.
+2. Enter endpoint, source/target language codes, and Key 1 from Azure Translator. Region is optional for global resources.
 3. Save settings; key is stored in Keychain.
 4. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
 
@@ -105,6 +105,8 @@ Notes:
 - Every feature should have failure-path and edge-case coverage.
 - Ensure caching/normalization and URL parsing edge cases are covered in unit tests.
 - When a production issue is observed, add a regression test in the same change.
+- For user-visible defects, add a test that reproduces the exact symptom and a test that verifies the intended recovery behavior (for example retry path, fallback path, or error handling path).
+- Reliability-first bias: do not trade away correctness for storage/network/cost when iPhone 14 Pro performance remains acceptable.
 - For every code change, run the app on simulator (`./scripts/run.sh`) and manually verify the affected real UI/app flow before considering the change complete.
 - For reader performance issues, confirm sentence/token preprocessing does not rerun on pure scroll updates.
 - Keep sentence-mode behavior testable in unit tests (clamped index, progress mapping, and known+ignored filtering).
@@ -118,6 +120,8 @@ Notes:
   - confirm sentence transliteration is visible under the sentence and stays readable on long lines
   - confirm translate action shows a loading state and resolves into wrapped inline text
   - confirm translation still works (fallback gloss) if API key is missing/cleared
+  - confirm translation works when API key is present even if region is blank (global resource path)
+  - confirm translator retries without `from` when source-language config is invalid and still returns a cloud translation
   - confirm tapping a listed word still opens the word detail sheet
   - confirm the same word uses the same highlight state in text view and sentence view
   - confirm new-word quick actions exist (`+`, `✓`, `delete`) and apply immediately
