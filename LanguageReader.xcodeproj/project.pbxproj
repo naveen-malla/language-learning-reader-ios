@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -134,7 +134,7 @@
 		38A87E56BB99099969C8D501 /* AzureTranslatorClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureTranslatorClientTests.swift; sourceTree = "<group>"; };
 		3B0CFB01489271CC25507875 /* AutoImportSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoImportSettings.swift; sourceTree = "<group>"; };
 		3F25B5E93FBC962853030C5C /* Tokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokenizer.swift; sourceTree = "<group>"; };
-		402CD4217E89B4AD88C24442 /* dictionary_missing_fixture.tsv */ = {isa = PBXFileReference; path = dictionary_missing_fixture.tsv; sourceTree = "<group>"; };
+		402CD4217E89B4AD88C24442 /* dictionary_missing_fixture.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = dictionary_missing_fixture.tsv; sourceTree = "<group>"; };
 		4836238FC51DEDA6B4723DFD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		49AA7B79ADABC54279052FC0 /* IgnoredWordsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IgnoredWordsStore.swift; sourceTree = "<group>"; };
 		4DCE5E432B2AD2BDF99BCAB7 /* YouTubeImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeImportService.swift; sourceTree = "<group>"; };
@@ -181,7 +181,7 @@
 		AB45A09C3910F09CDDCD3868 /* FlashcardStatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardStatsStore.swift; sourceTree = "<group>"; };
 		ABA122FEC9E2C7D59D1BE2CA /* LanguageReaderTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanguageReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACE6AA91863EF9905618C4FF /* SentenceTokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceTokenizerTests.swift; sourceTree = "<group>"; };
-		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE2605C6DEC12FFE8CA163E8 /* LanguageReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanguageReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE6E39FEFED6EA0D849AC1EC /* FlashcardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardsView.swift; sourceTree = "<group>"; };
 		AF234D6E88AEDA883D53A53C /* DictionaryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryManager.swift; sourceTree = "<group>"; };
 		AF51C5F563980B0D0414E21A /* WordLearningStateResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordLearningStateResolverTests.swift; sourceTree = "<group>"; };
@@ -435,7 +435,6 @@
 			);
 			mainGroup = 0D42A0CC0299F3160484B6AC;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -583,6 +582,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LanguageReader/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -599,6 +599,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -675,6 +676,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LanguageReader/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -691,6 +693,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = GF82573T6H;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
