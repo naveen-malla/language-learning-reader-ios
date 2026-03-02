@@ -25,10 +25,20 @@ enum SuggestionRanker {
         _ suggestions: [YouTubeSuggestedVideo],
         context: SuggestionRankingContext
     ) -> [YouTubeSuggestedVideo] {
+        let normalizedFollowedChannels = Set(context.followedChannels.map(normalizeChannel))
+        let normalizedCategoryHistory = normalizeHistory(context.categoryHistory, keyNormalizer: normalizeCategory)
+        let normalizedChannelHistory = normalizeHistory(context.channelHistory, keyNormalizer: normalizeChannel)
+
         let scored = suggestions.enumerated().map { index, suggestion in
             ScoredSuggestion(
                 suggestion: suggestion,
-                baseScore: score(suggestion: suggestion, baseIndex: index, context: context)
+                baseScore: score(
+                    suggestion: suggestion,
+                    baseIndex: index,
+                    followedChannels: normalizedFollowedChannels,
+                    categoryHistory: normalizedCategoryHistory,
+                    channelHistory: normalizedChannelHistory
+                )
             )
         }
 
@@ -66,19 +76,21 @@ enum SuggestionRanker {
     private static func score(
         suggestion: YouTubeSuggestedVideo,
         baseIndex: Int,
-        context: SuggestionRankingContext
+        followedChannels: Set<String>,
+        categoryHistory: [String: Int],
+        channelHistory: [String: Int]
     ) -> Int {
         var value = max(0, 300 - (baseIndex * 10))
 
         let channelKey = normalizeChannel(suggestion.channelTitle)
         let categoryKey = normalizeCategory(suggestion.category)
 
-        if context.followedChannels.contains(channelKey) {
+        if followedChannels.contains(channelKey) {
             value += 600
         }
 
-        value += (context.categoryHistory[categoryKey] ?? 0) * 40
-        value += (context.channelHistory[channelKey] ?? 0) * 25
+        value += (categoryHistory[categoryKey] ?? 0) * 40
+        value += (channelHistory[channelKey] ?? 0) * 25
 
         if suggestion.durationSeconds > 0 {
             let distanceFromPreferredMinutes = abs(YouTubeImportService.preferredDurationSeconds - suggestion.durationSeconds) / 60
@@ -107,5 +119,15 @@ enum SuggestionRanker {
     private struct ScoredSuggestion {
         let suggestion: YouTubeSuggestedVideo
         let baseScore: Int
+    }
+
+    private static func normalizeHistory(
+        _ history: [String: Int],
+        keyNormalizer: (String) -> String
+    ) -> [String: Int] {
+        history.reduce(into: [:]) { partialResult, pair in
+            let key = keyNormalizer(pair.key)
+            partialResult[key, default: 0] += pair.value
+        }
     }
 }

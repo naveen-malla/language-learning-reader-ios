@@ -3,7 +3,7 @@ import XCTest
 
 final class SuggestionRankerTests: XCTestCase {
     func testFollowedChannelGetsPriority() {
-        let followed = "fav channel"
+        let followed = "  Fav Channel  "
         let suggestions = [
             makeSuggestion(videoID: "1", title: "General", channel: "Other Channel", category: "Basics", duration: 240),
             makeSuggestion(videoID: "2", title: "Followed", channel: "Fav Channel", category: "Grammar", duration: 240)
@@ -153,8 +153,8 @@ final class SuggestionRankerTests: XCTestCase {
             suggestions,
             context: SuggestionRankingContext(
                 followedChannels: [],
-                categoryHistory: ["grammar": 2],
-                channelHistory: ["kannada focus": 2]
+                categoryHistory: ["  Grammar ": 1, "gRaMmAr": 1],
+                channelHistory: [" Kannada Focus ": 1, "kannada focus": 1]
             )
         )
 
