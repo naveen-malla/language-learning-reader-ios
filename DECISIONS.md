@@ -18,6 +18,7 @@
   - continue shelf based on actual open behavior.
 - New lessons should remain labeled as new until first reader open (`firstOpenedAt == nil`).
 - Beginner suggestion ranking uses local preference signals only (followed channels + imported category/channel history), keeping personalization offline and deterministic.
+- Suggestion ranking normalizes followed-channel and history keys at ranking time (trim + lowercase, merged duplicates) so minor storage-format drift does not silently degrade personalization.
 
 ## Tokenization
 - NaturalLanguage when available for better word boundaries.
