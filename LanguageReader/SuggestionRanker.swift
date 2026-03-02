@@ -81,7 +81,8 @@ enum SuggestionRanker {
         value += (context.channelHistory[channelKey] ?? 0) * 25
 
         if suggestion.durationSeconds > 0 {
-            let durationBias = max(0, (YouTubeImportService.maxBeginnerDurationSeconds - suggestion.durationSeconds) / 60)
+            let distanceFromPreferredMinutes = abs(YouTubeImportService.preferredDurationSeconds - suggestion.durationSeconds) / 60
+            let durationBias = max(0, 8 - distanceFromPreferredMinutes)
             value += durationBias
         }
 
