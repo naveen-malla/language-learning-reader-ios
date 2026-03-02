@@ -67,7 +67,7 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "2")
     }
 
-    func testDurationBiasPrefersCloserToPreferredLength() {
+    func testDurationBiasRewardsShorterVideosWithinDurationWindow() {
         let preferred = YouTubeImportService.preferredDurationSeconds
         let suggestions = [
             makeSuggestion(
@@ -94,7 +94,7 @@ final class SuggestionRankerTests: XCTestCase {
         ]
 
         let ranked = SuggestionRanker.rank(suggestions, context: .empty)
-        XCTAssertEqual(ranked.first?.videoID, "2")
+        XCTAssertEqual(ranked.first?.videoID, "1")
     }
 
     func testDiversityPenaltyPrefersDifferentCategoryForSecondPick() {
