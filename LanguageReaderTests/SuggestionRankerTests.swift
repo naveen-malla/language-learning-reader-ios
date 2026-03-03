@@ -161,40 +161,27 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "1")
     }
 
-    func testWhitespaceOnlyHistoryDoesNotBoostEmptyMetadata() {
+    func testWhitespaceOnlyContextKeysDoNotAffectRanking() {
         let suggestions = [
-            makeSuggestion(videoID: "1", title: "Missing Metadata", channel: "", category: "", duration: 360),
-            makeSuggestion(videoID: "2", title: "Known", channel: "Known Channel", category: "Known", duration: 360)
-        ]
-
-        let ranked = SuggestionRanker.rank(
-            suggestions,
-            context: SuggestionRankingContext(
-                followedChannels: [],
-                categoryHistory: ["   ": 20, "\n\t": 10],
-                channelHistory: ["   ": 20]
-            )
-        )
-
-        XCTAssertEqual(ranked.first?.videoID, "2")
-    }
-
-    func testWhitespaceOnlyFollowedChannelDoesNotMatchEmptyChannel() {
-        let suggestions = [
-            makeSuggestion(videoID: "1", title: "Missing Channel", channel: "", category: "Basics", duration: 360),
-            makeSuggestion(videoID: "2", title: "Known Channel", channel: "Kannada Focus", category: "Basics", duration: 360)
+            makeSuggestion(videoID: "1", title: "Normal", channel: "Alpha", category: "Basics", duration: 360),
+            makeSuggestion(videoID: "2", title: "Blank", channel: "   ", category: " \n ", duration: 360)
         ]
 
         let ranked = SuggestionRanker.rank(
             suggestions,
             context: SuggestionRankingContext(
                 followedChannels: ["   ", "\n"],
-                categoryHistory: [:],
-                channelHistory: [:]
+                categoryHistory: ["  ": 10, "\n": 5],
+                channelHistory: ["  ": 20]
             )
         )
 
-        XCTAssertEqual(ranked.first?.videoID, "2")
+        XCTAssertEqual(ranked.first?.videoID, "1")
+    }
+
+    func testRankReturnsEmptyForEmptySuggestions() {
+        let ranked = SuggestionRanker.rank([], context: .empty)
+        XCTAssertTrue(ranked.isEmpty)
     }
 
     private func makeSuggestion(

@@ -19,6 +19,7 @@
 - New lessons should remain labeled as new until first reader open (`firstOpenedAt == nil`).
 - Beginner suggestion ranking uses local preference signals only (followed channels + imported category/channel history), keeping personalization offline and deterministic.
 - Suggestion ranking normalizes followed-channel and history keys at ranking time (trim + lowercase, merged duplicates) so minor storage-format drift does not silently degrade personalization.
+- Suggestion ranking ignores whitespace-only followed/history keys so malformed local data cannot accidentally overpower relevance scoring.
 
 ## Tokenization
 - NaturalLanguage when available for better word boundaries.
@@ -120,7 +121,6 @@
   - auto cooldown: 24 hours
 - Repeat-import fallback is available but defaults to off so fresh imports are prioritized.
 - Background refresh is optional/best-effort and uses the same coordinator/rate limits as foreground checks.
-- Suggestion ranking normalizes followed-channel and history keys (case/whitespace) but discards empty normalized keys so malformed profile data cannot over-boost videos with missing metadata.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.
