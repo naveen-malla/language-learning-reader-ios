@@ -120,6 +120,7 @@
   - auto cooldown: 24 hours
 - Repeat-import fallback is available but defaults to off so fresh imports are prioritized.
 - Background refresh is optional/best-effort and uses the same coordinator/rate limits as foreground checks.
+- Suggestion ranking normalizes followed-channel and history keys (case/whitespace) but discards empty normalized keys so malformed profile data cannot over-boost videos with missing metadata.
 
 ## Testing Strategy
 - Prioritize regression and edge-case tests from the beginning, not only smoke tests.

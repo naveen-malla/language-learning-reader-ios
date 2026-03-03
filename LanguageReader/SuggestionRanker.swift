@@ -25,7 +25,11 @@ enum SuggestionRanker {
         _ suggestions: [YouTubeSuggestedVideo],
         context: SuggestionRankingContext
     ) -> [YouTubeSuggestedVideo] {
-        let normalizedFollowedChannels = Set(context.followedChannels.map(normalizeChannel))
+        let normalizedFollowedChannels = Set(
+            context.followedChannels
+                .map(normalizeChannel)
+                .filter { !$0.isEmpty }
+        )
         let normalizedCategoryHistory = normalizeHistory(context.categoryHistory, keyNormalizer: normalizeCategory)
         let normalizedChannelHistory = normalizeHistory(context.channelHistory, keyNormalizer: normalizeChannel)
 
@@ -127,6 +131,9 @@ enum SuggestionRanker {
     ) -> [String: Int] {
         history.reduce(into: [:]) { partialResult, pair in
             let key = keyNormalizer(pair.key)
+            guard !key.isEmpty else {
+                return
+            }
             partialResult[key, default: 0] += pair.value
         }
     }
