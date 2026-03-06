@@ -161,6 +161,11 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "1")
     }
 
+    func testRankReturnsEmptyForEmptySuggestions() {
+        let ranked = SuggestionRanker.rank([], context: .empty)
+        XCTAssertTrue(ranked.isEmpty)
+    }
+
     func testWhitespaceOnlyContextKeysDoNotAffectRanking() {
         let suggestions = [
             makeSuggestion(videoID: "1", title: "Normal", channel: "Alpha", category: "Basics", duration: 360),
@@ -179,9 +184,22 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "1")
     }
 
-    func testRankReturnsEmptyForEmptySuggestions() {
-        let ranked = SuggestionRanker.rank([], context: .empty)
-        XCTAssertTrue(ranked.isEmpty)
+    func testDuplicateNormalizedHistoryKeysAreSummed() {
+        let suggestions = [
+            makeSuggestion(videoID: "1", title: "Base Index Leader", channel: "Other", category: "Other", duration: 360),
+            makeSuggestion(videoID: "2", title: "Normalized Target", channel: "  Kannada Focus ", category: "  Grammar ", duration: 360)
+        ]
+
+        let ranked = SuggestionRanker.rank(
+            suggestions,
+            context: SuggestionRankingContext(
+                followedChannels: [],
+                categoryHistory: [" grammar ": 2, "GRAMMAR": 3],
+                channelHistory: ["kannada focus": 1, " Kannada Focus ": 1]
+            )
+        )
+
+        XCTAssertEqual(ranked.first?.videoID, "2")
     }
 
     func testWhitespaceOnlyHistoryDoesNotBoostEmptyMetadata() {
