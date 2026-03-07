@@ -202,6 +202,44 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "2")
     }
 
+    func testMixedBlankAndValidHistoryKeysIgnoreBlankAndSumValid() {
+        let suggestions = [
+            makeSuggestion(videoID: "1", title: "Missing Metadata", channel: "", category: "", duration: 360),
+            makeSuggestion(videoID: "2", title: "Normalized Target", channel: "  Kannada Focus ", category: "  Grammar ", duration: 360)
+        ]
+
+        let ranked = SuggestionRanker.rank(
+            suggestions,
+            context: SuggestionRankingContext(
+                followedChannels: [],
+                categoryHistory: [" grammar ": 2, "GRAMMAR": 1, "   ": 900, "\n": 400],
+                channelHistory: ["kannada focus": 1, " Kannada Focus ": 2, "\t": 700]
+            )
+        )
+
+        XCTAssertEqual(ranked.first?.videoID, "2")
+    }
+
+    func testDiversityPenaltyNormalizesCategoryVariants() {
+        let suggestions = [
+            makeSuggestion(videoID: "1", title: "Grammar Prime", channel: "Fav A", category: "Grammar", duration: 360),
+            makeSuggestion(videoID: "2", title: "Grammar Variant", channel: "Fav B", category: "  grammar  ", duration: 360),
+            makeSuggestion(videoID: "3", title: "Story Escape", channel: "Story Channel", category: "Stories", duration: 360)
+        ]
+
+        let ranked = SuggestionRanker.rank(
+            suggestions,
+            context: SuggestionRankingContext(
+                followedChannels: ["fav a", "fav b"],
+                categoryHistory: ["stories": 14],
+                channelHistory: ["fav a": 1]
+            )
+        )
+
+        XCTAssertEqual(ranked.first?.videoID, "1")
+        XCTAssertEqual(ranked[1].videoID, "3")
+    }
+
     func testWhitespaceOnlyHistoryDoesNotBoostEmptyMetadata() {
         let suggestions = [
             makeSuggestion(videoID: "1", title: "Missing Metadata", channel: "", category: "", duration: 360),
