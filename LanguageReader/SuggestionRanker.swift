@@ -130,8 +130,13 @@ enum SuggestionRanker {
         keyNormalizer: (String) -> String
     ) -> [String: Int] {
         history.reduce(into: [:]) { partialResult, pair in
+            guard pair.value > 0 else {
+                return
+            }
             let key = keyNormalizer(pair.key)
-            guard !key.isEmpty else { return }
+            guard !key.isEmpty else {
+                return
+            }
             partialResult[key, default: 0] += pair.value
         }
     }

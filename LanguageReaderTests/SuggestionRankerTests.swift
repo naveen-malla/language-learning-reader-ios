@@ -276,6 +276,24 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "2")
     }
 
+    func testNonPositiveHistoryValuesAreIgnored() {
+        let suggestions = [
+            makeSuggestion(videoID: "1", title: "Base Index Leader", channel: "Other", category: "Other", duration: 360),
+            makeSuggestion(videoID: "2", title: "Target", channel: "Kannada Focus", category: "Grammar", duration: 360)
+        ]
+
+        let ranked = SuggestionRanker.rank(
+            suggestions,
+            context: SuggestionRankingContext(
+                followedChannels: [],
+                categoryHistory: ["grammar": -500, "other": 0, "GRAMMAR": 2],
+                channelHistory: ["kannada focus": -10, " Kannada Focus ": 2, "other": 0]
+            )
+        )
+
+        XCTAssertEqual(ranked.first?.videoID, "2")
+    }
+
     private func makeSuggestion(
         videoID: String,
         title: String,
