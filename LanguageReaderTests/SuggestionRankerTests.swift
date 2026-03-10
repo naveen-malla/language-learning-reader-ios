@@ -294,6 +294,45 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked.first?.videoID, "2")
     }
 
+    func testNonPositiveNormalizedVariantsDoNotCancelPositiveHistory() {
+        let suggestions = [
+            makeSuggestion(videoID: "1", title: "Base Index Leader", channel: "Other", category: "Other", duration: 360),
+            makeSuggestion(videoID: "2", title: "Target", channel: "Kannada Focus", category: "Grammar", duration: 360)
+        ]
+
+        let ranked = SuggestionRanker.rank(
+            suggestions,
+            context: SuggestionRankingContext(
+                followedChannels: [],
+                categoryHistory: [" grammar ": 3, "GRAMMAR": -500, "other": 0],
+                channelHistory: [" Kannada Focus ": 2, "kannada focus": 0, "other": -10]
+            )
+        )
+
+        XCTAssertEqual(ranked.first?.videoID, "2")
+    }
+
+    func testDiversityAdjustedTieBreakFallsBackToAlphabeticalTitle() {
+        let suggestions = [
+            makeSuggestion(videoID: "1", title: "Grammar Prime", channel: "Fav A", category: "Grammar", duration: 360),
+            makeSuggestion(videoID: "2", title: "Zulu Grammar", channel: "Fav B", category: "Grammar", duration: 360),
+            makeSuggestion(videoID: "3", title: "Alpha Stories", channel: "Story Channel", category: "Stories", duration: 360)
+        ]
+
+        let ranked = SuggestionRanker.rank(
+            suggestions,
+            context: SuggestionRankingContext(
+                followedChannels: ["fav a", "fav b"],
+                categoryHistory: ["stories": 17],
+                channelHistory: [:]
+            )
+        )
+
+        XCTAssertEqual(ranked.first?.videoID, "1")
+        XCTAssertEqual(ranked[1].videoID, "3")
+        XCTAssertEqual(ranked[2].videoID, "2")
+    }
+
     private func makeSuggestion(
         videoID: String,
         title: String,
