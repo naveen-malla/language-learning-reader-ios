@@ -15,6 +15,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Keep commits small and focused.
 - Build with learning psychology in mind: reduce friction, reinforce recall, and keep the reading flow smooth.
 - Reliability-first over optimization: if a heavier but more reliable approach still runs well on iPhone 14 Pro, prefer reliability and correctness over saving storage/network/cost.
+- For new language support, follow `docs/LANGUAGE_ONBOARDING_CHECKLIST.md`.
 
 ## Git Cadence (Default)
 - Commit and push logical checkpoints immediately without waiting for manual approval.
