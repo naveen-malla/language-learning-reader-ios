@@ -333,6 +333,32 @@ final class SuggestionRankerTests: XCTestCase {
         XCTAssertEqual(ranked[2].videoID, "2")
     }
 
+    func testExactScoreAndTitleTiePreservesOriginalOrder() {
+        let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
+        let suggestions = [
+            makeSuggestion(
+                videoID: "1",
+                title: "Same Title",
+                channel: "Alpha",
+                category: "Basics",
+                duration: 0,
+                publishedAt: tenDaysAgo
+            ),
+            makeSuggestion(
+                videoID: "2",
+                title: "Same Title",
+                channel: "Beta",
+                category: "Basics",
+                duration: 0,
+                publishedAt: Date()
+            )
+        ]
+
+        let ranked = SuggestionRanker.rank(suggestions, context: .empty)
+
+        XCTAssertEqual(ranked.map(\.videoID), ["1", "2"])
+    }
+
     private func makeSuggestion(
         videoID: String,
         title: String,
