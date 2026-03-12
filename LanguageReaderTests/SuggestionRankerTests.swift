@@ -334,7 +334,8 @@ final class SuggestionRankerTests: XCTestCase {
     }
 
     func testExactScoreAndTitleTiePreservesOriginalOrder() {
-        let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
+        let now = Date()
+        let tenDaysAgo = now.addingTimeInterval(-10 * 24 * 3600)
         let suggestions = [
             makeSuggestion(
                 videoID: "1",
@@ -350,7 +351,7 @@ final class SuggestionRankerTests: XCTestCase {
                 channel: "Beta",
                 category: "Basics",
                 duration: 0,
-                publishedAt: Date()
+                publishedAt: now
             )
         ]
 
