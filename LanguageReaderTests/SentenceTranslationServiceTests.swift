@@ -2,6 +2,22 @@ import XCTest
 @testable import LanguageReader
 
 final class SentenceTranslationServiceTests: XCTestCase {
+    func testWhitespaceOnlySentenceReturnsInputAndSkipsTranslators() async {
+        let defaults = testDefaults()
+        let cloudTranslator = FakeAzureTranslatorClient()
+        let publicTranslator = FakePublicTranslator(result: .success("public translation"))
+        let service = SentenceTranslationService(
+            settingsStore: TranslationSettingsStore(defaults: defaults, keychain: InMemorySecretStore()),
+            cloudTranslator: cloudTranslator,
+            publicTranslator: publicTranslator
+        )
+
+        let translated = await service.translate(sentence: "   \n\t")
+        XCTAssertEqual(translated, "   \n\t")
+        XCTAssertEqual(cloudTranslator.callCount, 0)
+        XCTAssertEqual(publicTranslator.callCount, 0)
+    }
+
     func testFallsBackToOfflineGlossWhenConfigurationMissing() async {
         let defaults = testDefaults()
         let service = SentenceTranslationService(
@@ -191,6 +207,31 @@ final class SentenceTranslationServiceTests: XCTestCase {
         XCTAssertEqual(fake.callCount, 1)
     }
 
+    func testCacheKeyIncludesLanguagePairWhenConfigurationMissing() async {
+        let defaults = testDefaults()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: InMemorySecretStore())
+        settings.sourceLanguage = "kn"
+        settings.targetLanguage = "en"
+
+        let publicTranslator = FakePublicTranslator(results: [
+            .success("english translation"),
+            .success("hindi translation")
+        ])
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: FakeAzureTranslatorClient(),
+            publicTranslator: publicTranslator
+        )
+
+        let english = await service.translate(sentence: "ಇದು ಪರೀಕ್ಷೆ")
+        settings.targetLanguage = "hi"
+        let hindi = await service.translate(sentence: "ಇದು ಪರೀಕ್ಷೆ")
+
+        XCTAssertEqual(english, "english translation")
+        XCTAssertEqual(hindi, "hindi translation")
+        XCTAssertEqual(publicTranslator.callCount, 2)
+    }
+
     func testUsesPublicTranslatorWhenConfigurationMissing() async {
         let defaults = testDefaults()
         let publicTranslator = FakePublicTranslator(result: .success("public translation"))
@@ -295,6 +336,39 @@ final class SentenceTranslationServiceTests: XCTestCase {
 
         let translated = await service.translate(sentence: "ಇದು ಮನೆ ಚೆನ್ನಾಗಿದೆ")
         XCTAssertEqual(translated, "this house is good")
+    }
+
+    func testConfiguredFallbackIsNotCachedSoCloudCanRecover() async throws {
+        let defaults = testDefaults()
+        let keychain = InMemorySecretStore()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        settings.regionText = "germanywestcentral"
+        try settings.saveAPIKey("secret")
+
+        let cloudTranslator = FakeAzureTranslatorClient(
+            results: [
+                .failure(FakeAzureTranslatorClient.FakeError.failed),
+                .success("cloud translation")
+            ]
+        )
+        let publicTranslator = FakePublicTranslator(result: .failure(FakePublicTranslator.FakeError.failed))
+        let manager = makeDictionaryManager(entries: ["ಇದು": "this", "ಮನೆ": "house", "ಚೆನ್ನಾಗಿದೆ": "is good"])
+        let fallbackTranslator = SentenceGlossTranslator(dictionaryManager: manager)
+
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: cloudTranslator,
+            publicTranslator: publicTranslator,
+            fallbackTranslator: fallbackTranslator
+        )
+
+        let first = await service.translate(sentence: "ಇದು ಮನೆ ಚೆನ್ನಾಗಿದೆ")
+        let second = await service.translate(sentence: "ಇದು ಮನೆ ಚೆನ್ನಾಗಿದೆ")
+
+        XCTAssertEqual(first, "this house is good")
+        XCTAssertEqual(second, "cloud translation")
+        XCTAssertEqual(cloudTranslator.callCount, 2)
+        XCTAssertEqual(publicTranslator.callCount, 1)
     }
 
     private func testDefaults() -> UserDefaults {
