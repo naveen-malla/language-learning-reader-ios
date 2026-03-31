@@ -288,6 +288,175 @@ final class YouTubeDiscoveryServiceTests: XCTestCase {
         XCTAssertEqual(suggestions.map(\.videoID), ["DDDDDDDDDDD"])
         XCTAssertEqual(requestCount, 0)
     }
+
+    func testDuplicateVideoPrefersHigherSeedPriorityCandidate() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let videoID = "HHHHHHHHHHH"
+        let validator = DiscoveryValidatorStub(failingVideoIDs: [])
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            guard url.absoluteString.contains("youtube.com/feeds/videos.xml") else {
+                throw URLError(.badURL)
+            }
+
+            let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "channel_id" })?
+                .value ?? ""
+
+            let xml: String
+            switch channelID {
+            case "UChsgGgFHYTBL4m0dgRc78PQ": // priority 1 (Basics)
+                xml = self.makeFeedXML(
+                    channelID: channelID,
+                    channelTitle: "Priority One",
+                    videos: [(videoID, "Priority One Title", "2026-02-25T00:00:00+00:00")]
+                )
+            case "UClhQBYN17XW_lA4568Qtu3A": // priority 2 (Conversation)
+                xml = self.makeFeedXML(
+                    channelID: channelID,
+                    channelTitle: "Priority Two",
+                    videos: [(videoID, "Priority Two Title", "2026-02-27T00:00:00+00:00")]
+                )
+            default:
+                xml = self.makeFeedXML(channelID: channelID, channelTitle: "Empty", videos: [])
+            }
+            return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        let suggestions = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: true)
+        XCTAssertEqual(suggestions.count, 1)
+        XCTAssertEqual(suggestions.first?.videoID, videoID)
+        XCTAssertEqual(suggestions.first?.title, "Priority One Title")
+        XCTAssertEqual(suggestions.first?.category, "Basics")
+    }
+
+    func testDuplicateTrustedChannelVideoAtSamePriorityPrefersNewestPublishedAt() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let videoID = "IIIIIIIIIII"
+        let validator = DiscoveryValidatorStub(failingVideoIDs: [])
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            guard url.absoluteString.contains("youtube.com/feeds/videos.xml") else {
+                throw URLError(.badURL)
+            }
+
+            let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "channel_id" })?
+                .value ?? ""
+
+            let xml: String
+            switch channelID {
+            case "UCTRUST1":
+                xml = self.makeFeedXML(
+                    channelID: channelID,
+                    channelTitle: "Trusted One",
+                    videos: [(videoID, "Older Trusted Title", "2026-02-20T00:00:00+00:00")]
+                )
+            case "UCTRUST2":
+                xml = self.makeFeedXML(
+                    channelID: channelID,
+                    channelTitle: "Trusted Two",
+                    videos: [(videoID, "Newest Trusted Title", "2026-02-28T00:00:00+00:00")]
+                )
+            default:
+                xml = self.makeFeedXML(channelID: channelID, channelTitle: "Empty", videos: [])
+            }
+            return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        await service.addTrustedChannel(channelID: "UCTRUST1", channelTitle: "Trusted One")
+        await service.addTrustedChannel(channelID: "UCTRUST2", channelTitle: "Trusted Two")
+
+        let suggestions = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: true)
+        XCTAssertEqual(suggestions.count, 1)
+        XCTAssertEqual(suggestions.first?.videoID, videoID)
+        XCTAssertEqual(suggestions.first?.title, "Newest Trusted Title")
+        XCTAssertEqual(suggestions.first?.channelID, "UCTRUST2")
+    }
+
+    func testCachedValidationSuccessHydratesCandidateMetadataWithoutRevalidation() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let videoID = "JJJJJJJJJJJ"
+        let validator = DiscoveryValidatorStub(failingVideoIDs: [])
+
+        await cache.storeValidationSuccess(
+            YouTubeSuggestedVideo(
+                videoID: videoID,
+                title: "Cached Validated Title",
+                channelTitle: "Cached Channel",
+                channelID: nil,
+                category: "Cached Category",
+                durationSeconds: 180,
+                thumbnailURL: nil,
+                publishedAt: Date(timeIntervalSince1970: 1_600_000_000)
+            )
+        )
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            guard url.absoluteString.contains("youtube.com/feeds/videos.xml") else {
+                throw URLError(.badURL)
+            }
+
+            let channelID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "channel_id" })?
+                .value ?? ""
+            let xml = self.makeFeedXML(
+                channelID: channelID,
+                channelTitle: "Channel",
+                videos: channelID == "UChsgGgFHYTBL4m0dgRc78PQ"
+                    ? [(videoID, "Live Feed Title", "2026-02-26T00:00:00+00:00")]
+                    : []
+            )
+            return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        let suggestions = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: false)
+        let cachedSuggestionCalls = await validator.callCount(for: videoID)
+
+        XCTAssertEqual(cachedSuggestionCalls, 0)
+        XCTAssertEqual(suggestions.count, 1)
+        XCTAssertEqual(suggestions.first?.videoID, videoID)
+        XCTAssertEqual(suggestions.first?.title, "Cached Validated Title")
+        XCTAssertEqual(suggestions.first?.category, "Basics")
+        XCTAssertEqual(suggestions.first?.channelID, "UChsgGgFHYTBL4m0dgRc78PQ")
+        XCTAssertEqual(
+            suggestions.first?.publishedAt,
+            ISO8601DateFormatter().date(from: "2026-02-26T00:00:00+00:00")
+        )
+    }
 }
 
 private actor DiscoveryValidatorStub: YouTubeCandidateValidating {
