@@ -67,6 +67,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Missing-word summary tests: `./scripts/test_summarize_missing_words.py`
 - Install dictionary into simulator: `./scripts/install_dictionary.sh`
 - Repo hygiene guard (main-only check/cleanup): `./scripts/guard_main.sh`
+- Repo hygiene guard help/usage: `./scripts/guard_main.sh --help`
 - Enforce cleanup to main-only state: `./scripts/guard_main.sh --cleanup`
 - Cleanup while allowing local edits: `./scripts/guard_main.sh --cleanup --allow-dirty`
 
