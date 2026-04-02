@@ -77,6 +77,7 @@
 - Treat `dictionary_missing.tsv` as a feedback signal: aggregate by normalized-word frequency and prioritize the highest-frequency misses first.
 - Keep known missing-word regressions fixture-driven (`LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`) so suffix/redirect fixes stay locked by tests.
 - Store cloud-fetched missing meanings in `dictionary_cloud_cache.tsv` keyed by `language + normalized_key`.
+- When loading cloud-cache TSV rows with duplicate `language + normalized_key`, keep the entry with the newest `updated_at` timestamp so stale rows cannot override fresher cache values after merges/imports.
 - SQLite-backed dictionary lookups run through a serialized queue and use per-lookup prepared statements to prevent shared-statement races under concurrent sentence prefetch.
 - Lookup priority is: override -> local dictionary candidates -> cloud cache -> optional remote fallback.
 - Settings quality metrics are computed from local app data (saved documents + saved vocab meanings) so the score reflects each user’s actual library, with fixture fallback only when local data is empty.

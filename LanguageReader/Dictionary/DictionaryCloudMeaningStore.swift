@@ -122,7 +122,12 @@ final class DictionaryCloudMeaningStore {
                 source: source.isEmpty ? "cloud" : source,
                 updatedAt: updatedAt
             )
-            map[makeKey(languageCode: language, normalizedKey: normalizedKey)] = entry
+
+            let key = makeKey(languageCode: language, normalizedKey: normalizedKey)
+            if let existing = map[key], existing.updatedAt > updatedAt {
+                continue
+            }
+            map[key] = entry
         }
 
         return map
