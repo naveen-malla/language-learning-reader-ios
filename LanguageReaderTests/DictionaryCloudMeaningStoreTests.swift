@@ -106,6 +106,20 @@ final class DictionaryCloudMeaningStoreTests: XCTestCase {
         XCTAssertEqual(store.allCount(), 2)
     }
 
+    func testLoadEntriesKeepsNewestTimestampWhenNewestRowAppearsFirst() throws {
+        let fileURL = try makeTempFileURL(fileName: "dictionary_cloud_cache.tsv")
+        let content = [
+            "kn\tಮನೆ\thouse-new\tremote\t2024-01-02T00:00:00Z",
+            "kn\tಮನೆ\thouse-old\tremote\t2024-01-01T00:00:00Z"
+        ].joined(separator: "\n")
+        try content.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let store = DictionaryCloudMeaningStore(fileURL: fileURL)
+
+        XCTAssertEqual(store.lookup(normalizedKey: "ಮನೆ", languageCode: "kn"), "house-new")
+        XCTAssertEqual(store.allCount(), 1)
+    }
+
     func testLoadEntriesReplacesInvalidTimestampDuplicateWithValidTimestamp() throws {
         let fileURL = try makeTempFileURL(fileName: "dictionary_cloud_cache.tsv")
         let content = [
