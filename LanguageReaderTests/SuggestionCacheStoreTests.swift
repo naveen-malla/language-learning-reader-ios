@@ -50,6 +50,51 @@ final class SuggestionCacheStoreTests: XCTestCase {
         XCTAssertNil(expired as Any?)
     }
 
+    func testValidationSuccessExpires() async {
+        let defaults = UserDefaults(suiteName: "SuggestionCacheStoreTests.\(UUID().uuidString)")!
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let store = SuggestionCacheStore(
+            defaults: defaults,
+            storageKey: "cache",
+            now: { now }
+        )
+
+        let suggestion = makeSuggestion(videoID: "KaBYEZ6q2tY")
+        await store.storeValidationSuccess(suggestion)
+
+        let cached = await store.cachedValidation(for: suggestion.videoID)
+        if case .some(.some(let resolved)) = cached {
+            XCTAssertEqual(resolved.videoID, suggestion.videoID)
+        } else {
+            XCTFail("Expected cached valid suggestion")
+        }
+
+        now = now.addingTimeInterval(25 * 60 * 60)
+        let expired = await store.cachedValidation(for: suggestion.videoID)
+        XCTAssertNil(expired as Any?)
+    }
+
+    func testSaveSuggestionsPrunesStaleValidationRecords() async {
+        let defaults = UserDefaults(suiteName: "SuggestionCacheStoreTests.\(UUID().uuidString)")!
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let store = SuggestionCacheStore(
+            defaults: defaults,
+            storageKey: "cache",
+            now: { now }
+        )
+
+        await store.storeValidationFailure(videoID: "OLD_FAIL")
+        await store.storeValidationSuccess(makeSuggestion(videoID: "OLD_SUCCESS"))
+
+        now = now.addingTimeInterval(26 * 60 * 60)
+        await store.saveSuggestions([makeSuggestion(videoID: "FRESH")])
+
+        let staleFailure = await store.cachedValidation(for: "OLD_FAIL")
+        let staleSuccess = await store.cachedValidation(for: "OLD_SUCCESS")
+        XCTAssertNil(staleFailure as Any?)
+        XCTAssertNil(staleSuccess as Any?)
+    }
+
     func testTrustedChannelsAreDeduplicated() async {
         let defaults = UserDefaults(suiteName: "SuggestionCacheStoreTests.\(UUID().uuidString)")!
         let store = SuggestionCacheStore(defaults: defaults, storageKey: "cache")
@@ -95,6 +140,30 @@ final class SuggestionCacheStoreTests: XCTestCase {
         XCTAssertFalse(backingOffAfterSuccess)
         let retryAfterSuccess = await store.nextRetryDate()
         XCTAssertNil(retryAfterSuccess)
+    }
+
+    func testDiscoveryBackoffCapsAtEightyMinutesAndResetsAfterSuccess() async {
+        let defaults = UserDefaults(suiteName: "SuggestionCacheStoreTests.\(UUID().uuidString)")!
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let store = SuggestionCacheStore(
+            defaults: defaults,
+            storageKey: "cache",
+            now: { now }
+        )
+
+        for _ in 0..<6 {
+            await store.recordDiscoveryFailure()
+        }
+
+        let cappedRetry = await store.nextRetryDate()
+        XCTAssertNotNil(cappedRetry)
+        XCTAssertEqual(cappedRetry?.timeIntervalSince(now), TimeInterval(80 * 60), accuracy: 0.001)
+
+        await store.recordDiscoverySuccess()
+        await store.recordDiscoveryFailure()
+        let retryAfterReset = await store.nextRetryDate()
+        XCTAssertNotNil(retryAfterReset)
+        XCTAssertEqual(retryAfterReset?.timeIntervalSince(now), TimeInterval(10 * 60), accuracy: 0.001)
     }
 
     private func makeSuggestion(videoID: String) -> YouTubeSuggestedVideo {
