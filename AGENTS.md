@@ -93,7 +93,13 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 
 ## Documentation Discipline
 - Always update relevant docs after any change or decision without waiting for a prompt.
-- Update `README.md` for scope, run steps, known limits, and user-facing behavior changes.
+- Keep active checklist items in `PLAN.md`.
+- Update `README.md` for scope, run steps, user-facing behavior changes, and known limits.
 - Update `DEVELOPMENT.md` for workflow, scripts, build/test steps, and environment requirements.
-- Update `DESIGN.md` for UX flows, UI behavior, and interaction changes.
 - Update `DECISIONS.md` for architectural choices, data/storage changes, and tradeoffs.
+
+## Local Context Files
+- `PLAN.md`: active objectives and current checklist.
+- `README.md`: repo entrypoint, scope, quick start, user-visible behavior, and current limits.
+- `DEVELOPMENT.md`: environment, scripts, build/test workflow, and verification steps.
+- `DECISIONS.md`: durable architectural and product decisions.
