@@ -64,6 +64,12 @@ final class YouTubeImportServiceTests: XCTestCase {
         </transcript>
         """
 
+        let timedCues = YouTubeTranscriptXMLParser.parseTimedTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(timedCues.map(\.sourceText), ["ಹಲೋ", "ಎಲ್ಲರಿಗೆ ಸ್ವಾಗತ", "ಶುಭೋದಯ & ಧನ್ಯವಾದಗಳು"])
+        let firstTimedCue = try! XCTUnwrap(timedCues.first)
+        XCTAssertEqual(firstTimedCue.startTime, 0.1, accuracy: 0.001)
+        XCTAssertEqual(firstTimedCue.duration, 2.0, accuracy: 0.001)
+
         let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
         XCTAssertEqual(parsed, "ಹಲೋ\nಎಲ್ಲರಿಗೆ ಸ್ವಾಗತ\nಶುಭೋದಯ & ಧನ್ಯವಾದಗಳು")
     }
@@ -79,6 +85,22 @@ final class YouTubeImportServiceTests: XCTestCase {
 
         let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
         XCTAssertEqual(parsed, "ಹಲೋ\nಮತ್ತೆ\nಹಲೋ")
+    }
+
+    func testTranscriptXMLParserDoesNotMergeDuplicateLinesAcrossLargeGap() {
+        let xml = """
+        <transcript>
+            <text start="0.1" dur="1.0">ಹಲೋ</text>
+            <text start="4.0" dur="1.0">ಹಲೋ</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTimedTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed.count, 2)
+        let firstParsedCue = try! XCTUnwrap(parsed.first)
+        let lastParsedCue = try! XCTUnwrap(parsed.last)
+        XCTAssertEqual(firstParsedCue.duration, 1.0, accuracy: 0.001)
+        XCTAssertEqual(lastParsedCue.startTime, 4.0, accuracy: 0.001)
     }
 
     func testTranscriptXMLParserReturnsEmptyWhenNoTextElements() {
@@ -102,6 +124,56 @@ final class YouTubeImportServiceTests: XCTestCase {
 
         let parsed = YouTubeTranscriptXMLParser.parseTranscript(data: Data(xml.utf8))
         XCTAssertEqual(parsed, "hello & world\n<tag>")
+    }
+
+    func testTranscriptXMLParserMergesMicroFragmentsIntoReadableCue() {
+        let xml = """
+        <transcript>
+            <text start="0.0" dur="0.35">ಇದು</text>
+            <text start="0.37" dur="0.3">ಒಂದು</text>
+            <text start="0.7" dur="0.4">ಉದಾಹರಣೆ</text>
+            <text start="2.0" dur="1.0">ಮುಂದಿನ ವಾಕ್ಯ.</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTimedTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed.count, 2)
+        let mergedCue = try! XCTUnwrap(parsed.first)
+        let trailingCue = try! XCTUnwrap(parsed.last)
+        XCTAssertEqual(mergedCue.sourceText, "ಇದು ಒಂದು ಉದಾಹರಣೆ")
+        XCTAssertEqual(mergedCue.startTime, 0.0, accuracy: 0.001)
+        XCTAssertEqual(mergedCue.duration, 1.1, accuracy: 0.001)
+        XCTAssertEqual(trailingCue.sourceText, "ಮುಂದಿನ ವಾಕ್ಯ.")
+    }
+
+    func testTranscriptXMLParserDoesNotMergeAcrossTerminalPunctuation() {
+        let xml = """
+        <transcript>
+            <text start="0.0" dur="0.35">ಹೌದು.</text>
+            <text start="0.4" dur="0.35">ಮುಂದೆ</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTimedTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed.count, 2)
+        XCTAssertEqual(parsed.first?.sourceText, "ಹೌದು.")
+        XCTAssertEqual(parsed.last?.sourceText, "ಮುಂದೆ")
+    }
+
+    func testTranscriptXMLParserDoesNotMergeWhenMergedCueWouldBeTooLong() {
+        let left = String(repeating: "ಅ", count: 70)
+        let right = String(repeating: "ಬ", count: 70)
+        let xml = """
+        <transcript>
+            <text start="0.0" dur="0.35">\(left)</text>
+            <text start="0.36" dur="0.35">\(right)</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTimedTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed.count, 2)
+        XCTAssertEqual(parsed.first?.sourceText, left)
+        XCTAssertEqual(parsed.last?.sourceText, right)
     }
 
     func testImportVideoPrefersManualKannadaTrack() async throws {
@@ -165,6 +237,7 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(content.durationSeconds, 600)
         XCTAssertEqual(content.thumbnailURL?.absoluteString, "https://example.com/thumb-640.jpg")
         XCTAssertEqual(content.transcript, manualTranscript)
+        XCTAssertEqual(content.subtitleCues.map(\.sourceText), manualLines)
     }
 
     func testImportVideoThrowsWhenKannadaCaptionsMissing() async {
@@ -202,6 +275,94 @@ final class YouTubeImportServiceTests: XCTestCase {
         do {
             _ = try await service.importVideo(videoID: videoID)
             XCTFail("Expected importVideo to throw when Kannada captions are missing")
+        } catch let error as YouTubeImportError {
+            XCTAssertEqual(error, .kannadaCaptionsUnavailable)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testLoadSubtitleCuesForExistingVideoSkipsDurationGate() async throws {
+        let videoID = "KaBYEZ6q2tY"
+        let readableTranscript = [
+            "ಇದು ಚಿಕ್ಕ ಆದರೆ ಸಾಕಷ್ಟು ಓದಬಹುದಾದ ಕನ್ನಡ ಪಾಠವಾಗಿದೆ.",
+            "ಹಳೆಯ lesson ಗಾಗಿ subtitle cues ಮಾತ್ರ ಇಲ್ಲಿ backfill ಆಗಬೇಕು.",
+            "Duration gate ಅನ್ನು ಈ path ನಲ್ಲಿ skip ಮಾಡಬೇಕು.",
+            "ಆದರೆ Kannada subtitle ಮತ್ತು readability rules ಉಳಿಯಬೇಕು."
+        ]
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 120,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/short.xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("short.xml") {
+                let xml = self.makeTranscriptXML(lines: readableTranscript)
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+        let cues = try await service.loadSubtitleCuesForExistingVideo(videoID: videoID)
+
+        XCTAssertEqual(cues.map(\.sourceText), readableTranscript)
+        XCTAssertEqual(cues.count, readableTranscript.count)
+    }
+
+    func testLoadSubtitleCuesForExistingVideoThrowsWhenKannadaCaptionsMissing() async {
+        let videoID = "KaBYEZ6q2tY"
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 120,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "en",
+                            baseURL: "https://example.com/en.xml",
+                            kind: nil,
+                            isTranslatable: false
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+
+        do {
+            _ = try await service.loadSubtitleCuesForExistingVideo(videoID: videoID)
+            XCTFail("Expected loadSubtitleCuesForExistingVideo to throw when Kannada captions are missing")
         } catch let error as YouTubeImportError {
             XCTAssertEqual(error, .kannadaCaptionsUnavailable)
         } catch {
@@ -739,7 +900,10 @@ private extension YouTubeImportServiceTests {
     }
 
     func makeTranscriptXML(lines: [String]) -> String {
-        let body = lines.map { "<text>\($0)</text>" }.joined()
+        let body = lines.enumerated().map { index, line in
+            let start = Double(index) * 1.2
+            return #"<text start="\#(start)" dur="1.0">\#(line)</text>"#
+        }.joined()
         return "<transcript>\(body)</transcript>"
     }
 

@@ -55,7 +55,49 @@ final class DocumentTests: XCTestCase {
     func testNewMetadataFieldsDefaultToNil() {
         let document = Document(title: "Title", body: "Body")
         XCTAssertNil(document.sourceChannelID)
+        XCTAssertTrue(document.subtitleCues.isEmpty)
+        XCTAssertNil(document.translatedSubtitleCues)
         XCTAssertNil(document.importModeRaw)
         XCTAssertNil(document.autoBatchID)
+    }
+
+    func testSubtitleCueRoundTrip() {
+        let document = Document(title: "Title", body: "Body")
+        document.subtitleCues = [
+            TimedSubtitleCue(startTime: 1.25, duration: 2.5, sourceText: "ಮೊದಲ ಸಾಲು"),
+            TimedSubtitleCue(startTime: 4.0, duration: 1.4, sourceText: "ಎರಡನೇ ಸಾಲು")
+        ]
+        document.translatedSubtitleCues = [
+            TranslatedSubtitleCue(startTime: 1.25, duration: 2.5, translatedText: "First line")
+        ]
+
+        XCTAssertEqual(document.subtitleCues.count, 2)
+        XCTAssertEqual(document.subtitleCues.first?.sourceText, "ಮೊದಲ ಸಾಲು")
+        XCTAssertEqual(document.translatedSubtitleCues?.first?.translatedText, "First line")
+    }
+
+    func testSubtitleCueAccessorsFallbackOnCorruptRawValues() {
+        let document = Document(title: "Title", body: "Body")
+        document.subtitleCuesRaw = "{invalid json"
+        document.translatedSubtitleCuesRaw = "{invalid json"
+
+        XCTAssertTrue(document.subtitleCues.isEmpty)
+        XCTAssertNil(document.translatedSubtitleCues)
+    }
+
+    func testSubtitleCueAccessorsClearRawStorageWhenSetEmpty() {
+        let document = Document(title: "Title", body: "Body")
+        document.subtitleCues = [
+            TimedSubtitleCue(startTime: 0.5, duration: 1.0, sourceText: "ಸಾಲು")
+        ]
+        document.translatedSubtitleCues = [
+            TranslatedSubtitleCue(startTime: 0.5, duration: 1.0, translatedText: "Line")
+        ]
+
+        document.subtitleCues = []
+        document.translatedSubtitleCues = []
+
+        XCTAssertNil(document.subtitleCuesRaw)
+        XCTAssertNil(document.translatedSubtitleCuesRaw)
     }
 }
