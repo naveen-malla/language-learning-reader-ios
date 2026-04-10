@@ -51,6 +51,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Target a single test: `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryManagerTests`
 - Target missing-word fixture regression test: `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryMissingFixtureTests`
 - Target suggestion-ranker regression tests: `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/SuggestionRankerTests`
+- For YouTube playback changes, run one real-iPhone verification before sign-off because embedded player behavior is higher risk on device than text-only reader flows.
 
 ## Local Scripts
 - Build (simulator): `./scripts/build.sh`
