@@ -328,6 +328,56 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(cues.count, readableTranscript.count)
     }
 
+    func testLoadSubtitleCuesForExistingVideoUsesCueCacheOnRepeatedCalls() async throws {
+        let videoID = "KaBYEZ6q2tY"
+        let readableTranscript = [
+            "ಇದು ಓದುಗರಿಗೆ ಉಪಯೋಗವಾಗುವ ಸಾಲು.",
+            "ಇನ್ನೊಂದು ಸರಳ ಕನ್ನಡ ಸಾಲು.",
+            "ಹೆಚ್ಚು ಅಭ್ಯಾಸ ಮಾಡಿದರೆ ಓದುವಿಕೆ ಉತ್ತಮವಾಗುತ್ತದೆ."
+        ]
+        var transcriptFetchCount = 0
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 120,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/cached.xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("cached.xml") {
+                transcriptFetchCount += 1
+                let xml = self.makeTranscriptXML(lines: readableTranscript)
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+
+        let first = try await service.loadSubtitleCuesForExistingVideo(videoID: videoID)
+        let second = try await service.loadSubtitleCuesForExistingVideo(videoID: videoID)
+
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(transcriptFetchCount, 1)
+    }
+
     func testLoadSubtitleCuesForExistingVideoThrowsWhenKannadaCaptionsMissing() async {
         let videoID = "KaBYEZ6q2tY"
         let session = makeStubbedSession { request in

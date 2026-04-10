@@ -136,6 +136,14 @@ final class AutoImportCoordinatorTests: XCTestCase {
         XCTAssertTrue(newDocs.allSatisfy { $0.autoBatchID == summary.batchID })
         XCTAssertEqual(newDocs.first(where: { $0.sourceVideoID == "BBBBBBBBBBB" })?.sourceChannelID, "UC-ONE")
         XCTAssertEqual(newDocs.first(where: { $0.sourceVideoID == "CCCCCCCCCCC" })?.sourceChannelID, "UC-TWO")
+        XCTAssertEqual(
+            newDocs.first(where: { $0.sourceVideoID == "BBBBBBBBBBB" })?.subtitleCues.map(\.sourceText),
+            ["Transcript BBBBBBBBBBB"]
+        )
+        XCTAssertEqual(
+            newDocs.first(where: { $0.sourceVideoID == "CCCCCCCCCCC" })?.subtitleCues.map(\.sourceText),
+            ["Transcript CCCCCCCCCCC"]
+        )
     }
 
     func testImportSmartPackUsesFixedThreeLessonTarget() async throws {
@@ -526,6 +534,9 @@ private extension AutoImportCoordinatorTests {
             channelTitle: "Channel \(videoID)",
             channelID: channelID,
             transcript: "Transcript \(videoID)",
+            subtitleCues: [
+                TimedSubtitleCue(startTime: 0, duration: 1.0, sourceText: "Transcript \(videoID)")
+            ],
             durationSeconds: 180,
             thumbnailURL: nil
         )
