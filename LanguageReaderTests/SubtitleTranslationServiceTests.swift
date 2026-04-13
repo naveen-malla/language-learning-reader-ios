@@ -131,6 +131,64 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(result, .unavailable(SubtitleTranslationService.requestFailedMessage))
     }
 
+    func testIncompatibleCachedCuesDoNotBypassRetranslation() async throws {
+        let sourceCues = makeSourceCues()
+        let incompatibleCachedCues = [
+            TranslatedSubtitleCue(startTime: 0, duration: 1.1, translatedText: "Stale First"),
+            TranslatedSubtitleCue(startTime: 5.0, duration: 1.0, translatedText: "Stale Second")
+        ]
+        let translator = FakeAzureSubtitleCueTranslator(results: [
+            .success(["First", "Second"])
+        ])
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(),
+            translator: translator
+        )
+
+        let result = await service.translateIfNeeded(
+            sourceCues: sourceCues,
+            cachedCues: incompatibleCachedCues
+        )
+
+        guard case .translated(let translated) = result else {
+            return XCTFail("Expected fresh translation when cache is incompatible")
+        }
+
+        XCTAssertEqual(translated.map(\.translatedText), ["First", "Second"])
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 1)
+    }
+
+    func testRejectsResultWhenOnlySomeTranslatedLinesAreUsable() async throws {
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(),
+            translator: FakeAzureSubtitleCueTranslator(results: [
+                .success(["First line", "ಎರಡನೇ ಸಾಲು"])
+            ])
+        )
+
+        let result = await service.translateIfNeeded(sourceCues: makeSourceCues(), cachedCues: nil)
+
+        XCTAssertEqual(result, .unavailable(SubtitleTranslationService.rejectedOutputMessage))
+    }
+
+    func testTranslatorReceivesEnglishTargetLanguage() async throws {
+        let translator = FakeAzureSubtitleCueTranslator(results: [
+            .success(["First", "Second"])
+        ])
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(),
+            translator: translator
+        )
+
+        _ = await service.translateIfNeeded(sourceCues: makeSourceCues(), cachedCues: nil)
+
+        let configurations = await translator.getReceivedConfigurations()
+        XCTAssertEqual(configurations.count, 1)
+        XCTAssertEqual(configurations.first?.targetLanguage, "en")
+        XCTAssertEqual(configurations.first?.sourceLanguage, "kn")
+    }
+
     private func configuredSettings() -> TranslationSettingsStore {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()
@@ -162,6 +220,7 @@ private actor FakeAzureSubtitleCueTranslator: AzureSubtitleCueTranslating {
 
     private let results: [Result<[String], Error>]
     private var callCount = 0
+    private var receivedConfigurations: [AzureTranslatorConfiguration] = []
 
     init(results: [Result<[String], Error>]) {
         self.results = results.isEmpty ? [.success([])] : results
@@ -169,12 +228,17 @@ private actor FakeAzureSubtitleCueTranslator: AzureSubtitleCueTranslating {
 
     func translate(texts: [String], configuration: AzureTranslatorConfiguration) async throws -> [String] {
         callCount += 1
+        receivedConfigurations.append(configuration)
         let index = min(callCount - 1, results.count - 1)
         return try results[index].get()
     }
 
     func getCallCount() -> Int {
         callCount
+    }
+
+    func getReceivedConfigurations() -> [AzureTranslatorConfiguration] {
+        receivedConfigurations
     }
 }
 

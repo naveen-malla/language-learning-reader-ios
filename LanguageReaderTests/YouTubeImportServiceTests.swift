@@ -420,6 +420,51 @@ final class YouTubeImportServiceTests: XCTestCase {
         }
     }
 
+    func testLoadSubtitleCuesForExistingVideoRejectsLowQualityTranscript() async {
+        let videoID = "KaBYEZ6q2tY"
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 120,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "kn",
+                            baseURL: "https://example.com/kn-low-quality.xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("kn-low-quality.xml") {
+                let xml = "<transcript><text>ಹಲೋ</text></transcript>"
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+
+        do {
+            _ = try await service.loadSubtitleCuesForExistingVideo(videoID: videoID)
+            XCTFail("Expected loadSubtitleCuesForExistingVideo to reject low quality transcript")
+        } catch let error as YouTubeImportError {
+            XCTAssertEqual(error, .lowQualityTranscript)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testImportVideoUsesKannadaTranslationWhenOnlyTranslatableTrackExists() async throws {
         let videoID = "KaBYEZ6q2tY"
         let session = makeStubbedSession { request in
