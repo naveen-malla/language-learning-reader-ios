@@ -2,6 +2,16 @@ import XCTest
 @testable import LanguageReader
 
 final class SubtitleTranslationServiceTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        SubtitleTranslatorStubURLProtocol.reset()
+    }
+
+    override func tearDown() {
+        SubtitleTranslatorStubURLProtocol.reset()
+        super.tearDown()
+    }
+
     func testUsesCachedTranslationsWhenCompatible() async throws {
         let sourceCues = makeSourceCues()
         let cachedCues = [
@@ -189,6 +199,108 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(configurations.first?.sourceLanguage, "kn")
     }
 
+    func testAzureSubtitleCueTranslatorRetriesWithoutSourceLanguageOnServiceError() async throws {
+        var callCount = 0
+        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { request in
+            callCount += 1
+            let response: HTTPURLResponse
+            let data: Data
+
+            if callCount == 1 {
+                response = try XCTUnwrap(
+                    HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: 400,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )
+                )
+                data = Data("""
+                {
+                  "error": {
+                    "code": 400036,
+                    "message": "The 'from' language code is invalid."
+                  }
+                }
+                """.utf8)
+            } else {
+                response = try XCTUnwrap(
+                    HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: 200,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )
+                )
+                data = Data("""
+                [
+                  { "translations": [ { "text": "First", "to": "en" } ] },
+                  { "translations": [ { "text": "Second", "to": "en" } ] }
+                ]
+                """.utf8)
+            }
+
+            return (response, data)
+        })
+
+        let output = try await translator.translate(
+            texts: ["ಮೊದಲ ಸಾಲು", "ಎರಡನೇ ಸಾಲು"],
+            configuration: translatorConfig(sourceLanguage: "kn")
+        )
+
+        XCTAssertEqual(output, ["First", "Second"])
+        XCTAssertEqual(callCount, 2)
+
+        let requests = SubtitleTranslatorStubURLProtocol.requests
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests[0].url?.queryValue(named: "from"), "kn")
+        XCTAssertNil(requests[1].url?.queryValue(named: "from"))
+        XCTAssertEqual(requests[1].url?.queryValue(named: "to"), "en")
+    }
+
+    func testAzureSubtitleCueTranslatorSplitsRequestsWhenElementLimitIsExceeded() async throws {
+        let inputCount = 1_001
+        let sourceTexts = (0..<inputCount).map { index in
+            "ಸಾಲು \(index)"
+        }
+
+        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { request in
+            let response = try XCTUnwrap(
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )
+            )
+
+            let body = try XCTUnwrap(request.httpBody)
+            let payload = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: body) as? [[String: String]]
+            )
+            let translatedPayload = payload.map { item -> String in
+                let text = item["Text"] ?? ""
+                return "EN: \(text)"
+            }
+            let data = Data(makeTranslatorResponseJSON(texts: translatedPayload).utf8)
+            return (response, data)
+        })
+
+        let translated = try await translator.translate(
+            texts: sourceTexts,
+            configuration: translatorConfig(sourceLanguage: "kn")
+        )
+
+        XCTAssertEqual(translated.count, inputCount)
+        XCTAssertEqual(translated.first, "EN: ಸಾಲು 0")
+        XCTAssertEqual(translated.last, "EN: ಸಾಲು 1000")
+
+        let requests = SubtitleTranslatorStubURLProtocol.requests
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(try translatorRequestBodyCount(requests[0]), 1_000)
+        XCTAssertEqual(try translatorRequestBodyCount(requests[1]), 1)
+    }
+
     private func configuredSettings() -> TranslationSettingsStore {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()
@@ -210,6 +322,40 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         let defaults = UserDefaults(suiteName: name)!
         defaults.removePersistentDomain(forName: name)
         return defaults
+    }
+
+    private func translatorConfig(sourceLanguage: String) -> AzureTranslatorConfiguration {
+        AzureTranslatorConfiguration(
+            endpoint: URL(string: "https://api.cognitive.microsofttranslator.com")!,
+            region: nil,
+            apiKey: "secret",
+            sourceLanguage: sourceLanguage,
+            targetLanguage: "en"
+        )
+    }
+
+    private func makeSubtitleTranslatorStubbedSession(
+        handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> URLSession {
+        SubtitleTranslatorStubURLProtocol.handler = handler
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SubtitleTranslatorStubURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }
+
+    private func makeTranslatorResponseJSON(texts: [String]) -> String {
+        let rows = texts.map { text in
+            "{ \"translations\": [ { \"text\": \"\(text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\", \"to\": \"en\" } ] }"
+        }
+        return "[\(rows.joined(separator: ","))]"
+    }
+
+    private func translatorRequestBodyCount(_ request: URLRequest) throws -> Int {
+        let body = try XCTUnwrap(request.httpBody)
+        let payload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: body) as? [[String: String]]
+        )
+        return payload.count
     }
 }
 
@@ -256,4 +402,62 @@ private final class InMemorySecretStore: SecretStoring {
     func delete(account: String) throws {
         values.removeValue(forKey: account)
     }
+}
+
+private extension URL {
+    func queryValue(named key: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == key })?
+            .value
+    }
+}
+
+private final class SubtitleTranslatorStubURLProtocol: URLProtocol {
+    static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    private static var storedRequests: [URLRequest] = []
+    private static let lock = NSLock()
+
+    static var requests: [URLRequest] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedRequests
+    }
+
+    static func reset() {
+        lock.lock()
+        storedRequests = []
+        handler = nil
+        lock.unlock()
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = Self.handler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            Self.lock.lock()
+            Self.storedRequests.append(request)
+            Self.lock.unlock()
+
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
 }
