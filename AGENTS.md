@@ -9,6 +9,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - No reliance on Apple Translation framework for core functionality.
 
 ## Workflow
+- Read `PLAN.md` first when starting work in a new chat.
 - Ship a basic working function first, then scale.
 - Challenge assumptions and suggest better approaches.
 - Prefer small, inspectable changes and clear structure.
