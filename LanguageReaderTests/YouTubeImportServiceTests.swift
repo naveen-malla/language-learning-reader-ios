@@ -176,6 +176,20 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(parsed.last?.sourceText, right)
     }
 
+    func testTranscriptXMLParserDoesNotMergeAdjacentNormalLengthCues() {
+        let xml = """
+        <transcript>
+            <text start="0.0" dur="1.2">ಇದು ಸಾಮಾನ್ಯ ಉದ್ದದ ಮೊದಲ ಸಾಲು.</text>
+            <text start="1.25" dur="1.1">ಇದು ಕೂಡ ಸಾಮಾನ್ಯ ಉದ್ದದ ಎರಡನೇ ಸಾಲು.</text>
+        </transcript>
+        """
+
+        let parsed = YouTubeTranscriptXMLParser.parseTimedTranscript(data: Data(xml.utf8))
+        XCTAssertEqual(parsed.count, 2)
+        XCTAssertEqual(parsed.first?.sourceText, "ಇದು ಸಾಮಾನ್ಯ ಉದ್ದದ ಮೊದಲ ಸಾಲು.")
+        XCTAssertEqual(parsed.last?.sourceText, "ಇದು ಕೂಡ ಸಾಮಾನ್ಯ ಉದ್ದದ ಎರಡನೇ ಸಾಲು.")
+    }
+
     func testImportVideoPrefersManualKannadaTrack() async throws {
         let videoID = "KaBYEZ6q2tY"
         let channelID = "channel-\(videoID)"

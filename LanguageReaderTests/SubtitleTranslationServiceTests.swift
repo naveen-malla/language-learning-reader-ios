@@ -301,6 +301,73 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(try translatorRequestBodyCount(requests[1]), 1)
     }
 
+    func testAzureSubtitleCueTranslatorRetriesWithAutoDetectWhenOutputIsUnchanged() async throws {
+        var callCount = 0
+        let sourceTexts = ["ಮೊದಲ ಸಾಲು", "ಎರಡನೇ ಸಾಲು"]
+        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { request in
+            callCount += 1
+            let response = try XCTUnwrap(
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )
+            )
+
+            let outputTexts: [String]
+            if callCount == 1 {
+                outputTexts = sourceTexts
+            } else {
+                outputTexts = ["First line", "Second line"]
+            }
+
+            return (response, Data(self.makeTranslatorResponseJSON(texts: outputTexts).utf8))
+        })
+
+        let translated = try await translator.translate(
+            texts: sourceTexts,
+            configuration: translatorConfig(sourceLanguage: "kn")
+        )
+
+        XCTAssertEqual(translated, ["First line", "Second line"])
+        XCTAssertEqual(callCount, 2)
+
+        let requests = SubtitleTranslatorStubURLProtocol.requests
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests[0].url?.queryValue(named: "from"), "kn")
+        XCTAssertNil(requests[1].url?.queryValue(named: "from"))
+    }
+
+    func testAzureSubtitleCueTranslatorDoesNotRetryWithAutoDetectForNonKannadaSource() async throws {
+        var callCount = 0
+        let sourceTexts = ["hola", "adios"]
+        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { request in
+            callCount += 1
+            let response = try XCTUnwrap(
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )
+            )
+            return (response, Data(self.makeTranslatorResponseJSON(texts: sourceTexts).utf8))
+        })
+
+        let translated = try await translator.translate(
+            texts: sourceTexts,
+            configuration: translatorConfig(sourceLanguage: "es")
+        )
+
+        XCTAssertEqual(translated, sourceTexts)
+        XCTAssertEqual(callCount, 1)
+
+        let requests = SubtitleTranslatorStubURLProtocol.requests
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests[0].url?.queryValue(named: "from"), "es")
+    }
+
     private func configuredSettings() -> TranslationSettingsStore {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()
