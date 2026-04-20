@@ -1,13 +1,15 @@
 # Development
 
+This file owns environment setup, scripts, build/test/run workflow, and verification expectations. Product behavior belongs in `README.md`; durable architectural tradeoffs belong in `DECISIONS.md`.
+
 ## Requirements
 - Xcode latest stable
 - iOS Simulator
 - xcodegen (`brew install xcodegen`) for regenerating the project when files change
 
 ## Planning Source
-- `PLANS.md` is the execution roadmap and current status file.
-- Read `PLANS.md` first when starting work in a new chat.
+- `PLAN.md` is the execution roadmap and current status file.
+- Read `PLAN.md` first when starting work in a new chat.
 
 ## Run
 1. Open `LanguageReader.xcodeproj` in Xcode.
@@ -16,6 +18,8 @@
 
 ## Testing Notes
 - Word learning visual state logic is covered in `LanguageReaderTests/WordLearningStateResolverTests.swift`.
+- Study-language bootstrap and migration defaults are covered in `LanguageReaderTests/StudyLanguageSettingsStoreTests.swift`.
+- Legacy auto-import metadata migration is covered in `LanguageReaderTests/AutoImportSettingsTests.swift`.
 - Flashcard session size normalization is covered in `LanguageReaderTests/FlashcardDeckTests.swift`.
 - Keychain storage read/write/delete is covered in `LanguageReaderTests/KeychainSecretStoreTests.swift`.
 - Document source type persistence and open-state flags are covered in `LanguageReaderTests/DocumentTests.swift`.
@@ -23,32 +27,43 @@
 - Dictionary remote prefetch dedupe and disabled fallback behavior are covered in `LanguageReaderTests/DictionaryManagerTests.swift`.
 - SQLite provider concurrent-read regression coverage is in `LanguageReaderTests/DictionaryTests.swift` (`testSQLiteProviderSupportsConcurrentReads`).
 - Dictionary quality matching and language canonicalization are covered in `LanguageReaderTests/DictionaryQualityTests.swift`.
-- Dictionary Kannada word-form generation (progressive verb + linked-character stems) is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
+- Dictionary Kannada/German word-form generation is covered in `LanguageReaderTests/DictionaryLanguageProfileTests.swift`.
 - YouTube import selection (track preference, missing Kannada captions, subtitles-only candidate inclusion, suggestions filtering) is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
+- German subtitle selection and missing-caption rejection are also covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
+- Timed subtitle parsing/merge behavior is covered in `LanguageReaderTests/YouTubeImportServiceTests.swift`.
 - Dynamic discovery parsing, malformed-feed tolerance, cache reuse, cacheable-vs-transient validation-failure handling, force-refresh revalidation of cached invalid candidates, and backoff fallback are covered in `LanguageReaderTests/YouTubeDiscoveryServiceTests.swift`.
+- Language-scoped discovery cache separation is covered in `LanguageReaderTests/SuggestionCacheStoreTests.swift`.
 - Suggestion preference ranking is covered in `LanguageReaderTests/SuggestionRankerTests.swift`.
 - Suggestion/discovery cache TTL, validation cache, trusted channels, and backoff progression are covered in `LanguageReaderTests/SuggestionCacheStoreTests.swift`.
 - Auto top-up trigger rules, dedupe behavior, success/failure metadata writes, and batch metadata persistence are covered in `LanguageReaderTests/AutoImportCoordinatorTests.swift`.
-- Flashcard daily telemetry aggregation is covered in `LanguageReaderTests/FlashcardStatsStoreTests.swift`.
+- Flashcard daily telemetry aggregation and per-language separation are covered in `LanguageReaderTests/FlashcardStatsStoreTests.swift`.
 - Appearance mode mapping and dark/light selection behavior is covered in `LanguageReaderTests/AppAppearanceModeTests.swift`.
+- Subtitle cue timeline selection and translation-cache compatibility are covered in `LanguageReaderTests/SubtitleCueTimelineTests.swift`.
+- Subtitle translation cache/missing-config behavior is covered in `LanguageReaderTests/SubtitleTranslationServiceTests.swift`.
+- Screenshot launch-route parsing is covered in `LanguageReaderTests/ScreenshotLaunchConfigurationTests.swift`.
 
-## Reader Input Notes
+## Verification Touchpoints
+- `README.md` is the source of truth for intended product behavior.
+- This section keeps high-value context that commonly affects developer verification and debugging.
 - App now opens on `Library` (not the old paste-first Reader tab).
+- Fresh installs default to German; migrated installs keep Kannada as the selected study language.
+- `Document` language is persistent and may differ from the global study-language picker after imports or migrations.
 - `Library -> Lesson Intake` includes:
   - `Paste Text` for manual text lessons
   - `Text File` for local `.txt` lesson import
   - `YouTube URL` for subtitle-based lesson import
-- `Library -> Lesson Intake` also includes `Pull 3 New Lessons` for one-tap batch import of validated Kannada lessons.
+- `Library -> Lesson Intake` also includes `Pull 3 New Lessons` for one-tap batch import of validated lessons in the currently selected study language.
 - `Unread Lesson Queue` explicitly lists unread imported YouTube lessons.
 - `Continue Reading` only shows lessons that have been opened at least once.
-- `Discovery Feed` shows subtitle-validated Kannada YouTube entries split into `New to Import` and `Already in Library`.
+- `Discovery Feed` shows subtitle-validated YouTube entries for the selected study language, split into `New to Import` and `Already in Library`.
 - Suggested entries are discovered from channel RSS feeds plus live YouTube search-result pages and validated live.
 - Manual pull targets 3 lessons per tap; auto top-up scales by unread queue.
 - Candidate duration window is 5 to 20 minutes.
 - Subtitle quality filtering rejects low-readable and numeric-sequence transcripts before they enter import batches.
-- Candidate import prefers direct Kannada subtitle tracks and falls back to translatable tracks rendered in Kannada when needed.
+- German import requires direct `de*` tracks.
+- Kannada import prefers direct `kn*` subtitle tracks and falls back to translatable tracks rendered in Kannada when needed.
 - Repeat-import fallback is configurable in `Settings -> Auto Content`; default is disabled so pulls prioritize fresh videos.
-- Imported video history is persisted (`auto_import.historical_video_ids.v1`) so pulls avoid re-importing IDs even after library rows are removed.
+- Imported video history and auto-top-up timestamps are persisted per language so German and Kannada queues do not pollute each other.
 - Auto top-up runs on app launch and Library entry when enabled, with defaults:
   - cooldown: 24 hours
   - unread trigger: fewer than 3 imported YouTube lessons
@@ -58,6 +73,9 @@
 - Suggestion cards support channel follow/unfollow and re-rank using followed channels + existing import history.
 - If simulator keyboard paste is unreliable, use `Paste from Clipboard` inside `Library -> Paste Text`.
 - Two large sample documents are seeded on first launch and appear in `Library -> My Library`.
+- Screenshot capture routes are available for simulator-only documentation work:
+  - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=library`
+  - supported routes: `library`, `vocab`, `flashcards`, `settings`, `reader`
 - In sentence mode, swipe horizontally to move one sentence at a time.
 - Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
 - Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
@@ -69,6 +87,14 @@
 - Sentence translation accepts output only when readability gates pass (applies to Azure/public/fallback paths).
 - Sentence page now uses reduced side insets and no floating card container so more of the screen is usable.
 - Reader top bar is compact and pinned higher to reduce dead space above the progress slider.
+- Imported YouTube lessons expose a `Watch` toggle in the reader top bar without changing the default open-in-reader behavior.
+- `Watch` mode uses an embedded YouTube player inside the reader, with the top progress slider acting as a video scrubber.
+- Timed subtitle cues are stored locally on the document and drive subtitle sync during playback.
+- Older imported YouTube lessons that do not have stored timed cues lazily backfill them on reader open and show a disabled `Preparing` top-bar state while that recovery is running.
+- English subtitle generation happens on first `Watch` entry via Azure when configured, then reuses cached translated cues on later opens.
+- When English subtitle cues are available, the reader renders English as the primary lyric line with Kannada beneath it and a stronger active-cue treatment.
+- Active subtitle selection advances on exact cue starts and preserves the previous cue through short gaps so the highlight stays stable during play/pause/seek.
+- `Watch` mode now distinguishes missing Azure setup, Azure request failure, rejected unreadable English output, and cached-English reuse with separate status copy while keeping Kannada-only playback usable.
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
 - Tapping an unknown word now triggers optional cloud fallback (if enabled) and stores resolved meaning in local cloud cache.
 - Main tabs now share one visual system: pastel canvas, rounded surfaces, translucent tab bar, and status chips.
@@ -79,6 +105,8 @@
 3. Save settings; key is stored in Keychain.
 4. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
 5. If Azure is unavailable, sentence translation should still attempt public web fallback before showing unavailable state.
+6. The same Azure settings also drive English subtitle generation in `Watch` mode, but subtitles do not use the public web fallback path.
+7. For imported YouTube lessons, enter `Watch` mode to verify English subtitle generation and cache reuse when Azure is configured.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).
@@ -150,6 +178,19 @@ Notes:
   - confirm `Text File` import opens the imported lesson in reader
   - confirm `YouTube URL` import rejects links without Kannada subtitles
   - confirm importing a suggested video opens reader immediately after save
+  - confirm imported YouTube lessons still open in reading mode by default
+  - confirm a newly imported YouTube lesson shows `Watch` immediately
+  - confirm an older imported YouTube lesson without stored cues shows `Preparing`, then gains `Watch` without rewriting the lesson body
+  - confirm tapping `Watch` shows inline video at the top and subtitle panel below without any overlay covering the player
+  - confirm the top progress slider scrubs video while in `Watch` mode
+  - confirm active subtitle highlight follows playback and seeking
+  - confirm the highlight snaps to the next subtitle exactly at cue boundaries and does not flicker during short silent gaps
+  - confirm translated lessons visually prioritize the English line while keeping Kannada readable underneath
+  - confirm Azure-configured `Watch` mode generates English subtitles once and reuses cached subtitle translation on the next open
+  - confirm missing Azure config leaves `Watch` mode playable and clearly labeled as Kannada-only
+  - confirm transient subtitle-translation failure still leaves the subtitle panel usable with source subtitles and shows the Azure-request-failed message
+  - confirm unreadable/mostly-unchanged Azure output is rejected and labeled as rejected English subtitle output
+  - confirm cached English subtitles remain visible even if a later retry fails
   - confirm following/unfollowing a suggestion channel reorders cards immediately
   - confirm imported YouTube rows show thumbnail, source badge, and channel metadata
   - confirm imported item appears in `Continue Reading` only after the first reader open
@@ -171,17 +212,21 @@ Notes:
 2. (Optional) Install into the simulator Documents directory to override:
    `./scripts/install_dictionary.sh`
 
-The app will automatically use the Documents SQLite file if present. Otherwise it uses the bundled `LanguageReader/Resources/dictionary.sqlite`.
+The app will automatically use the Documents SQLite file if present. Otherwise it uses bundled resources:
+- `LanguageReader/Resources/dictionary.sqlite` for Kannada
+- `LanguageReader/Resources/dictionary_de.sqlite` for German
 
 Dictionary quality notes:
 - Build script now normalizes meanings for concise display (strips leading metadata and trims multi-sense tails).
-- Runtime lookup now includes broader Kannada suffix handling and light `-ುತ್ತ...` progressive verb fallback.
+- Runtime lookup now includes broader Kannada suffix handling, light `-ುತ್ತ...` progressive verb fallback, and conservative German suffix stripping.
 - Runtime lookup path is language-profile based (`kn` has inflection rules; other languages use generic exact lookup by default).
 - Missing-word cloud fallback results are cached in `Documents/dictionary_cloud_cache.tsv`.
 - Settings -> Dictionary Quality evaluates your local saved documents (coverage) and saved vocab meanings (accuracy).
 - `Refresh quality` performs aggressive remote enrichment from the current corpus before scoring (no fixed candidate cap), then reuses cached meanings on later runs.
 - Summarize local missing words by frequency:
   `python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20`
+- Evaluate the German bundled dictionary:
+  `python3 scripts/evaluate_dictionary.py --source-language de --report-json /tmp/german_dictionary_eval.json`
 - Known missing-word regressions are fixture-driven:
   - fixture: `LanguageReaderTests/Fixtures/dictionary_missing_fixture.tsv`
   - test: `xcodebuild -scheme LanguageReader -destination "id=$(./scripts/select_simulator.sh)" test -only-testing:LanguageReaderTests/DictionaryMissingFixtureTests`
@@ -199,3 +244,4 @@ Language onboarding:
 - Use Simulator for all testing.
 - If iPhone 14 Pro is unavailable, select the closest recent iPhone runtime.
 - Simulator acceptance is mandatory for each change: build, launch, and exercise the touched flow in the real app UI before sign-off.
+- For YouTube playback changes, do one real-iPhone verification before sign-off because embedded player behavior is higher risk on device than text-only reader flows.
