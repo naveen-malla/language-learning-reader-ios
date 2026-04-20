@@ -35,8 +35,12 @@ final class FlashcardStatsStore {
         self.storageKey = storageKey
     }
 
-    func record(answer: FlashcardBinaryAnswer, at date: Date = Date()) {
-        var table = loadTable()
+    func record(
+        answer: FlashcardBinaryAnswer,
+        languageCode: String = SupportedLanguage.legacyDefault.rawValue,
+        at date: Date = Date()
+    ) {
+        var table = loadTable(languageCode: languageCode)
         let key = dayKey(for: date)
         var day = table[key] ?? .zero
         day.reviewed += 1
@@ -44,20 +48,27 @@ final class FlashcardStatsStore {
             day.correct += 1
         }
         table[key] = day
-        saveTable(table)
+        saveTable(table, languageCode: languageCode)
     }
 
-    func stats(for date: Date = Date()) -> FlashcardDailyStats {
-        let table = loadTable()
+    func stats(
+        languageCode: String = SupportedLanguage.legacyDefault.rawValue,
+        for date: Date = Date()
+    ) -> FlashcardDailyStats {
+        let table = loadTable(languageCode: languageCode)
         return table[dayKey(for: date)] ?? .zero
     }
 
-    func recentStats(days: Int, upTo endDate: Date = Date()) -> FlashcardRecentStats {
+    func recentStats(
+        languageCode: String = SupportedLanguage.legacyDefault.rawValue,
+        days: Int,
+        upTo endDate: Date = Date()
+    ) -> FlashcardRecentStats {
         guard days > 0 else {
             return FlashcardRecentStats(reviewed: 0, correct: 0, averageReviewsPerDay: 0)
         }
 
-        let table = loadTable()
+        let table = loadTable(languageCode: languageCode)
         var reviewed = 0
         var correct = 0
 
@@ -81,13 +92,19 @@ final class FlashcardStatsStore {
         String(Int(calendar.startOfDay(for: date).timeIntervalSince1970))
     }
 
-    private func loadTable() -> [String: FlashcardDailyStats] {
-        guard let data = defaults.data(forKey: storageKey) else { return [:] }
+    private func storageKey(for languageCode: String) -> String {
+        let resolved = SupportedLanguage.legacyResolved(languageCode).rawValue
+        return "\(storageKey).\(resolved)"
+    }
+
+    private func loadTable(languageCode: String) -> [String: FlashcardDailyStats] {
+        let key = storageKey(for: languageCode)
+        guard let data = defaults.data(forKey: key) else { return [:] }
         return (try? JSONDecoder().decode([String: FlashcardDailyStats].self, from: data)) ?? [:]
     }
 
-    private func saveTable(_ table: [String: FlashcardDailyStats]) {
+    private func saveTable(_ table: [String: FlashcardDailyStats], languageCode: String) {
         guard let data = try? JSONEncoder().encode(table) else { return }
-        defaults.set(data, forKey: storageKey)
+        defaults.set(data, forKey: storageKey(for: languageCode))
     }
 }

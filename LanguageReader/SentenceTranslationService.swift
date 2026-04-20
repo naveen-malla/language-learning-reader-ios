@@ -21,30 +21,50 @@ actor SentenceTranslationService {
         self.fallbackTranslator = fallbackTranslator
     }
 
-    func translate(sentence: String) async -> String {
+    func translate(
+        sentence: String,
+        sourceLanguage: String? = nil,
+        targetLanguage: String? = nil
+    ) async -> String {
         let trimmed = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return sentence
         }
 
         let config = settingsStore.configuration()
-        let sourceLanguage = normalizedLanguageCode(settingsStore.sourceLanguage) ?? TranslationSettingsStore.defaultSourceLanguage
-        let targetLanguage = normalizedLanguageCode(settingsStore.targetLanguage) ?? TranslationSettingsStore.defaultTargetLanguage
-        let key = cacheKey(sentence: trimmed, config: config, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
+        let resolvedSourceLanguage = normalizedLanguageCode(sourceLanguage)
+            ?? normalizedLanguageCode(settingsStore.sourceLanguage)
+            ?? TranslationSettingsStore.defaultSourceLanguage
+        let resolvedTargetLanguage = normalizedLanguageCode(targetLanguage)
+            ?? normalizedLanguageCode(settingsStore.targetLanguage)
+            ?? TranslationSettingsStore.defaultTargetLanguage
+        let key = cacheKey(
+            sentence: trimmed,
+            config: config,
+            sourceLanguage: resolvedSourceLanguage,
+            targetLanguage: resolvedTargetLanguage
+        )
         if let cached = cache[key] {
             return cached
         }
 
         if let config {
-            if let translated = await translateWithCloudIfReadable(text: trimmed, configuration: config) {
+            let effectiveConfig = AzureTranslatorConfiguration(
+                endpoint: config.endpoint,
+                region: config.region,
+                apiKey: config.apiKey,
+                sourceLanguage: resolvedSourceLanguage,
+                targetLanguage: resolvedTargetLanguage
+            )
+            if let translated = await translateWithCloudIfReadable(text: trimmed, configuration: effectiveConfig) {
                 cache[key] = translated
                 return translated
             }
 
             if let translated = await translateWithPublicFallback(
                 text: trimmed,
-                sourceLanguage: config.sourceLanguage,
-                targetLanguage: config.targetLanguage
+                sourceLanguage: effectiveConfig.sourceLanguage,
+                targetLanguage: effectiveConfig.targetLanguage
             ) {
                 cache[key] = translated
                 return translated
@@ -53,7 +73,8 @@ actor SentenceTranslationService {
             // Keep existing retry behavior on transient cloud/public failures.
             if let fallback = fallbackIfReadable(
                 trimmed,
-                targetLanguage: config.targetLanguage
+                targetLanguage: effectiveConfig.targetLanguage,
+                sourceLanguage: effectiveConfig.sourceLanguage
             ) {
                 return fallback
             }
@@ -62,14 +83,18 @@ actor SentenceTranslationService {
 
         if let translated = await translateWithPublicFallback(
             text: trimmed,
-            sourceLanguage: sourceLanguage,
-            targetLanguage: targetLanguage
+            sourceLanguage: resolvedSourceLanguage,
+            targetLanguage: resolvedTargetLanguage
         ) {
             cache[key] = translated
             return translated
         }
 
-        if let fallback = fallbackIfReadable(trimmed, targetLanguage: targetLanguage) {
+        if let fallback = fallbackIfReadable(
+            trimmed,
+            targetLanguage: resolvedTargetLanguage,
+            sourceLanguage: resolvedSourceLanguage
+        ) {
             cache[key] = fallback
             return fallback
         }
@@ -90,7 +115,7 @@ actor SentenceTranslationService {
         let prefix: String
         if let config {
             let region = config.region ?? ""
-            prefix = "\(config.endpoint.absoluteString)|\(config.sourceLanguage)|\(config.targetLanguage)|\(region)"
+            prefix = "\(config.endpoint.absoluteString)|\(sourceLanguage)|\(targetLanguage)|\(region)"
         } else {
             prefix = "public|\(sourceLanguage)|\(targetLanguage)"
         }
@@ -106,6 +131,7 @@ actor SentenceTranslationService {
             guard isReadableSentenceTranslation(
                 translated,
                 source: text,
+                sourceLanguage: configuration.sourceLanguage,
                 targetLanguage: configuration.targetLanguage
             ) else {
                 return nil
@@ -131,6 +157,7 @@ actor SentenceTranslationService {
             guard isReadableSentenceTranslation(
                 translated,
                 source: text,
+                sourceLanguage: sourceLanguage,
                 targetLanguage: targetLanguage
             ) else {
                 return nil
@@ -143,7 +170,8 @@ actor SentenceTranslationService {
 
     private func fallbackIfReadable(
         _ sentence: String,
-        targetLanguage: String
+        targetLanguage: String,
+        sourceLanguage: String
     ) -> String? {
         let normalizedTarget = normalizedLanguageCode(targetLanguage) ?? ""
         guard normalizedTarget == "en" else {
@@ -157,7 +185,12 @@ actor SentenceTranslationService {
 
         let text = fallback.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
-        guard isReadableSentenceTranslation(text, source: sentence, targetLanguage: targetLanguage) else {
+        guard isReadableSentenceTranslation(
+            text,
+            source: sentence,
+            sourceLanguage: sourceLanguage,
+            targetLanguage: targetLanguage
+        ) else {
             return nil
         }
         return text
@@ -166,6 +199,7 @@ actor SentenceTranslationService {
     private func isReadableSentenceTranslation(
         _ translated: String,
         source: String,
+        sourceLanguage: String? = nil,
         targetLanguage: String
     ) -> Bool {
         let normalizedTarget = normalizedLanguageCode(targetLanguage) ?? ""
@@ -173,31 +207,18 @@ actor SentenceTranslationService {
         guard !trimmed.isEmpty else { return false }
 
         if normalizedTarget == "en" {
-            if containsKannadaScript(in: trimmed) {
-                return false
-            }
-            if !containsLatinAlphabet(in: trimmed) {
-                return false
-            }
+            return LanguageTextHeuristics.isReadableEnglishTranslation(
+                trimmed,
+                source: source,
+                sourceLanguage: sourceLanguage
+            )
         }
 
         return trimmed.caseInsensitiveCompare(source.trimmingCharacters(in: .whitespacesAndNewlines)) != .orderedSame
     }
 
-    private func normalizedLanguageCode(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return trimmed.isEmpty ? nil : trimmed
-    }
-
-    private func containsKannadaScript(in text: String) -> Bool {
-        text.unicodeScalars.contains { scalar in
-            (0x0C80...0x0CFF).contains(Int(scalar.value))
-        }
-    }
-
-    private func containsLatinAlphabet(in text: String) -> Bool {
-        text.unicodeScalars.contains { scalar in
-            (0x0041...0x005A).contains(Int(scalar.value)) || (0x0061...0x007A).contains(Int(scalar.value))
-        }
+    private func normalizedLanguageCode(_ value: String?) -> String? {
+        let canonical = LanguageTextHeuristics.canonicalLanguageCode(value)
+        return canonical.isEmpty ? nil : canonical
     }
 }

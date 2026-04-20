@@ -15,6 +15,7 @@ struct YouTubeSearchSeed: Sendable, Hashable {
 protocol YouTubeCandidateValidating: Sendable {
     func validateCandidate(
         videoID: String,
+        language: SupportedLanguage,
         category: String,
         publishedAt: Date?,
         fallbackTitle: String?,
@@ -36,34 +37,61 @@ actor YouTubeDiscoveryService {
 
     static let shared = YouTubeDiscoveryService()
 
-    static let defaultChannelSeeds: [YouTubeChannelSeed] = [
-        .init(channelID: "UChsgGgFHYTBL4m0dgRc78PQ", category: "Basics", priority: 1),
-        .init(channelID: "UClhQBYN17XW_lA4568Qtu3A", category: "Conversation", priority: 2),
-        .init(channelID: "UCirKrUfKVP2ebtwEWCObTbw", category: "Grammar", priority: 3),
-        .init(channelID: "UCqZRKIkmWX2L2iAIDjYi0Fw", category: "Short Stories", priority: 4),
-        .init(channelID: "UCe-zK4ux-tMl9Y8JJJqxL7Q", category: "Alphabet", priority: 5),
-        .init(channelID: "UCOG5uDioDLiIZsSmyYSKYHw", category: "Beginner Intro", priority: 6)
-    ]
-    static let defaultSearchSeeds: [YouTubeSearchSeed] = [
-        .init(query: "learn kannada with subtitles", category: "Learn Kannada", priority: 2),
-        .init(query: "kannada conversation subtitles", category: "Conversation", priority: 3),
-        .init(query: "kannada stories with subtitles", category: "Stories", priority: 4),
-        .init(query: "kannada podcast subtitles", category: "Podcast", priority: 5),
-        .init(query: "kannada vlog subtitles", category: "Vlog", priority: 6),
-        .init(query: "kannada news subtitles", category: "News", priority: 7),
-        .init(query: "kannada interview subtitles", category: "Interview", priority: 5),
-        .init(query: "kannada travel vlog subtitles", category: "Travel", priority: 6),
-        .init(query: "kannada documentary subtitles", category: "Documentary", priority: 6),
-        .init(query: "kannada cooking subtitles", category: "Lifestyle", priority: 7),
-        .init(query: "kannada comedy subtitles", category: "Entertainment", priority: 8),
-        .init(query: "kannada motivation subtitles", category: "Motivation", priority: 8),
-        .init(query: "spoken kannada practice subtitles", category: "Conversation", priority: 4),
-        .init(query: "kannada beginner lesson subtitles", category: "Learn Kannada", priority: 3),
-        .init(query: "ಕನ್ನಡ ಉಪಶೀರ್ಷಿಕೆ ಕಥೆ", category: "Stories", priority: 5),
-        .init(query: "ಕನ್ನಡ ಸಂಭಾಷಣೆ ಉಪಶೀರ್ಷಿಕೆ", category: "Conversation", priority: 5),
-        .init(query: "ಕನ್ನಡ ಪಾಡ್ಕಾಸ್ಟ್ ಉಪಶೀರ್ಷಿಕೆ", category: "Podcast", priority: 6),
-        .init(query: "ಕನ್ನಡ ಸುದ್ದಿ ಉಪಶೀರ್ಷಿಕೆ", category: "News", priority: 7)
-    ]
+    static func defaultChannelSeeds(for language: SupportedLanguage) -> [YouTubeChannelSeed] {
+        switch language {
+        case .german:
+            return []
+        case .kannada:
+            return [
+                .init(channelID: "UChsgGgFHYTBL4m0dgRc78PQ", category: "Basics", priority: 1),
+                .init(channelID: "UClhQBYN17XW_lA4568Qtu3A", category: "Conversation", priority: 2),
+                .init(channelID: "UCirKrUfKVP2ebtwEWCObTbw", category: "Grammar", priority: 3),
+                .init(channelID: "UCqZRKIkmWX2L2iAIDjYi0Fw", category: "Short Stories", priority: 4),
+                .init(channelID: "UCe-zK4ux-tMl9Y8JJJqxL7Q", category: "Alphabet", priority: 5),
+                .init(channelID: "UCOG5uDioDLiIZsSmyYSKYHw", category: "Beginner Intro", priority: 6)
+            ]
+        }
+    }
+
+    static func defaultSearchSeeds(for language: SupportedLanguage) -> [YouTubeSearchSeed] {
+        switch language {
+        case .german:
+            return [
+                .init(query: "learn german with subtitles", category: "Learn German", priority: 1),
+                .init(query: "german conversation subtitles", category: "Conversation", priority: 2),
+                .init(query: "german stories with subtitles", category: "Stories", priority: 3),
+                .init(query: "easy german subtitles", category: "Beginner", priority: 1),
+                .init(query: "german podcast subtitles", category: "Podcast", priority: 4),
+                .init(query: "german vlog subtitles", category: "Vlog", priority: 5),
+                .init(query: "german news subtitles", category: "News", priority: 6),
+                .init(query: "german interview subtitles", category: "Interview", priority: 5),
+                .init(query: "deutsch mit untertiteln", category: "Learn German", priority: 2),
+                .init(query: "deutsche geschichten mit untertiteln", category: "Stories", priority: 3),
+                .init(query: "deutsche untertitel podcast", category: "Podcast", priority: 5)
+            ]
+        case .kannada:
+            return [
+                .init(query: "learn kannada with subtitles", category: "Learn Kannada", priority: 2),
+                .init(query: "kannada conversation subtitles", category: "Conversation", priority: 3),
+                .init(query: "kannada stories with subtitles", category: "Stories", priority: 4),
+                .init(query: "kannada podcast subtitles", category: "Podcast", priority: 5),
+                .init(query: "kannada vlog subtitles", category: "Vlog", priority: 6),
+                .init(query: "kannada news subtitles", category: "News", priority: 7),
+                .init(query: "kannada interview subtitles", category: "Interview", priority: 5),
+                .init(query: "kannada travel vlog subtitles", category: "Travel", priority: 6),
+                .init(query: "kannada documentary subtitles", category: "Documentary", priority: 6),
+                .init(query: "kannada cooking subtitles", category: "Lifestyle", priority: 7),
+                .init(query: "kannada comedy subtitles", category: "Entertainment", priority: 8),
+                .init(query: "kannada motivation subtitles", category: "Motivation", priority: 8),
+                .init(query: "spoken kannada practice subtitles", category: "Conversation", priority: 4),
+                .init(query: "kannada beginner lesson subtitles", category: "Learn Kannada", priority: 3),
+                .init(query: "ಕನ್ನಡ ಉಪಶೀರ್ಷಿಕೆ ಕಥೆ", category: "Stories", priority: 5),
+                .init(query: "ಕನ್ನಡ ಸಂಭಾಷಣೆ ಉಪಶೀರ್ಷಿಕೆ", category: "Conversation", priority: 5),
+                .init(query: "ಕನ್ನಡ ಪಾಡ್ಕಾಸ್ಟ್ ಉಪಶೀರ್ಷಿಕೆ", category: "Podcast", priority: 6),
+                .init(query: "ಕನ್ನಡ ಸುದ್ದಿ ಉಪಶೀರ್ಷಿಕೆ", category: "News", priority: 7)
+            ]
+        }
+    }
 
     private let session: URLSession
     private let cacheStore: SuggestionCacheStore
@@ -85,24 +113,26 @@ actor YouTubeDiscoveryService {
 
     func loadSuggestions(
         existingVideoIDs: Set<String>,
-        forceRefresh: Bool
+        forceRefresh: Bool,
+        language: SupportedLanguage = .kannada
     ) async -> [YouTubeSuggestedVideo] {
         if !forceRefresh {
-            let cached = await cacheStore.cachedSuggestions()
+            let cached = await cacheStore.cachedSuggestions(language: language)
             if !cached.isEmpty {
                 return filtered(cached, excluding: existingVideoIDs)
             }
         }
 
-        if !forceRefresh, await cacheStore.shouldBackoff() {
-            let fallback = await cacheStore.cachedSuggestions(includeExpired: true)
+        if !forceRefresh, await cacheStore.shouldBackoff(language: language) {
+            let fallback = await cacheStore.cachedSuggestions(language: language, includeExpired: true)
             return filtered(fallback, excluding: existingVideoIDs)
         }
 
-        let seeds = await mergedSeeds()
+        let seeds = await mergedSeeds(for: language)
+        let searchSeeds = Self.defaultSearchSeeds(for: language)
         let feedResult = await fetchCandidates(
             from: seeds,
-            searchSeeds: Self.defaultSearchSeeds,
+            searchSeeds: searchSeeds,
             existingVideoIDs: existingVideoIDs
         )
 
@@ -112,34 +142,43 @@ actor YouTubeDiscoveryService {
         )
         let validated = await validateCandidates(
             budgeted,
+            language: language,
             existingVideoIDs: existingVideoIDs,
             allowCachedFailures: !forceRefresh,
             useValidationCache: !forceRefresh
         )
 
         if !validated.isEmpty {
-            await cacheStore.saveSuggestions(validated)
-            await cacheStore.recordDiscoverySuccess()
+            await cacheStore.saveSuggestions(validated, language: language)
+            await cacheStore.recordDiscoverySuccess(language: language)
             return filtered(validated, excluding: existingVideoIDs)
         }
 
         if feedResult.didFail {
-            await cacheStore.recordDiscoveryFailure()
+            await cacheStore.recordDiscoveryFailure(language: language)
         } else {
-            await cacheStore.recordDiscoverySuccess()
+            await cacheStore.recordDiscoverySuccess(language: language)
         }
 
-        let fallback = await cacheStore.cachedSuggestions(includeExpired: true)
+        let fallback = await cacheStore.cachedSuggestions(language: language, includeExpired: true)
         return filtered(fallback, excluding: existingVideoIDs)
     }
 
-    func addTrustedChannel(channelID: String?, channelTitle: String?) async {
-        await cacheStore.addTrustedChannel(channelID: channelID, channelTitle: channelTitle)
+    func addTrustedChannel(
+        channelID: String?,
+        channelTitle: String?,
+        language: SupportedLanguage = .kannada
+    ) async {
+        await cacheStore.addTrustedChannel(
+            channelID: channelID,
+            channelTitle: channelTitle,
+            language: language
+        )
     }
 
-    private func mergedSeeds() async -> [YouTubeChannelSeed] {
-        var seeds = Self.defaultChannelSeeds
-        let trusted = await cacheStore.trustedChannelIDs()
+    private func mergedSeeds(for language: SupportedLanguage) async -> [YouTubeChannelSeed] {
+        var seeds = Self.defaultChannelSeeds(for: language)
+        let trusted = await cacheStore.trustedChannelIDs(language: language)
         let existingIDs = Set(seeds.map(\.channelID))
         for channelID in trusted where !existingIDs.contains(channelID) {
             seeds.append(YouTubeChannelSeed(channelID: channelID, category: "Personalized", priority: 0))
@@ -247,6 +286,7 @@ actor YouTubeDiscoveryService {
 
     private func validateCandidates(
         _ candidates: [FeedCandidate],
+        language: SupportedLanguage,
         existingVideoIDs: Set<String>,
         allowCachedFailures: Bool,
         useValidationCache: Bool
@@ -263,7 +303,10 @@ actor YouTubeDiscoveryService {
                         }
 
                         if useValidationCache {
-                            if let cached = await self.cacheStore.cachedValidation(for: candidate.videoID) {
+                            if let cached = await self.cacheStore.cachedValidation(
+                                for: candidate.videoID,
+                                language: language
+                            ) {
                                 if let cachedSuggestion = cached {
                                     let hydrated = await self.applyCandidateMetadata(candidate, to: cachedSuggestion)
                                     return (absoluteIndex, hydrated)
@@ -277,17 +320,21 @@ actor YouTubeDiscoveryService {
                         do {
                             let suggestion = try await self.validator.validateCandidate(
                                 videoID: candidate.videoID,
+                                language: language,
                                 category: candidate.category,
                                 publishedAt: candidate.publishedAt,
                                 fallbackTitle: candidate.title,
                                 fallbackChannelTitle: candidate.channelTitle,
                                 fallbackChannelID: candidate.channelID
                             )
-                            await self.cacheStore.storeValidationSuccess(suggestion)
+                            await self.cacheStore.storeValidationSuccess(suggestion, language: language)
                             return (absoluteIndex, suggestion)
                         } catch {
                             if Self.shouldCacheValidationFailure(error) {
-                                await self.cacheStore.storeValidationFailure(videoID: candidate.videoID)
+                                await self.cacheStore.storeValidationFailure(
+                                    videoID: candidate.videoID,
+                                    language: language
+                                )
                             }
                             return (absoluteIndex, nil)
                         }
@@ -452,6 +499,7 @@ actor YouTubeDiscoveryService {
         switch error {
         case .captionsUnavailable,
                 .kannadaCaptionsUnavailable,
+                .germanCaptionsUnavailable,
                 .unsupportedDuration,
                 .lowQualityTranscript:
             return true

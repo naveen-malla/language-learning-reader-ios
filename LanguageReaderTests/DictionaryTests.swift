@@ -146,7 +146,7 @@ final class DictionaryTests: XCTestCase {
 
         let snapshot = manager.evaluateQuality()
 
-        XCTAssertEqual(snapshot.requestedLanguageCode, "es-mx")
+        XCTAssertEqual(snapshot.requestedLanguageCode, "es")
         XCTAssertEqual(snapshot.fixtureLanguageCode, "en")
         XCTAssertEqual(snapshot.fixtureName, "English Core V1")
         XCTAssertTrue(snapshot.usedFallbackFixture)

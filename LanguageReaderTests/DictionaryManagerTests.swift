@@ -130,7 +130,45 @@ final class DictionaryManagerTests: XCTestCase {
 
     func testSourceDescription() {
         let manager = makeManager(entries: [:])
-        XCTAssertEqual(manager.sourceDescription, "Bundled sample dictionary")
+        XCTAssertEqual(manager.sourceDescription, "Bundled sample dictionary (kn)")
+    }
+
+    func testLookupUsesLanguageSpecificProvidersForSameNormalizedKey() {
+        let manager = DictionaryManager(
+            providersByLanguage: [
+                "kn": SampleDictionaryProvider(languageCode: "kn", entries: ["haus": "kannada meaning"]),
+                "de": SampleDictionaryProvider(languageCode: "de", entries: ["haus": "house"])
+            ],
+            overrideStoresByLanguage: [
+                "kn": DictionaryOverrideStore(fileURL: nil, missingURL: nil),
+                "de": DictionaryOverrideStore(fileURL: nil, missingURL: nil)
+            ],
+            cloudStore: DictionaryCloudMeaningStore(fileURL: nil),
+            remoteProvider: nil,
+            sourceLanguageProvider: { "de" },
+            targetLanguageProvider: { "en" }
+        )
+
+        XCTAssertEqual(manager.lookup("haus", languageCode: "de"), "house")
+        XCTAssertEqual(manager.lookup("haus", languageCode: "kn"), "kannada meaning")
+    }
+
+    func testLookupDetailedSuffixPathForGermanInflectedForm() {
+        let manager = makeManager(entries: ["haus": "house"], sourceLanguage: "de")
+        let result = manager.lookupDetailed("Hauses", languageCode: "de")
+
+        XCTAssertEqual(result.path, .suffix)
+        XCTAssertEqual(result.matchedKey, "haus")
+        XCTAssertEqual(result.meaning, "house")
+    }
+
+    func testEvaluateQualitySelectsGermanFixtureForGermanSourceLanguage() {
+        let manager = makeManager(entries: ["haus": "house"], sourceLanguage: "de")
+        let snapshot = manager.evaluateQuality()
+
+        XCTAssertEqual(snapshot.fixtureLanguageCode, "de")
+        XCTAssertEqual(snapshot.fixtureName, "German Core V1")
+        XCTAssertFalse(snapshot.usedFallbackFixture)
     }
 
     func testLookupMissingAndEmptyWord() {
@@ -298,6 +336,36 @@ final class DictionaryManagerTests: XCTestCase {
         XCTAssertEqual(lines.count, 2)
         XCTAssertTrue(lines[0].hasPrefix("ಮನೆಯಲಿ\t"))
         XCTAssertTrue(lines[1].hasPrefix("ಹೊಸದು\t"))
+    }
+
+    func testReportMissingUsesLanguageSpecificMissingStore() throws {
+        let germanMissingURL = makeTemporaryURL(fileName: "missing-de.tsv")
+        let kannadaMissingURL = makeTemporaryURL(fileName: "missing-kn.tsv")
+        let manager = DictionaryManager(
+            providersByLanguage: [
+                "kn": SampleDictionaryProvider(languageCode: "kn", entries: [:]),
+                "de": SampleDictionaryProvider(languageCode: "de", entries: [:])
+            ],
+            overrideStoresByLanguage: [
+                "kn": DictionaryOverrideStore(fileURL: nil, missingURL: kannadaMissingURL),
+                "de": DictionaryOverrideStore(fileURL: nil, missingURL: germanMissingURL)
+            ],
+            cloudStore: DictionaryCloudMeaningStore(fileURL: nil),
+            remoteProvider: nil,
+            sourceLanguageProvider: { "de" },
+            targetLanguageProvider: { "en" }
+        )
+
+        manager.reportMissing(word: "Hauses", languageCode: "de")
+        manager.reportMissing(word: "ಮನೆಯಲಿ", languageCode: "kn")
+
+        let germanContents = try String(contentsOf: germanMissingURL, encoding: .utf8)
+        let kannadaContents = try String(contentsOf: kannadaMissingURL, encoding: .utf8)
+
+        XCTAssertTrue(germanContents.contains("Hauses\t"))
+        XCTAssertFalse(germanContents.contains("ಮನೆಯಲಿ\t"))
+        XCTAssertTrue(kannadaContents.contains("ಮನೆಯಲಿ\t"))
+        XCTAssertFalse(kannadaContents.contains("Hauses\t"))
     }
 
     func testRemoteLookupUsesTargetLanguageOverrideWhenProvided() async {

@@ -156,14 +156,32 @@ final class SuggestionCacheStoreTests: XCTestCase {
         }
 
         let cappedRetry = await store.nextRetryDate()
-        XCTAssertNotNil(cappedRetry)
-        XCTAssertEqual(cappedRetry?.timeIntervalSince(now), TimeInterval(80 * 60), accuracy: 0.001)
+        guard let cappedRetry else {
+            return XCTFail("Expected capped retry date")
+        }
+        XCTAssertEqual(cappedRetry.timeIntervalSince(now), TimeInterval(80 * 60), accuracy: 0.001)
 
         await store.recordDiscoverySuccess()
         await store.recordDiscoveryFailure()
         let retryAfterReset = await store.nextRetryDate()
-        XCTAssertNotNil(retryAfterReset)
-        XCTAssertEqual(retryAfterReset?.timeIntervalSince(now), TimeInterval(10 * 60), accuracy: 0.001)
+        guard let retryAfterReset else {
+            return XCTFail("Expected retry date after reset")
+        }
+        XCTAssertEqual(retryAfterReset.timeIntervalSince(now), TimeInterval(10 * 60), accuracy: 0.001)
+    }
+
+    func testCachesAreSeparatedByLanguage() async {
+        let defaults = UserDefaults(suiteName: "SuggestionCacheStoreTests.\(UUID().uuidString)")!
+        let store = SuggestionCacheStore(defaults: defaults, storageKey: "cache")
+
+        await store.saveSuggestions([makeSuggestion(videoID: "GERMAN00001")], language: .german)
+        await store.saveSuggestions([makeSuggestion(videoID: "KANNADA001")], language: .kannada)
+
+        let german = await store.cachedSuggestions(language: .german)
+        let kannada = await store.cachedSuggestions(language: .kannada)
+
+        XCTAssertEqual(german.map(\.videoID), ["GERMAN00001"])
+        XCTAssertEqual(kannada.map(\.videoID), ["KANNADA001"])
     }
 
     private func makeSuggestion(videoID: String) -> YouTubeSuggestedVideo {

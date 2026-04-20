@@ -457,6 +457,52 @@ final class YouTubeDiscoveryServiceTests: XCTestCase {
             ISO8601DateFormatter().date(from: "2026-02-26T00:00:00+00:00")
         )
     }
+
+    func testGermanSuggestionsUseGermanSearchSeeds() async {
+        let defaults = UserDefaults(suiteName: "YouTubeDiscoveryServiceTests.\(UUID().uuidString)")!
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let cache = SuggestionCacheStore(defaults: defaults, storageKey: "cache", now: { now })
+        let validator = DiscoveryValidatorStub(failingVideoIDs: [])
+        let recorder = DiscoveryQueryRecorder()
+
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/results"),
+               let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "search_query" })?
+                .value {
+                await recorder.record(query)
+                throw URLError(.badURL)
+            }
+
+            if url.absoluteString.contains("youtube.com/feeds/videos.xml"),
+               let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "search_query" })?
+                .value {
+                await recorder.record(query)
+                let xml = self.makeFeedXML(channelID: "search", channelTitle: "Search", videos: [])
+                return DiscoveryStubURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeDiscoveryService(
+            session: session,
+            cacheStore: cache,
+            validator: validator,
+            now: { now }
+        )
+
+        _ = await service.loadSuggestions(existingVideoIDs: [], forceRefresh: true, language: .german)
+        let queries = await recorder.all()
+
+        XCTAssertTrue(queries.contains("learn german with subtitles"))
+        XCTAssertTrue(queries.contains("deutsch mit untertiteln"))
+        XCTAssertFalse(queries.contains("learn kannada with subtitles"))
+    }
 }
 
 private actor DiscoveryValidatorStub: YouTubeCandidateValidating {
@@ -474,6 +520,7 @@ private actor DiscoveryValidatorStub: YouTubeCandidateValidating {
 
     func validateCandidate(
         videoID: String,
+        language: SupportedLanguage,
         category: String,
         publishedAt: Date?,
         fallbackTitle: String?,
@@ -486,7 +533,9 @@ private actor DiscoveryValidatorStub: YouTubeCandidateValidating {
             throw firstFailure
         }
         if failingVideoIDs.contains(videoID) {
-            throw YouTubeImportError.kannadaCaptionsUnavailable
+            throw language == .german
+                ? YouTubeImportError.germanCaptionsUnavailable
+                : YouTubeImportError.kannadaCaptionsUnavailable
         }
 
         return YouTubeSuggestedVideo(
@@ -515,6 +564,18 @@ private actor DiscoveryRequestCounter {
 
     func value() -> Int {
         count
+    }
+}
+
+private actor DiscoveryQueryRecorder {
+    private var queries: [String] = []
+
+    func record(_ query: String) {
+        queries.append(query)
+    }
+
+    func all() -> [String] {
+        queries
     }
 }
 

@@ -49,6 +49,5 @@ Use this checklist to add a new source language without reworking core architect
 - Update all of these before merge:
   - `README.md`
   - `DEVELOPMENT.md`
-  - `DESIGN.md`
   - `DECISIONS.md`
-  - `PLANS.md`
+  - `PLAN.md`

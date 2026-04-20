@@ -245,6 +245,7 @@ final class YouTubeImportServiceTests: XCTestCase {
         let content = try await service.importVideo(videoID: videoID)
 
         XCTAssertEqual(content.videoID, videoID)
+        XCTAssertEqual(content.language, .kannada)
         XCTAssertEqual(content.title, "Test Video \(videoID)")
         XCTAssertEqual(content.channelTitle, "Channel \(videoID)")
         XCTAssertEqual(content.channelID, channelID)
@@ -291,6 +292,100 @@ final class YouTubeImportServiceTests: XCTestCase {
             XCTFail("Expected importVideo to throw when Kannada captions are missing")
         } catch let error as YouTubeImportError {
             XCTAssertEqual(error, .kannadaCaptionsUnavailable)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testImportVideoPrefersDirectGermanTrack() async throws {
+        let videoID = "Deu6q2tYabc"
+        let germanLines = [
+            "Das ist eine klare deutsche Lektion mit gut lesbaren Untertiteln.",
+            "Du kannst jeden Satz langsam lesen und die neuen Woerter wiederholen.",
+            "Diese Uebung hilft beim Verstehen, Lesen und Hoeren im gleichen Flow.",
+            "Wenn du taeglich uebst, wird dein Wortschatz deutlich staerker."
+        ]
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 640,
+                    thumbnailWidths: [120, 640],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "de",
+                            baseURL: "https://example.com/de.xml",
+                            kind: nil
+                        ),
+                        self.makeCaptionTrack(
+                            languageCode: "en",
+                            baseURL: "https://example.com/en.xml",
+                            kind: nil
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            if url.absoluteString.contains("de.xml") {
+                let xml = self.makeTranscriptXML(lines: germanLines)
+                return StubbedURLProtocol.response(for: url, data: Data(xml.utf8))
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+        let content = try await service.importVideo(videoID: videoID, language: .german)
+
+        XCTAssertEqual(content.language, .german)
+        XCTAssertEqual(content.subtitleCues.map(\.sourceText), germanLines)
+        XCTAssertFalse(content.transcript.isEmpty)
+    }
+
+    func testImportVideoThrowsWhenGermanCaptionsMissingEvenIfEnglishTrackIsTranslatable() async {
+        let videoID = "DeuMissing01"
+        let session = makeStubbedSession { request in
+            let url = try XCTUnwrap(request.url)
+            if url.absoluteString.contains("youtube.com/watch") {
+                return StubbedURLProtocol.response(
+                    for: url,
+                    data: Data(self.makeWatchHTML(apiKey: "test-key").utf8)
+                )
+            }
+            if url.absoluteString.contains("youtubei/v1/player") {
+                let payload = self.makePlayerPayload(
+                    videoID: videoID,
+                    channelID: "channel-\(videoID)",
+                    durationSeconds: 600,
+                    thumbnailWidths: [120],
+                    tracks: [
+                        self.makeCaptionTrack(
+                            languageCode: "en",
+                            baseURL: "https://example.com/en.xml",
+                            kind: nil,
+                            isTranslatable: true
+                        )
+                    ]
+                )
+                return StubbedURLProtocol.response(for: url, data: payload)
+            }
+            throw URLError(.badURL)
+        }
+
+        let service = YouTubeImportService(session: session)
+
+        do {
+            _ = try await service.importVideo(videoID: videoID, language: .german)
+            XCTFail("Expected importVideo to throw when German captions are missing")
+        } catch let error as YouTubeImportError {
+            XCTAssertEqual(error, .germanCaptionsUnavailable)
         } catch {
             XCTFail("Unexpected error: \(error)")
         }

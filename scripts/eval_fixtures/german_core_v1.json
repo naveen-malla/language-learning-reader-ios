@@ -1,0 +1,27 @@
+{
+  "name": "german_core_v1",
+  "corpus_sentences": [
+    "Heute Morgen habe ich Kaffee am Tisch getrunken.",
+    "Meine Freundin liest am Wochenende eine Geschichte.",
+    "Wir lernen jeden Tag neue Wörter und machen Fortschritt.",
+    "Auf dem Markt kaufen wir Wasser und ein Buch."
+  ],
+  "gold": [
+    { "word": "Kaffee", "accepted_meanings": ["coffee"] },
+    { "word": "Tisch", "accepted_meanings": ["table"] },
+    { "word": "Freundin", "accepted_meanings": ["friend"] },
+    { "word": "Wochenende", "accepted_meanings": ["weekend"] },
+    { "word": "Geschichte", "accepted_meanings": ["tale", "story"] },
+    { "word": "Wort", "accepted_meanings": ["word"] },
+    { "word": "Fortschritt", "accepted_meanings": ["progress", "headway"] },
+    { "word": "Markt", "accepted_meanings": ["market", "marketplace", "market place"] },
+    { "word": "Wasser", "accepted_meanings": ["water"] },
+    { "word": "Buch", "accepted_meanings": ["book"] }
+  ],
+  "thresholds": {
+    "token_coverage_min": 0.45,
+    "unique_coverage_min": 0.35,
+    "gold_hit_rate_min": 0.7,
+    "gold_accuracy_min": 0.5
+  }
+}

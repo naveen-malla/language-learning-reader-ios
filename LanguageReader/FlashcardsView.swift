@@ -7,6 +7,7 @@ struct FlashcardsView: View {
 
     @AppStorage("flashcards_simple_mode_migrated_v1") private var simpleModeMigrationApplied = false
     @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
+    @AppStorage(StudyLanguageSettingsStore.studyLanguageKey) private var studyLanguageCode = SupportedLanguage.freshInstallDefault.rawValue
 
     @State private var promptQueue: [FlashcardPrompt] = []
     @State private var pendingAnswersByWordID: [UUID: [FlashcardBinaryAnswer]] = [:]
@@ -16,24 +17,34 @@ struct FlashcardsView: View {
     @State private var sessionCorrect = 0
     @State private var isShowingSessionSettings = false
     @State private var todayStats: FlashcardDailyStats = .zero
+    @State private var hasAppliedScreenshotAutoStart = false
 
     private let transliterator = Transliterator()
     private let statsStore = FlashcardStatsStore.shared
+    private let screenshotLaunchConfiguration = ScreenshotLaunchConfiguration()
+
+    private var selectedStudyLanguage: SupportedLanguage {
+        SupportedLanguage.resolve(studyLanguageCode) ?? .freshInstallDefault
+    }
+
+    private var languageEntries: [VocabEntry] {
+        entries.filter { $0.languageCode == selectedStudyLanguage }
+    }
 
     private var entryByID: [UUID: VocabEntry] {
-        Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        Dictionary(uniqueKeysWithValues: languageEntries.map { ($0.id, $0) })
     }
 
     private var learningEntries: [VocabEntry] {
-        FlashcardDeck.learningEntries(from: entries)
+        FlashcardDeck.learningEntries(from: languageEntries)
     }
 
     private var dueEntries: [VocabEntry] {
-        FlashcardDeck.dueEntries(from: entries)
+        FlashcardDeck.dueEntries(from: languageEntries)
     }
 
     private var nextDueDate: Date? {
-        FlashcardDeck.nextDueDate(from: entries)
+        FlashcardDeck.nextDueDate(from: languageEntries)
     }
 
     private var currentPrompt: FlashcardPrompt? {
@@ -67,7 +78,7 @@ struct FlashcardsView: View {
 
     private var sessionWordTargetCount: Int {
         FlashcardDeck.plannedSessionWordCount(
-            from: entries,
+            from: languageEntries,
             limit: normalizedSessionWordLimit
         )
     }
@@ -81,9 +92,9 @@ struct FlashcardsView: View {
     }
 
     private var knownRatioText: String {
-        guard !entries.isEmpty else { return "0%" }
-        let knownCount = entries.filter { $0.status == .known }.count
-        let ratio = (Double(knownCount) / Double(entries.count)) * 100
+        guard !languageEntries.isEmpty else { return "0%" }
+        let knownCount = languageEntries.filter { $0.status == .known }.count
+        let ratio = (Double(knownCount) / Double(languageEntries.count)) * 100
         return "\(Int(round(ratio)))%"
     }
 
@@ -127,10 +138,19 @@ struct FlashcardsView: View {
             .onAppear {
                 runSimpleModeMigrationIfNeeded()
                 refreshDailyStats()
+                maybeStartScreenshotSession()
             }
-            .onChange(of: entries.count) { _, _ in
+            .onChange(of: languageEntries.count) { _, _ in
                 runSimpleModeMigrationIfNeeded()
                 refreshDailyStats()
+                maybeStartScreenshotSession()
+            }
+            .onChange(of: studyLanguageCode) { _, _ in
+                closeSession()
+                hasAppliedScreenshotAutoStart = false
+                runSimpleModeMigrationIfNeeded()
+                refreshDailyStats()
+                maybeStartScreenshotSession()
             }
         }
     }
@@ -171,6 +191,8 @@ struct FlashcardsView: View {
                     .frame(height: 4)
                     .scaleEffect(x: max(0.03, progressFraction), y: 1, anchor: .leading)
             }
+
+            StudyLanguageToolbarMenu(selection: $studyLanguageCode)
 
             Button {
                 isShowingSessionSettings = true
@@ -532,7 +554,7 @@ struct FlashcardsView: View {
                 .foregroundStyle(.white)
 
             if learningEntries.isEmpty {
-                Text("Add words from the reader to start building your flashcard queue.")
+                Text("Add \(selectedStudyLanguage.displayName.lowercased()) words from the reader to start building your flashcard queue.")
                     .font(.body.weight(.medium))
                     .foregroundStyle(Color.white.opacity(0.8))
             } else if let nextDueDate {
@@ -626,7 +648,7 @@ struct FlashcardsView: View {
     }
 
     private func startSession() {
-        promptQueue = FlashcardDeck.sessionPrompts(from: entries, limit: normalizedSessionWordLimit)
+        promptQueue = FlashcardDeck.sessionPrompts(from: languageEntries, limit: normalizedSessionWordLimit)
         pendingAnswersByWordID = [:]
         requeuedWordIDs = []
         sessionReviewed = 0
@@ -659,7 +681,7 @@ struct FlashcardsView: View {
         if answer == .correct {
             sessionCorrect += 1
         }
-        statsStore.record(answer: answer)
+        statsStore.record(answer: answer, languageCode: selectedStudyLanguage.rawValue)
         refreshDailyStats()
         entry.encounterCount += 1
 
@@ -750,6 +772,17 @@ struct FlashcardsView: View {
         simpleModeMigrationApplied = true
     }
 
+    private func maybeStartScreenshotSession() {
+        guard screenshotLaunchConfiguration.route == .flashcardsSession else { return }
+        guard hasAppliedScreenshotAutoStart == false else { return }
+        guard hasActiveSession == false else { return }
+        guard dueEntries.isEmpty == false else { return }
+
+        hasAppliedScreenshotAutoStart = true
+        startSession()
+        isRevealed = true
+    }
+
     private func transliteration(for word: String) -> String? {
         let value = transliterator.pronounce(word).trimmingCharacters(in: .whitespacesAndNewlines)
         guard value.isEmpty == false else { return nil }
@@ -758,7 +791,7 @@ struct FlashcardsView: View {
     }
 
     private func refreshDailyStats() {
-        todayStats = statsStore.stats()
+        todayStats = statsStore.stats(languageCode: selectedStudyLanguage.rawValue)
     }
 }
 

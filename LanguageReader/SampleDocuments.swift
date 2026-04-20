@@ -3,10 +3,48 @@ import Foundation
 struct SampleSeedDocument {
     let title: String
     let body: String
+    let language: SupportedLanguage
 }
 
 enum SampleDocuments {
-    static let initial: [SampleSeedDocument] = [
+    static let german: [SampleSeedDocument] = [
+        SampleSeedDocument(
+            title: "German Practice Story",
+            body: """
+            Heute Morgen bin ich früh aufgestanden und habe das Fenster geöffnet. Die Straße war noch ruhig, und die Luft war kühl und klar.
+            Ich habe mich mit einer Tasse Kaffee an den Tisch gesetzt und einen kurzen deutschen Artikel gelesen. Einige Wörter kannte ich schon, andere musste ich nachschlagen.
+
+            Später hat mir eine Freundin eine Nachricht geschickt und vorgeschlagen, dass wir am Wochenende zusammen lernen. Sie meinte, dass regelmäßiges Lesen viel hilfreicher ist als seltene, lange Lernsitzungen.
+            Wir wollen deshalb jeden Tag nur zwanzig Minuten lesen, neue Wörter markieren und am Abend kurz wiederholen.
+
+            Am Nachmittag bin ich einkaufen gegangen. Im Supermarkt habe ich absichtlich auf die Beschriftungen geachtet, damit ich Wörter aus dem Alltag wiedererkenne.
+            Zu Hause habe ich dann drei neue Wörter in meine Liste eingetragen und zu jedem Wort einen eigenen Beispielsatz geschrieben.
+
+            Am Ende des Tages hatte ich nicht das Gefühl, sehr viel gelernt zu haben. Trotzdem konnte ich mehrere Sätze flüssiger lesen als gestern.
+            Genau das motiviert mich: kleine Fortschritte, die sich mit der Zeit zu echtem Verständnis aufbauen.
+            """,
+            language: .german
+        ),
+        SampleSeedDocument(
+            title: "German Reading: Daily Learning",
+            body: """
+            Beim Sprachenlernen ist Regelmäßigkeit wichtiger als Perfektion. Viele Lernende warten auf den richtigen Moment, aber meistens reicht ein kurzer, klarer Ablauf.
+            Lies einen Abschnitt aufmerksam, markiere unbekannte Wörter und überprüfe danach nur die wichtigsten Begriffe.
+
+            Wenn du jedes unbekannte Wort sofort nachschlägst, verlierst du leicht den roten Faden. Es ist oft besser, zuerst den ganzen Satz zu verstehen und danach einzelne Wörter genauer anzusehen.
+            So trainierst du nicht nur den Wortschatz, sondern auch dein Gefühl für Struktur, Ton und Zusammenhang.
+
+            Besonders hilfreich ist es, neue Wörter schnell wiederzuverwenden. Schreibe einen kurzen Beispielsatz, lies ihn laut vor und prüfe am nächsten Tag, ob du die Bedeutung noch erinnerst.
+            Dieser kleine Kreislauf aus Lesen, Verstehen und Wiederholen hält den Lernaufwand niedrig und verbessert trotzdem die Erinnerung deutlich.
+
+            Mit der Zeit werden vertraute Wörter häufiger, und schwierige Texte wirken weniger anstrengend. Das Ziel ist nicht, jedes Detail sofort zu kennen.
+            Das Ziel ist, Schritt für Schritt sicherer zu lesen und immer weniger Hilfe zu brauchen.
+            """,
+            language: .german
+        )
+    ]
+
+    static let kannada: [SampleSeedDocument] = [
         SampleSeedDocument(
             title: "Kannada Practice Story",
             body: """
@@ -29,7 +67,8 @@ enum SampleDocuments {
             ತಂದೆಯವರು ನಿಧಾನವಾಗಿ, ಸ್ಪಷ್ಟವಾಗಿ ಓದುವ ಅಭ್ಯಾಸ ಮಾಡು ಎಂದು ಸಲಹೆ ನೀಡಿದರು.
             ತಾಯಿಯವರು ಪ್ರತಿಯೊಂದು ಹೊಸ ಪದಕ್ಕೆ ಸರಳ ಅರ್ಥ ಕಂಡುಹಿಡಿದು ಉಳಿಸಿಕೊಳ್ಳು ಎಂದು ಹೇಳಿದರು.
             ದಿನದ ಕೊನೆಯಲ್ಲಿ ನಾನು ಕಲಿತ ಪದಗಳನ್ನು ಮರುಪಠಿಸಿ ನಾಳೆಯ ಗುರಿ ಬರೆದೆ.
-            """
+            """,
+            language: .kannada
         ),
         SampleSeedDocument(
             title: "Kannada Reading: Daily Learning",
@@ -55,7 +94,17 @@ enum SampleDocuments {
 
             ನೆನಪಿರಲಿ: ಚಿಕ್ಕ ಪ್ರಗತಿ ಕೂಡ ಪ್ರಗತியே.
             ಇಂದಿನ ಹತ್ತು ಪದಗಳು ನಾಳೆಯ ಸುಗಮ ಓದಿಗೆ ನೆಲೆ ಸಿದ್ಧಪಡಿಸುತ್ತವೆ.
-            """
+            """,
+            language: .kannada
         )
     ]
+
+    static func initial(for language: SupportedLanguage) -> [SampleSeedDocument] {
+        switch language {
+        case .german:
+            return german
+        case .kannada:
+            return kannada
+        }
+    }
 }

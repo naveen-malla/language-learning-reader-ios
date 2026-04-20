@@ -5,9 +5,9 @@ final class DictionaryManager {
     static let cloudFallbackEnabledKey = "dictionaryCloudFallbackEnabled"
     static let cloudFallbackTargetLanguageKey = "dictionaryCloudFallbackTargetLanguage"
 
-    private let provider: DictionaryProvider
+    private let providersByLanguage: [String: DictionaryProvider]
     private let normalizer = TextNormalizer()
-    private let overrideStore: DictionaryOverrideStore
+    private let overrideStoresByLanguage: [String: DictionaryOverrideStore]
     private let cloudStore: DictionaryCloudMeaningStore
     private let remoteProvider: RemoteWordMeaningProviding?
     private let sourceLanguageProvider: () -> String
@@ -16,45 +16,60 @@ final class DictionaryManager {
 
     init(
         provider: DictionaryProvider? = nil,
+        providersByLanguage: [String: DictionaryProvider]? = nil,
         overrideStore: DictionaryOverrideStore? = nil,
+        overrideStoresByLanguage: [String: DictionaryOverrideStore]? = nil,
         cloudStore: DictionaryCloudMeaningStore? = nil,
         remoteProvider: RemoteWordMeaningProviding? = AzureRemoteWordMeaningProvider(),
         sourceLanguageProvider: (() -> String)? = nil,
         targetLanguageProvider: (() -> String)? = nil,
         defaults: UserDefaults = .standard
     ) {
-        if let provider {
-            self.provider = provider
+        if let providersByLanguage {
+            self.providersByLanguage = providersByLanguage
+        } else if let provider {
+            self.providersByLanguage = SupportedLanguage.allCases.reduce(into: [:]) { result, language in
+                result[language.rawValue] = provider
+            }
         } else {
-            self.provider = DictionaryManager.makeProvider()
+            self.providersByLanguage = DictionaryManager.makeProviders()
         }
-        self.overrideStore = overrideStore ?? DictionaryOverrideStore(
-            fileURL: DictionaryPaths.documentsOverridesURL(),
-            missingURL: DictionaryPaths.documentsMissingURL()
-        )
+        if let overrideStoresByLanguage {
+            self.overrideStoresByLanguage = overrideStoresByLanguage
+        } else if let overrideStore {
+            self.overrideStoresByLanguage = SupportedLanguage.allCases.reduce(into: [:]) { result, language in
+                result[language.rawValue] = overrideStore
+            }
+        } else {
+            self.overrideStoresByLanguage = DictionaryManager.makeOverrideStores()
+        }
         self.cloudStore = cloudStore ?? DictionaryCloudMeaningStore(
             fileURL: DictionaryPaths.documentsCloudCacheURL()
         )
         self.remoteProvider = remoteProvider
         self.defaults = defaults
         self.sourceLanguageProvider = sourceLanguageProvider ?? {
-            TranslationSettingsStore(defaults: defaults).sourceLanguage
+            StudyLanguageSettingsStore(defaults: defaults).studyLanguageCode
         }
         self.targetLanguageProvider = targetLanguageProvider ?? {
             TranslationSettingsStore(defaults: defaults).targetLanguage
         }
     }
 
-    func lookup(_ word: String) -> String? {
-        lookupDetailed(word).meaning
+    func lookup(_ word: String, languageCode: String? = nil) -> String? {
+        lookupDetailed(word, languageCode: languageCode).meaning
     }
 
-    func lookupDetailed(_ word: String) -> DictionaryLookupResult {
-        lookupDetailed(word, includeCloudCache: true)
+    func lookupDetailed(_ word: String, languageCode: String? = nil) -> DictionaryLookupResult {
+        lookupDetailed(word, includeCloudCache: true, languageCodeOverride: languageCode)
     }
 
-    func lookupDetailedWithRemoteFallback(_ word: String) async -> DictionaryLookupResult {
-        let baseline = lookupDetailed(word, includeCloudCache: true)
+    func lookupDetailedWithRemoteFallback(
+        _ word: String,
+        languageCode: String? = nil,
+        targetLanguage: String? = nil
+    ) async -> DictionaryLookupResult {
+        let baseline = lookupDetailed(word, includeCloudCache: true, languageCodeOverride: languageCode)
         guard baseline.meaning == nil else {
             return baseline
         }
@@ -68,14 +83,14 @@ final class DictionaryManager {
             return baseline
         }
 
-        let sourceLanguage = activeSourceLanguageCode
-        let targetLanguage = activeTargetLanguageCode
+        let sourceLanguage = normalizeLanguageCode(languageCode ?? activeSourceLanguageCode)
+        let resolvedTargetLanguage = normalizedTargetLanguageCode(targetLanguage)
 
         guard
             let remoteMeaning = await remoteProvider.lookupMeaning(
                 for: lookupWord,
                 sourceLanguage: sourceLanguage,
-                targetLanguage: targetLanguage
+                targetLanguage: resolvedTargetLanguage
             )
         else {
             return baseline
@@ -101,7 +116,11 @@ final class DictionaryManager {
         )
     }
 
-    func prefetchRemoteMeanings(for words: [String]) async {
+    func prefetchRemoteMeanings(
+        for words: [String],
+        languageCode: String? = nil,
+        targetLanguage: String? = nil
+    ) async {
         guard isCloudFallbackEnabled, remoteProvider != nil else {
             return
         }
@@ -114,12 +133,16 @@ final class DictionaryManager {
             }
             seen.insert(normalized)
 
-            let local = lookupDetailed(word, includeCloudCache: true)
+            let local = lookupDetailed(word, includeCloudCache: true, languageCodeOverride: languageCode)
             guard local.meaning == nil else {
                 continue
             }
 
-            _ = await lookupDetailedWithRemoteFallback(word)
+            _ = await lookupDetailedWithRemoteFallback(
+                word,
+                languageCode: languageCode,
+                targetLanguage: targetLanguage
+            )
         }
     }
 
@@ -286,11 +309,14 @@ final class DictionaryManager {
         normalizeLanguageCode(sourceLanguageProvider())
     }
 
-    private var activeTargetLanguageCode: String {
-        let override = defaults.string(forKey: Self.cloudFallbackTargetLanguageKey)
-        let raw = (override?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
-            ? (override ?? "")
-            : targetLanguageProvider()
+    private func normalizedTargetLanguageCode(_ explicitOverride: String?) -> String {
+        let storedOverride = defaults.string(forKey: Self.cloudFallbackTargetLanguageKey)
+        let raw = firstNonEmptyLanguageCode(
+            explicitOverride,
+            storedOverride,
+            targetLanguageProvider(),
+            TranslationSettingsStore.defaultTargetLanguage
+        )
         let normalized = normalizeLanguageCode(raw)
         return normalized.isEmpty ? "en" : normalized
     }
@@ -340,7 +366,7 @@ final class DictionaryManager {
             )
         }
 
-        if let overrideMeaning = overrideStore.lookup(normalizedKey: normalized) {
+        if let overrideMeaning = overrideStore(for: languageCode).lookup(normalizedKey: normalized) {
             return DictionaryLookupResult(
                 word: word,
                 normalizedKey: normalized,
@@ -351,9 +377,10 @@ final class DictionaryManager {
         }
 
         let candidates = candidateKeys(for: word, languageCode: languageCode)
+        let provider = provider(for: languageCode)
         for key in candidates {
             if let raw = provider.lookup(normalizedKey: key) {
-                if let resolved = resolveMeaning(raw, for: key) {
+                if let resolved = resolveMeaning(raw, for: key, provider: provider) {
                     let basePath: DictionaryLookupResult.Path = (key == normalized) ? .direct : .suffix
                     let path = resolved.isRedirect ? .redirect : basePath
                     return DictionaryLookupResult(
@@ -388,35 +415,56 @@ final class DictionaryManager {
     }
 
     var sourceDescription: String {
-        provider.sourceDescription
+        sourceDescription(for: activeSourceLanguageCode)
     }
 
-    func ensureOverridesFile() {
-        overrideStore.ensureOverridesFile()
+    func sourceDescription(for languageCode: String?) -> String {
+        provider(for: languageCode ?? activeSourceLanguageCode).sourceDescription
     }
 
-    func setOverride(word: String, meaning: String) {
-        overrideStore.setOverride(word: word, meaning: meaning)
+    func ensureOverridesFile(languageCode: String? = nil) {
+        overrideStore(for: languageCode ?? activeSourceLanguageCode).ensureOverridesFile()
     }
 
-    func reportMissing(word: String) {
-        overrideStore.appendMissing(word: word)
+    func setOverride(word: String, meaning: String, languageCode: String? = nil) {
+        overrideStore(for: languageCode ?? activeSourceLanguageCode).setOverride(word: word, meaning: meaning)
     }
 
-    static func makeProvider() -> DictionaryProvider {
-        if let url = DictionaryPaths.documentsDictionaryURL(),
-           FileManager.default.fileExists(atPath: url.path),
-           let sqliteProvider = SQLiteDictionaryProvider(fileURL: url, sourceDescription: "Local dictionary file") {
-            return sqliteProvider
+    func reportMissing(word: String, languageCode: String? = nil) {
+        overrideStore(for: languageCode ?? activeSourceLanguageCode).appendMissing(word: word)
+    }
+
+    static func makeProviders() -> [String: DictionaryProvider] {
+        SupportedLanguage.allCases.reduce(into: [:]) { result, language in
+            result[language.rawValue] = makeProvider(languageCode: language.rawValue)
         }
+    }
 
-        if let url = DictionaryPaths.bundledDictionaryURL(),
+    static func makeProvider(languageCode: String) -> DictionaryProvider {
+        let resolvedLanguage = SupportedLanguage.legacyResolved(languageCode)
+
+        if let url = DictionaryPaths.documentsDictionaryURL(languageCode: resolvedLanguage.rawValue),
            FileManager.default.fileExists(atPath: url.path),
            let sqliteProvider = SQLiteDictionaryProvider(fileURL: url, sourceDescription: "Bundled dictionary file") {
             return sqliteProvider
         }
 
-        return SampleDictionaryProvider()
+        if let url = DictionaryPaths.bundledDictionaryURL(languageCode: resolvedLanguage.rawValue),
+           FileManager.default.fileExists(atPath: url.path),
+           let sqliteProvider = SQLiteDictionaryProvider(fileURL: url, sourceDescription: "Bundled dictionary file") {
+            return sqliteProvider
+        }
+
+        return SampleDictionaryProvider(languageCode: resolvedLanguage.rawValue)
+    }
+
+    static func makeOverrideStores() -> [String: DictionaryOverrideStore] {
+        SupportedLanguage.allCases.reduce(into: [:]) { result, language in
+            result[language.rawValue] = DictionaryOverrideStore(
+                fileURL: DictionaryPaths.documentsOverridesURL(languageCode: language.rawValue),
+                missingURL: DictionaryPaths.documentsMissingURL(languageCode: language.rawValue)
+            )
+        }
     }
 
     private func candidateKeys(for word: String, languageCode: String) -> [String] {
@@ -444,10 +492,14 @@ final class DictionaryManager {
         text.trimmingCharacters(in: CharacterSet.punctuationCharacters)
     }
 
-    private func resolveMeaning(_ meaning: String, for key: String) -> (meaning: String, isRedirect: Bool)? {
+    private func resolveMeaning(
+        _ meaning: String,
+        for key: String,
+        provider: DictionaryProvider
+    ) -> (meaning: String, isRedirect: Bool)? {
         let trimmed = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("=") {
-            if let redirected = resolveRedirect(trimmed, for: key) {
+            if let redirected = resolveRedirect(trimmed, for: key, provider: provider) {
                 return (redirected, true)
             }
             return nil
@@ -459,7 +511,7 @@ final class DictionaryManager {
         return nil
     }
 
-    private func resolveRedirect(_ meaning: String, for key: String) -> String? {
+    private func resolveRedirect(_ meaning: String, for key: String, provider: DictionaryProvider) -> String? {
         var redirect = meaning
         redirect.removeFirst()
         redirect = redirect.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -474,6 +526,22 @@ final class DictionaryManager {
         }
 
         return nil
+    }
+
+    private func provider(for languageCode: String) -> DictionaryProvider {
+        let resolvedLanguage = SupportedLanguage.legacyResolved(languageCode).rawValue
+        if let provider = providersByLanguage[resolvedLanguage] {
+            return provider
+        }
+        return SampleDictionaryProvider(languageCode: resolvedLanguage)
+    }
+
+    private func overrideStore(for languageCode: String) -> DictionaryOverrideStore {
+        let resolvedLanguage = SupportedLanguage.legacyResolved(languageCode).rawValue
+        if let store = overrideStoresByLanguage[resolvedLanguage] {
+            return store
+        }
+        return DictionaryOverrideStore(fileURL: nil, missingURL: nil)
     }
 
     private func cleanMeaning(_ meaning: String, for key: String) -> String? {
@@ -571,7 +639,17 @@ final class DictionaryManager {
     }
 
     private func normalizeLanguageCode(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        LanguageTextHeuristics.canonicalLanguageCode(value)
+    }
+
+    private func firstNonEmptyLanguageCode(_ candidates: String?...) -> String {
+        for candidate in candidates {
+            let normalized = normalizeLanguageCode(candidate ?? "")
+            if !normalized.isEmpty {
+                return normalized
+            }
+        }
+        return ""
     }
 
     private func ratio(_ numerator: Int, _ denominator: Int) -> Double {
@@ -706,6 +784,7 @@ struct DictionaryQualityFixture {
     private static var fixturesByLanguage: [String: DictionaryQualityFixture] {
         [
             "kn": .kannadaCoreV1,
+            "de": .germanCoreV1,
             "en": .englishCoreV1
         ]
     }
@@ -784,6 +863,41 @@ struct DictionaryQualityFixture {
             .init(word: "window", acceptedMeanings: ["window"]),
             .init(word: "letter", acceptedMeanings: ["letter"]),
             .init(word: "market", acceptedMeanings: ["market"])
+        ],
+        thresholds: DictionaryQualityThresholds(
+            tokenCoverageMinimum: 0.70,
+            uniqueCoverageMinimum: 0.60,
+            goldHitRateMinimum: 0.80,
+            goldAccuracyMinimum: 0.60
+        )
+    )
+
+    static let germanCoreV1 = DictionaryQualityFixture(
+        name: "German Core V1",
+        languageCode: "de",
+        corpusSentences: [
+            "Hallo, das ist mein Haus.",
+            "Er liest jeden Morgen ein Buch.",
+            "Wir gehen heute zur Schule.",
+            "Sie trinken kaltes Wasser.",
+            "Die Geschichte ist kurz, aber klar.",
+            "Sprache lernen braucht Zeit.",
+            "Das Kind öffnet das Fenster.",
+            "Sie schreibt einen Brief.",
+            "Wir gehen am Morgen zum Markt.",
+            "Die Antwort auf die Frage war einfach."
+        ],
+        goldEntries: [
+            .init(word: "hallo", acceptedMeanings: ["hello"]),
+            .init(word: "haus", acceptedMeanings: ["house", "home"]),
+            .init(word: "buch", acceptedMeanings: ["book"]),
+            .init(word: "schule", acceptedMeanings: ["school"]),
+            .init(word: "wasser", acceptedMeanings: ["water"]),
+            .init(word: "geschichte", acceptedMeanings: ["story"]),
+            .init(word: "sprache", acceptedMeanings: ["language"]),
+            .init(word: "fenster", acceptedMeanings: ["window"]),
+            .init(word: "brief", acceptedMeanings: ["letter"]),
+            .init(word: "markt", acceptedMeanings: ["market"])
         ],
         thresholds: DictionaryQualityThresholds(
             tokenCoverageMinimum: 0.70,

@@ -19,31 +19,42 @@ final class IgnoredWordsStoreTests: XCTestCase {
     }
 
     func testAddContainsAndRemove() {
-        let store = IgnoredWordsStore(defaults: defaults, storageKey: "ignored_test")
+        let store = IgnoredWordsStore(defaults: defaults, storageKeyPrefix: "ignored_test")
 
-        XCTAssertFalse(store.contains(normalizedKey: "word"))
+        XCTAssertFalse(store.contains(normalizedKey: "word", languageCode: "de"))
 
-        store.add(normalizedKey: "word")
+        store.add(normalizedKey: "word", languageCode: "de")
 
-        XCTAssertTrue(store.contains(normalizedKey: "word"))
-        XCTAssertEqual(store.allKeys(), ["word"])
+        XCTAssertTrue(store.contains(normalizedKey: "word", languageCode: "de"))
+        XCTAssertEqual(store.allKeys(languageCode: "de"), ["word"])
 
-        store.remove(normalizedKey: "word")
+        store.remove(normalizedKey: "word", languageCode: "de")
 
-        XCTAssertFalse(store.contains(normalizedKey: "word"))
-        XCTAssertTrue(store.allKeys().isEmpty)
+        XCTAssertFalse(store.contains(normalizedKey: "word", languageCode: "de"))
+        XCTAssertTrue(store.allKeys(languageCode: "de").isEmpty)
     }
 
     func testPersistsAcrossStoreInstances() {
         let storageKey = "ignored_shared"
-        let writer = IgnoredWordsStore(defaults: defaults, storageKey: storageKey)
+        let writer = IgnoredWordsStore(defaults: defaults, storageKeyPrefix: storageKey)
 
-        writer.add(normalizedKey: "alpha")
-        writer.add(normalizedKey: "beta")
+        writer.add(normalizedKey: "alpha", languageCode: "kn")
+        writer.add(normalizedKey: "beta", languageCode: "kn")
 
-        let reader = IgnoredWordsStore(defaults: defaults, storageKey: storageKey)
-        XCTAssertTrue(reader.contains(normalizedKey: "alpha"))
-        XCTAssertTrue(reader.contains(normalizedKey: "beta"))
-        XCTAssertEqual(reader.allKeys(), ["alpha", "beta"])
+        let reader = IgnoredWordsStore(defaults: defaults, storageKeyPrefix: storageKey)
+        XCTAssertTrue(reader.contains(normalizedKey: "alpha", languageCode: "kn"))
+        XCTAssertTrue(reader.contains(normalizedKey: "beta", languageCode: "kn"))
+        XCTAssertEqual(reader.allKeys(languageCode: "kn"), ["alpha", "beta"])
+    }
+
+    func testMigratesLegacyEntriesIntoKannadaScope() {
+        defaults.set(["old"], forKey: "ignored_normalized_words_v1")
+        let store = IgnoredWordsStore(defaults: defaults, storageKeyPrefix: "ignored_migrated")
+
+        store.migrateLegacyEntriesIfNeeded(to: .kannada)
+
+        XCTAssertFalse(store.hasLegacyEntries)
+        XCTAssertEqual(store.allKeys(languageCode: "kn"), ["old"])
+        XCTAssertTrue((defaults.array(forKey: "ignored_normalized_words_v1") as? [String] ?? []).isEmpty)
     }
 }

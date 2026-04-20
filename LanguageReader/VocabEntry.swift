@@ -127,7 +127,9 @@ enum VocabStatus: String, Codable, CaseIterable {
 @Model
 final class VocabEntry {
     @Attribute(.unique) var id: UUID
-    @Attribute(.unique) var normalizedKey: String
+    var normalizedKey: String
+    @Attribute(.unique) var scopedKey: String?
+    var languageCodeRaw: String?
     var word: String
     var meaning: String
     var status: VocabStatus
@@ -147,6 +149,7 @@ final class VocabEntry {
     init(
         word: String,
         normalizedKey: String,
+        languageCode: SupportedLanguage = StudyLanguageSettingsStore().studyLanguage,
         meaning: String,
         status: VocabStatus = .level1,
         createdAt: Date = Date(),
@@ -165,6 +168,8 @@ final class VocabEntry {
         self.id = UUID()
         self.word = word
         self.normalizedKey = normalizedKey
+        self.languageCodeRaw = languageCode.rawValue
+        self.scopedKey = Self.makeScopedKey(languageCode: languageCode.rawValue, normalizedKey: normalizedKey)
         self.meaning = meaning
         self.status = status
         self.createdAt = createdAt
@@ -179,5 +184,20 @@ final class VocabEntry {
         self.srsStability = srsStability
         self.srsDifficulty = srsDifficulty
         self.srsAlgorithm = srsAlgorithm
+    }
+
+    var languageCode: SupportedLanguage {
+        get {
+            SupportedLanguage.legacyResolved(languageCodeRaw)
+        }
+        set {
+            languageCodeRaw = newValue.rawValue
+            scopedKey = Self.makeScopedKey(languageCode: newValue.rawValue, normalizedKey: normalizedKey)
+        }
+    }
+
+    static func makeScopedKey(languageCode: String, normalizedKey: String) -> String {
+        let normalizedLanguage = SupportedLanguage.legacyResolved(languageCode).rawValue
+        return "\(normalizedLanguage)|\(normalizedKey)"
     }
 }

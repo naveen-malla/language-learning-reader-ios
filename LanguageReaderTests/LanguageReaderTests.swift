@@ -8,6 +8,7 @@ final class LanguageReaderTests: XCTestCase {
 
         XCTAssertEqual(document.title, "Title")
         XCTAssertEqual(document.body, "Body")
+        XCTAssertEqual(document.languageCode, StudyLanguageSettingsStore().studyLanguage)
         XCTAssertEqual(document.createdAt, date)
         XCTAssertEqual(document.updatedAt, date)
     }
@@ -17,6 +18,14 @@ final class LanguageReaderTests: XCTestCase {
 
         XCTAssertEqual(entry.word, "Hello")
         XCTAssertEqual(entry.normalizedKey, "hello")
+        XCTAssertEqual(entry.languageCode, StudyLanguageSettingsStore().studyLanguage)
+        XCTAssertEqual(
+            entry.scopedKey,
+            VocabEntry.makeScopedKey(
+                languageCode: StudyLanguageSettingsStore().studyLanguage.rawValue,
+                normalizedKey: "hello"
+            )
+        )
         XCTAssertEqual(entry.meaning, "hi")
         XCTAssertEqual(entry.status, .level1)
         XCTAssertEqual(entry.encounterCount, 1)
@@ -54,6 +63,7 @@ final class LanguageReaderTests: XCTestCase {
         )
 
         XCTAssertEqual(entry.status, .level2)
+        XCTAssertEqual(entry.languageCode, StudyLanguageSettingsStore().studyLanguage)
         XCTAssertEqual(entry.createdAt, createdAt)
         XCTAssertEqual(entry.lastSeenAt, lastSeenAt)
         XCTAssertEqual(entry.encounterCount, 7)
