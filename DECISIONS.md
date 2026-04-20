@@ -104,15 +104,15 @@ This file records durable architecture and product decisions. Active checklist w
 - Optional only; no runtime dependency in MVP.
 - API key stored in Keychain.
 - Azure Translator is the first network provider for sentence translation (`source -> en`) when configured.
-- Azure Translator is also the primary V1 path for English subtitle translation in `Watch` mode; subtitle translation is generated on first video-mode entry and cached locally on the document.
+- Azure Translator is also the primary path for English subtitle translation in `Watch` mode; translation now starts prefetching on reader open for imported videos and is cached locally on the document.
 - Endpoint + source/target language are stored in `UserDefaults`; API key remains in Keychain. Region is stored when provided and treated as optional for global translator resources.
 - Translator endpoint must be an absolute `http/https` URL with a host to avoid invalid runtime configurations.
 - Active subtitle selection advances at exact cue starts and intentionally keeps the previous cue selected through short gaps so the lyric-style highlight remains stable during playback and seeking.
 - Sentence translation has a secondary public web fallback provider so no-key setups still get best-effort translations at tap time.
 - Translator client and subtitle translation reject empty, unchanged, or obviously source-language output using language-aware heuristics instead of Kannada-only checks.
 - Reader keeps an in-memory sentence translation cache to reduce repeated request latency/cost.
-- Subtitle translation uses the same Azure settings store as sentence translation, but it does not use the public fallback provider; if Azure is unavailable or returns unusable output, the reader stays in source-language-only subtitle mode with explicit fallback messaging.
-- Subtitle fallback messaging is intentionally split into missing-configuration, Azure-request-failed, rejected-output, and cached-English states so playback problems are diagnosable without reading logs.
+- Subtitle translation uses the same Azure settings store as sentence translation and falls back to the public translator when Azure is unavailable, misconfigured, or returns unreadable output.
+- Subtitle fallback messaging stays simple at runtime: keep playback usable, prefer cached English cues when present, and only surface a generic unavailable state when no readable English subtitle path succeeds.
 - Cloud/public/fallback outputs all pass the same readability gate before display, so mixed Kannada+English sentence output is rejected.
 - Failed/unavailable sentence translation outcomes are intentionally not cached, so a new tap reattempts network paths.
 - If network translation is unavailable, reader falls back to offline gloss only when gloss readability is high; otherwise it returns explicit unavailable status text instead of mixed-script output.

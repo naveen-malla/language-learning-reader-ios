@@ -11,20 +11,20 @@ enum SubtitleTranslationLoadResult: Equatable {
 }
 
 actor SubtitleTranslationService {
-    static let needsConfigurationMessage = "Configure Azure in Settings to generate English subtitles."
-    static let requestFailedMessage = "Azure subtitle request failed. Check endpoint, API key, or region and retry."
-    static let rejectedOutputMessage = "English subtitles were rejected because the translation was not readable."
     static let unavailableMessage = "English subtitles unavailable right now."
 
     private let settingsStore: TranslationSettingsStore
     private let translator: AzureSubtitleCueTranslating
+    private let publicTranslator: PublicSentenceTranslating
 
     init(
         settingsStore: TranslationSettingsStore = TranslationSettingsStore(),
-        translator: AzureSubtitleCueTranslating = AzureSubtitleCueTranslator()
+        translator: AzureSubtitleCueTranslating = AzureSubtitleCueTranslator(),
+        publicTranslator: PublicSentenceTranslating = PublicWebTranslatorClient()
     ) {
         self.settingsStore = settingsStore
         self.translator = translator
+        self.publicTranslator = publicTranslator
     }
 
     func translateIfNeeded(
@@ -41,45 +41,41 @@ actor SubtitleTranslationService {
             return .cached(compatible)
         }
 
-        guard let configuration = settingsStore.configuration() else {
-            return .unavailable(Self.needsConfigurationMessage)
-        }
-
         let requestedSourceLanguage = LanguageTextHeuristics.canonicalLanguageCode(sourceLanguage)
-        let configuredSourceLanguage = LanguageTextHeuristics.canonicalLanguageCode(configuration.sourceLanguage)
+        let configuredSourceLanguage = LanguageTextHeuristics.canonicalLanguageCode(settingsStore.sourceLanguage)
         let resolvedSourceLanguage = requestedSourceLanguage.isEmpty
             ? configuredSourceLanguage
             : requestedSourceLanguage
         let resolvedTargetLanguage = LanguageTextHeuristics.canonicalLanguageCode(targetLanguage)
-        let englishConfiguration = AzureTranslatorConfiguration(
-            endpoint: configuration.endpoint,
-            region: configuration.region,
-            apiKey: configuration.apiKey,
-            sourceLanguage: resolvedSourceLanguage,
-            targetLanguage: resolvedTargetLanguage.isEmpty ? "en" : resolvedTargetLanguage
-        )
+        let resolvedTargetLanguageCode = resolvedTargetLanguage.isEmpty ? "en" : resolvedTargetLanguage
 
-        do {
-            let translatedTexts = try await translator.translate(
-                texts: sourceCues.map(\.sourceText),
-                configuration: englishConfiguration
+        if let configuration = settingsStore.configuration() {
+            let englishConfiguration = AzureTranslatorConfiguration(
+                endpoint: configuration.endpoint,
+                region: configuration.region,
+                apiKey: configuration.apiKey,
+                sourceLanguage: resolvedSourceLanguage,
+                targetLanguage: resolvedTargetLanguageCode
             )
-            guard translatedTexts.count == sourceCues.count else {
-                return .unavailable(Self.requestFailedMessage)
-            }
 
-            guard let translatedCues = makeTranslatedCues(
+            if let translated = await translateWithAzure(
                 sourceCues: sourceCues,
-                translatedTexts: translatedTexts,
+                configuration: englishConfiguration,
                 sourceLanguage: resolvedSourceLanguage
-            ) else {
-                return .unavailable(Self.rejectedOutputMessage)
+            ) {
+                return .translated(translated)
             }
-
-            return .translated(translatedCues)
-        } catch {
-            return .unavailable(Self.requestFailedMessage)
         }
+
+        if let translated = await translateWithPublicFallback(
+            sourceCues: sourceCues,
+            sourceLanguage: resolvedSourceLanguage,
+            targetLanguage: resolvedTargetLanguageCode
+        ) {
+            return .translated(translated)
+        }
+
+        return .unavailable(Self.unavailableMessage)
     }
 
     private func makeTranslatedCues(
@@ -128,6 +124,58 @@ actor SubtitleTranslationService {
         }
 
         return trimmed
+    }
+
+    private func translateWithAzure(
+        sourceCues: [TimedSubtitleCue],
+        configuration: AzureTranslatorConfiguration,
+        sourceLanguage: String
+    ) async -> [TranslatedSubtitleCue]? {
+        do {
+            let translatedTexts = try await translator.translate(
+                texts: sourceCues.map(\.sourceText),
+                configuration: configuration
+            )
+            guard translatedTexts.count == sourceCues.count else {
+                return nil
+            }
+
+            return makeTranslatedCues(
+                sourceCues: sourceCues,
+                translatedTexts: translatedTexts,
+                sourceLanguage: sourceLanguage
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private func translateWithPublicFallback(
+        sourceCues: [TimedSubtitleCue],
+        sourceLanguage: String,
+        targetLanguage: String
+    ) async -> [TranslatedSubtitleCue]? {
+        var translatedTexts: [String] = []
+        translatedTexts.reserveCapacity(sourceCues.count)
+
+        for cue in sourceCues {
+            do {
+                let translated = try await publicTranslator.translate(
+                    text: cue.sourceText,
+                    sourceLanguage: sourceLanguage,
+                    targetLanguage: targetLanguage
+                )
+                translatedTexts.append(translated)
+            } catch {
+                return nil
+            }
+        }
+
+        return makeTranslatedCues(
+            sourceCues: sourceCues,
+            translatedTexts: translatedTexts,
+            sourceLanguage: sourceLanguage
+        )
     }
 }
 

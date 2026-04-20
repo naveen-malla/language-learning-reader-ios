@@ -7,6 +7,7 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("vocab"), .tab(.vocab))
         XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("flashcards"), .tab(.flashcards))
         XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("settings"), .tab(.settings))
+        XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("flashcards-session"), .flashcardsSession)
     }
 
     func testParseRouteSupportsReaderAndIgnoresUnknownValues() {
@@ -40,13 +41,14 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
             environment: [:],
             arguments: [
                 ScreenshotLaunchConfiguration.seedDemoDataArgument,
-                "\(ScreenshotLaunchConfiguration.routeArgumentPrefix)flashcards"
+                "\(ScreenshotLaunchConfiguration.routeArgumentPrefix)flashcards-session"
             ]
         )
 
         let configuration = ScreenshotLaunchConfiguration(processInfo: processInfo)
 
-        XCTAssertEqual(configuration.route, .tab(.flashcards))
+        XCTAssertEqual(configuration.route, .flashcardsSession)
+        XCTAssertEqual(configuration.initialTab, .flashcards)
         XCTAssertTrue(configuration.shouldSeedDemoData)
         XCTAssertFalse(configuration.shouldRunAutoTopUp)
     }

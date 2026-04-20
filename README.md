@@ -23,10 +23,6 @@ The UI remains in English. Language support here refers to the content language 
 | --- | --- |
 | ![German Vocab](docs/screenshots/v2/vocab.png) | ![German Flashcards](docs/screenshots/v2/flashcards.png) |
 
-| Settings |
-| --- |
-| ![Language Settings](docs/screenshots/v2/settings.png) |
-
 ## Product Snapshot
 
 - Library-first home with study-language selection, text import, file import, YouTube URL import, and one-tap lesson pulls.
@@ -35,7 +31,7 @@ The UI remains in English. Language support here refers to the content language 
 - Shared learning state across Reader, Vocab, and Flashcards, scoped by the selected study language.
 - Due-based flashcards with simple right/wrong review and daily telemetry.
 - Subtitle-gated YouTube discovery/import/watch flow parameterized by the active study language.
-- English-target sentence and subtitle translation with language-aware rejection of unchanged or obviously source-language output.
+- English-target sentence and subtitle translation with language-aware rejection of unchanged or obviously source-language output, plus best-effort fallback when Azure is unavailable.
 
 ## Learning Flow
 
@@ -88,7 +84,7 @@ python3 scripts/evaluate_dictionary.py --source-language kn --report-json /tmp/k
 - German requires real `de*` subtitle tracks.
 - Kannada keeps the existing direct-`kn` preference with translated fallback when direct tracks are missing.
 - Imported YouTube lessons persist flattened text, timed subtitle cues, and language metadata for later Reader/Watch use.
-- Watch mode keeps English subtitle translation optional and non-blocking.
+- Watch mode starts English subtitle translation in the background as soon as you open a video lesson, then reuses cached English cues when available.
 
 ## Quick Start
 

@@ -183,6 +183,7 @@ struct DocumentReaderView: View {
             )
             videoDuration = Double(document.sourceDurationSeconds ?? 0)
             loadLegacySubtitleCuesIfNeeded()
+            prefetchEnglishSubtitlesIfNeeded()
         }
         .onChange(of: document.body) { _, _ in
             refreshSentenceBlocks()
@@ -441,6 +442,7 @@ struct DocumentReaderView: View {
                         document.subtitleCues = loadedCues
                         document.updatedAt = Date()
                         try? modelContext.save()
+                        prefetchEnglishSubtitlesIfNeeded()
                     }
 
                     isLoadingLegacySubtitleCues = false
@@ -541,6 +543,20 @@ struct DocumentReaderView: View {
     private func loadEnglishSubtitlesIfNeeded(force: Bool = false) {
         guard supportsVideoMode else { return }
 
+        if !force {
+            if let compatible = SubtitleCueTimeline.compatibleTranslatedCues(
+                from: translatedSubtitleCues ?? document.translatedSubtitleCues,
+                with: subtitleCues
+            ) {
+                translatedSubtitleCues = compatible
+                subtitleTranslationMessage = nil
+                isLoadingSubtitleTranslation = false
+                return
+            }
+
+            guard !isLoadingSubtitleTranslation else { return }
+        }
+
         subtitleTranslationTask?.cancel()
         isLoadingSubtitleTranslation = true
         subtitleTranslationMessage = nil
@@ -579,6 +595,12 @@ struct DocumentReaderView: View {
                 isLoadingSubtitleTranslation = false
             }
         }
+    }
+
+    private func prefetchEnglishSubtitlesIfNeeded() {
+        guard hasVideoSource else { return }
+        guard subtitleCues.isEmpty == false else { return }
+        loadEnglishSubtitlesIfNeeded()
     }
 
     private func learningState(for word: String) -> WordLearningVisualState {
@@ -1208,7 +1230,7 @@ private struct VideoSubtitlePanel: View {
     private var translationStatusText: String? {
         guard let translationMessage else { return nil }
 
-        if translatedCues != nil, translationMessage != SubtitleTranslationService.needsConfigurationMessage {
+        if translatedCues != nil {
             return "Using cached English subtitles."
         }
 
@@ -1216,36 +1238,25 @@ private struct VideoSubtitlePanel: View {
     }
 
     private var translationStatusSystemImage: String {
-        guard let translationMessage else { return "info.circle" }
-
-        if translationMessage == SubtitleTranslationService.needsConfigurationMessage {
-            return "gearshape"
-        }
-
         if translatedCues != nil {
             return "arrow.triangle.2.circlepath"
         }
 
+        guard translationMessage != nil else { return "info.circle" }
         return "exclamationmark.triangle"
     }
 
     private var translationStatusColor: Color {
-        guard let translationMessage else { return Theme.learningHighlight }
-
-        if translationMessage == SubtitleTranslationService.needsConfigurationMessage {
-            return Color.orange.opacity(0.9)
-        }
-
         if translatedCues != nil {
             return Theme.learningHighlight
         }
 
+        guard translationMessage != nil else { return Theme.learningHighlight }
         return Color.orange.opacity(0.9)
     }
 
     private var showsRetryButton: Bool {
-        guard let translationMessage else { return false }
-        return translationMessage != SubtitleTranslationService.needsConfigurationMessage
+        translationMessage != nil
     }
 
     private func translatedCue(at index: Int) -> TranslatedSubtitleCue? {

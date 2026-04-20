@@ -13,7 +13,7 @@ struct ContentView: View {
                 NavigationStack {
                     DocumentReaderView(document: screenshotLaunchConfiguration.readerDocument)
                 }
-            case .tab, .none:
+            case .tab, .flashcardsSession, .none:
                 tabShell
             }
         }

@@ -39,7 +39,7 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 - Flashcard daily telemetry aggregation and per-language separation are covered in `LanguageReaderTests/FlashcardStatsStoreTests.swift`.
 - Appearance mode mapping and dark/light selection behavior is covered in `LanguageReaderTests/AppAppearanceModeTests.swift`.
 - Subtitle cue timeline selection and translation-cache compatibility are covered in `LanguageReaderTests/SubtitleCueTimelineTests.swift`.
-- Subtitle translation cache/missing-config behavior is covered in `LanguageReaderTests/SubtitleTranslationServiceTests.swift`.
+- Subtitle translation cache, Azure-failure fallback, missing-config fallback, and unreadable-output rejection are covered in `LanguageReaderTests/SubtitleTranslationServiceTests.swift`.
 - Screenshot launch-route parsing is covered in `LanguageReaderTests/ScreenshotLaunchConfigurationTests.swift`.
 
 ## Verification Touchpoints
@@ -75,7 +75,8 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 - Two large sample documents are seeded on first launch and appear in `Library -> My Library`.
 - Screenshot capture routes are available for simulator-only documentation work:
   - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=library`
-  - supported routes: `library`, `vocab`, `flashcards`, `settings`, `reader`
+  - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=flashcards-session`
+  - supported routes: `library`, `vocab`, `flashcards`, `flashcards-session`, `settings`, `reader`
 - In sentence mode, swipe horizontally to move one sentence at a time.
 - Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
 - Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
@@ -91,10 +92,10 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 - `Watch` mode uses an embedded YouTube player inside the reader, with the top progress slider acting as a video scrubber.
 - Timed subtitle cues are stored locally on the document and drive subtitle sync during playback.
 - Older imported YouTube lessons that do not have stored timed cues lazily backfill them on reader open and show a disabled `Preparing` top-bar state while that recovery is running.
-- English subtitle generation happens on first `Watch` entry via Azure when configured, then reuses cached translated cues on later opens.
+- Imported video lessons start subtitle translation prefetch on reader open, then reuse cached translated cues on later `Watch` opens.
 - When English subtitle cues are available, the reader renders English as the primary lyric line with Kannada beneath it and a stronger active-cue treatment.
 - Active subtitle selection advances on exact cue starts and preserves the previous cue through short gaps so the highlight stays stable during play/pause/seek.
-- `Watch` mode now distinguishes missing Azure setup, Azure request failure, rejected unreadable English output, and cached-English reuse with separate status copy while keeping Kannada-only playback usable.
+- `Watch` mode keeps source-language playback usable when translation fails and will reuse cached English cues when a new translation attempt is unavailable.
 - Sentence pager clamps the current index after text edits to avoid landing on empty pages.
 - Tapping an unknown word now triggers optional cloud fallback (if enabled) and stores resolved meaning in local cloud cache.
 - Main tabs now share one visual system: pastel canvas, rounded surfaces, translucent tab bar, and status chips.
@@ -105,8 +106,8 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 3. Save settings; key is stored in Keychain.
 4. Use sentence mode -> `Translate sentence` to verify sentence translation and tap an unknown word to verify per-word cloud fallback.
 5. If Azure is unavailable, sentence translation should still attempt public web fallback before showing unavailable state.
-6. The same Azure settings also drive English subtitle generation in `Watch` mode, but subtitles do not use the public web fallback path.
-7. For imported YouTube lessons, enter `Watch` mode to verify English subtitle generation and cache reuse when Azure is configured.
+6. English subtitle generation also uses the same Azure settings first, but it now falls back to the public translator when Azure is unavailable or unreadable.
+7. For imported YouTube lessons, open the reader first to verify background subtitle prefetch, then enter `Watch` mode to verify cached English subtitle reuse.
 
 ## Install On iPhone (Keep Using Without Cable)
 1. Connect your iPhone via USB (or enable wireless debugging).

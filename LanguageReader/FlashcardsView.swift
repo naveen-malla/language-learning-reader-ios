@@ -17,9 +17,11 @@ struct FlashcardsView: View {
     @State private var sessionCorrect = 0
     @State private var isShowingSessionSettings = false
     @State private var todayStats: FlashcardDailyStats = .zero
+    @State private var hasAppliedScreenshotAutoStart = false
 
     private let transliterator = Transliterator()
     private let statsStore = FlashcardStatsStore.shared
+    private let screenshotLaunchConfiguration = ScreenshotLaunchConfiguration()
 
     private var selectedStudyLanguage: SupportedLanguage {
         SupportedLanguage.resolve(studyLanguageCode) ?? .freshInstallDefault
@@ -136,15 +138,19 @@ struct FlashcardsView: View {
             .onAppear {
                 runSimpleModeMigrationIfNeeded()
                 refreshDailyStats()
+                maybeStartScreenshotSession()
             }
             .onChange(of: languageEntries.count) { _, _ in
                 runSimpleModeMigrationIfNeeded()
                 refreshDailyStats()
+                maybeStartScreenshotSession()
             }
             .onChange(of: studyLanguageCode) { _, _ in
                 closeSession()
+                hasAppliedScreenshotAutoStart = false
                 runSimpleModeMigrationIfNeeded()
                 refreshDailyStats()
+                maybeStartScreenshotSession()
             }
         }
     }
@@ -764,6 +770,16 @@ struct FlashcardsView: View {
         }
 
         simpleModeMigrationApplied = true
+    }
+
+    private func maybeStartScreenshotSession() {
+        guard screenshotLaunchConfiguration.route == .flashcardsSession else { return }
+        guard hasAppliedScreenshotAutoStart == false else { return }
+        guard hasActiveSession == false else { return }
+        guard dueEntries.isEmpty == false else { return }
+
+        hasAppliedScreenshotAutoStart = true
+        startSession()
     }
 
     private func transliteration(for word: String) -> String? {

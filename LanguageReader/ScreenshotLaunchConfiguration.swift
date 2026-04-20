@@ -11,6 +11,7 @@ enum AppLaunchTab: String, CaseIterable, Hashable {
 struct ScreenshotLaunchConfiguration {
     enum Route: Equatable {
         case tab(AppLaunchTab)
+        case flashcardsSession
         case reader
     }
 
@@ -38,6 +39,9 @@ struct ScreenshotLaunchConfiguration {
     var initialTab: AppLaunchTab {
         if case .tab(let tab) = route {
             return tab
+        }
+        if route == .flashcardsSession {
+            return .flashcards
         }
         return .library
     }
@@ -160,6 +164,8 @@ struct ScreenshotLaunchConfiguration {
             return .tab(.vocab)
         case AppLaunchTab.flashcards.rawValue:
             return .tab(.flashcards)
+        case "flashcards-session":
+            return .flashcardsSession
         case AppLaunchTab.settings.rawValue:
             return .tab(.settings)
         case "reader":
