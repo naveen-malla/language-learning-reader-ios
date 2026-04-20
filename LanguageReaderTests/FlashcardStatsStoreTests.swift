@@ -56,4 +56,19 @@ final class FlashcardStatsStoreTests: XCTestCase {
         XCTAssertEqual(recent.averageReviewsPerDay, 1.5, accuracy: 0.001)
         XCTAssertEqual(recent.accuracy, 2.0 / 3.0, accuracy: 0.001)
     }
+
+    func testStatsAreSeparatedByLanguage() {
+        let store = FlashcardStatsStore(
+            defaults: defaults,
+            calendar: Calendar(identifier: .gregorian),
+            storageKey: "stats"
+        )
+
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        store.record(answer: .correct, languageCode: "de", at: date)
+        store.record(answer: .wrong, languageCode: "kn", at: date)
+
+        XCTAssertEqual(store.stats(languageCode: "de", for: date), FlashcardDailyStats(reviewed: 1, correct: 1))
+        XCTAssertEqual(store.stats(languageCode: "kn", for: date), FlashcardDailyStats(reviewed: 1, correct: 0))
+    }
 }

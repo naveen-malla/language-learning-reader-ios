@@ -176,7 +176,8 @@ struct ReaderView: View {
     }
 
     private func loadSampleText() {
-        guard let sample = SampleDocuments.initial.first else { return }
+        let selectedLanguage = StudyLanguageSettingsStore().studyLanguage
+        guard let sample = SampleDocuments.initial(for: selectedLanguage).first else { return }
         titleText = sample.title
         bodyText = sample.body
     }

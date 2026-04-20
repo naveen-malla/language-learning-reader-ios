@@ -35,4 +35,63 @@ enum AutoImportSettings {
     static var smartPackTargetCount: Int {
         defaultPackDays * defaultLessonsPerDay
     }
+
+    static func historicalImportedVideoIDsKey(for language: SupportedLanguage) -> String {
+        "\(historicalImportedVideoIDsKey).\(language.rawValue)"
+    }
+
+    static func lastAutoTopUpAttemptAtKey(for language: SupportedLanguage) -> String {
+        "\(lastAutoTopUpAttemptAtKey).\(language.rawValue)"
+    }
+
+    static func lastAutoTopUpSuccessAtKey(for language: SupportedLanguage) -> String {
+        "\(lastAutoTopUpSuccessAtKey).\(language.rawValue)"
+    }
+
+    static func lastAutoTopUpBatchIDKey(for language: SupportedLanguage) -> String {
+        "\(lastAutoTopUpBatchIDKey).\(language.rawValue)"
+    }
+
+    static func migrateLegacyStateIfNeeded(defaults: UserDefaults = .standard) {
+        migrateLegacyArrayKey(
+            defaults: defaults,
+            legacyKey: historicalImportedVideoIDsKey,
+            scopedKey: historicalImportedVideoIDsKey(for: .kannada)
+        )
+        migrateLegacyValueKey(
+            defaults: defaults,
+            legacyKey: lastAutoTopUpAttemptAtKey,
+            scopedKey: lastAutoTopUpAttemptAtKey(for: .kannada)
+        )
+        migrateLegacyValueKey(
+            defaults: defaults,
+            legacyKey: lastAutoTopUpSuccessAtKey,
+            scopedKey: lastAutoTopUpSuccessAtKey(for: .kannada)
+        )
+        migrateLegacyValueKey(
+            defaults: defaults,
+            legacyKey: lastAutoTopUpBatchIDKey,
+            scopedKey: lastAutoTopUpBatchIDKey(for: .kannada)
+        )
+    }
+
+    private static func migrateLegacyArrayKey(
+        defaults: UserDefaults,
+        legacyKey: String,
+        scopedKey: String
+    ) {
+        guard defaults.object(forKey: scopedKey) == nil else { return }
+        guard let values = defaults.stringArray(forKey: legacyKey), !values.isEmpty else { return }
+        defaults.set(values, forKey: scopedKey)
+    }
+
+    private static func migrateLegacyValueKey(
+        defaults: UserDefaults,
+        legacyKey: String,
+        scopedKey: String
+    ) {
+        guard defaults.object(forKey: scopedKey) == nil else { return }
+        guard let value = defaults.object(forKey: legacyKey) else { return }
+        defaults.set(value, forKey: scopedKey)
+    }
 }

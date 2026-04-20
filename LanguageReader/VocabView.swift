@@ -3,23 +3,32 @@ import SwiftData
 
 struct VocabView: View {
     @Query(sort: \VocabEntry.createdAt, order: .reverse) private var entries: [VocabEntry]
+    @AppStorage(StudyLanguageSettingsStore.studyLanguageKey) private var studyLanguageCode = SupportedLanguage.freshInstallDefault.rawValue
     @State private var searchText = ""
+
+    private var selectedStudyLanguage: SupportedLanguage {
+        SupportedLanguage.resolve(studyLanguageCode) ?? .freshInstallDefault
+    }
+
+    private var languageEntries: [VocabEntry] {
+        entries.filter { $0.languageCode == selectedStudyLanguage }
+    }
 
     private var filteredEntries: [VocabEntry] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return entries }
-        return entries.filter { entry in
+        guard !trimmed.isEmpty else { return languageEntries }
+        return languageEntries.filter { entry in
             entry.word.localizedCaseInsensitiveContains(trimmed) ||
             entry.meaning.localizedCaseInsensitiveContains(trimmed)
         }
     }
 
     private var knownCount: Int {
-        entries.filter { $0.status == .known }.count
+        languageEntries.filter { $0.status == .known }.count
     }
 
     private var learningCount: Int {
-        entries.filter { $0.status.isLearning }.count
+        languageEntries.filter { $0.status.isLearning }.count
     }
 
     var body: some View {
@@ -29,12 +38,19 @@ struct VocabView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        if !entries.isEmpty {
+                        if !languageEntries.isEmpty {
                             SectionCard("Progress") {
+                                HStack(spacing: 8) {
+                                    Text(selectedStudyLanguage.displayName)
+                                        .subtleMetadataPillStyle()
+                                        .foregroundStyle(.secondary)
+                                    StudyLanguageBadge(language: selectedStudyLanguage)
+                                }
+
                                 HStack(spacing: 10) {
                                     VocabMetricPill(
                                         title: "Total",
-                                        value: "\(entries.count)",
+                                        value: "\(languageEntries.count)",
                                         tint: Theme.accent
                                     )
 
@@ -57,7 +73,11 @@ struct VocabView: View {
                             ContentUnavailableView {
                                 Label("No vocabulary yet", systemImage: "text.book.closed")
                             } description: {
-                                Text(searchText.isEmpty ? "Save words from the Reader to see them here." : "No matching words found.")
+                                Text(
+                                    searchText.isEmpty
+                                        ? "Save \(selectedStudyLanguage.displayName.lowercased()) words from the Reader to see them here."
+                                        : "No matching words found."
+                                )
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 24)
@@ -75,6 +95,11 @@ struct VocabView: View {
             .searchable(text: $searchText, prompt: "Search words or meanings")
             .navigationTitle("Vocab")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    StudyLanguageToolbarMenu(selection: $studyLanguageCode)
+                }
+            }
         }
     }
 }

@@ -47,12 +47,18 @@ actor SuggestionCacheStore {
         )
     }
 
+    private struct StoredState: Codable, Sendable {
+        var states: [String: State]
+
+        static let empty = StoredState(states: [:])
+    }
+
     static let shared = SuggestionCacheStore()
 
     private let defaults: UserDefaults
     private let storageKey: String
     private let now: () -> Date
-    private var state: State
+    private var storedState: StoredState
 
     private let suggestionCacheTTL: TimeInterval = 8 * 60 * 60
     private let validationSuccessTTL: TimeInterval = 24 * 60 * 60
@@ -67,19 +73,26 @@ actor SuggestionCacheStore {
         self.storageKey = storageKey
         self.now = now
         if let data = defaults.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode(State.self, from: data) {
-            self.state = decoded
+           let decoded = try? JSONDecoder().decode(StoredState.self, from: data) {
+            self.storedState = decoded
+        } else if let data = defaults.data(forKey: storageKey),
+                  let legacyState = try? JSONDecoder().decode(State.self, from: data) {
+            self.storedState = StoredState(states: [SupportedLanguage.legacyDefault.rawValue: legacyState])
         } else {
-            self.state = .empty
+            self.storedState = .empty
         }
     }
 
     func clear() {
-        state = .empty
+        storedState = .empty
         defaults.removeObject(forKey: storageKey)
     }
 
-    func cachedSuggestions(includeExpired: Bool = false) -> [YouTubeSuggestedVideo] {
+    func cachedSuggestions(
+        language: SupportedLanguage = .legacyDefault,
+        includeExpired: Bool = false
+    ) -> [YouTubeSuggestedVideo] {
+        let state = state(for: language)
         let current = now()
         if !includeExpired,
            let lastRefreshAt = state.lastRefreshAt,
@@ -90,7 +103,11 @@ actor SuggestionCacheStore {
         return state.cachedSuggestions.compactMap(Self.materializeSuggestion)
     }
 
-    func cachedValidation(for videoID: String) -> YouTubeSuggestedVideo?? {
+    func cachedValidation(
+        for videoID: String,
+        language: SupportedLanguage = .legacyDefault
+    ) -> YouTubeSuggestedVideo?? {
+        let state = state(for: language)
         guard let record = state.validations[videoID] else {
             return nil
         }
@@ -111,60 +128,80 @@ actor SuggestionCacheStore {
         }
     }
 
-    func storeValidationSuccess(_ suggestion: YouTubeSuggestedVideo) {
+    func storeValidationSuccess(
+        _ suggestion: YouTubeSuggestedVideo,
+        language: SupportedLanguage = .legacyDefault
+    ) {
+        var state = state(for: language)
         state.validations[suggestion.videoID] = ValidationRecord(
             status: .valid,
             checkedAt: now(),
             suggestion: Self.cacheSuggestion(from: suggestion)
         )
-        persist()
+        updateState(state, for: language)
     }
 
-    func storeValidationFailure(videoID: String) {
+    func storeValidationFailure(
+        videoID: String,
+        language: SupportedLanguage = .legacyDefault
+    ) {
+        var state = state(for: language)
         state.validations[videoID] = ValidationRecord(
             status: .invalid,
             checkedAt: now(),
             suggestion: nil
         )
-        persist()
+        updateState(state, for: language)
     }
 
-    func saveSuggestions(_ suggestions: [YouTubeSuggestedVideo]) {
+    func saveSuggestions(
+        _ suggestions: [YouTubeSuggestedVideo],
+        language: SupportedLanguage = .legacyDefault
+    ) {
+        var state = state(for: language)
         state.cachedSuggestions = suggestions.map(Self.cacheSuggestion)
         state.lastRefreshAt = now()
-        pruneStaleValidationRecords()
-        persist()
+        pruneStaleValidationRecords(&state)
+        updateState(state, for: language)
     }
 
-    func shouldBackoff() -> Bool {
+    func shouldBackoff(language: SupportedLanguage = .legacyDefault) -> Bool {
+        let state = state(for: language)
         guard let nextRetryAt = state.nextRetryAt else { return false }
         return now() < nextRetryAt
     }
 
-    func recordDiscoverySuccess() {
+    func recordDiscoverySuccess(language: SupportedLanguage = .legacyDefault) {
+        var state = state(for: language)
         state.consecutiveDiscoveryFailures = 0
         state.nextRetryAt = nil
-        persist()
+        updateState(state, for: language)
     }
 
-    func recordDiscoveryFailure() {
+    func recordDiscoveryFailure(language: SupportedLanguage = .legacyDefault) {
+        var state = state(for: language)
         state.consecutiveDiscoveryFailures += 1
         let exponent = min(state.consecutiveDiscoveryFailures, 4)
         let delayMinutes = min(80, Int(pow(2.0, Double(exponent - 1))) * 10)
         state.nextRetryAt = now().addingTimeInterval(TimeInterval(delayMinutes * 60))
-        persist()
+        updateState(state, for: language)
     }
 
-    func lastRefreshDate() -> Date? {
-        state.lastRefreshAt
+    func lastRefreshDate(language: SupportedLanguage = .legacyDefault) -> Date? {
+        state(for: language).lastRefreshAt
     }
 
-    func nextRetryDate() -> Date? {
-        state.nextRetryAt
+    func nextRetryDate(language: SupportedLanguage = .legacyDefault) -> Date? {
+        state(for: language).nextRetryAt
     }
 
-    func addTrustedChannel(channelID: String?, channelTitle: String?) {
+    func addTrustedChannel(
+        channelID: String?,
+        channelTitle: String?,
+        language: SupportedLanguage = .legacyDefault
+    ) {
         guard let channelID = normalizedChannelID(channelID) else { return }
+        var state = state(for: language)
 
         if let index = state.trustedChannels.firstIndex(where: { $0.channelID == channelID }) {
             state.trustedChannels[index] = TrustedChannel(
@@ -181,19 +218,19 @@ actor SuggestionCacheStore {
                 )
             )
         }
-        persist()
+        updateState(state, for: language)
     }
 
-    func trustedChannelIDs() -> [String] {
-        state.trustedChannels.map(\.channelID)
+    func trustedChannelIDs(language: SupportedLanguage = .legacyDefault) -> [String] {
+        state(for: language).trustedChannels.map(\.channelID)
     }
 
     private func persist() {
-        guard let data = try? JSONEncoder().encode(state) else { return }
+        guard let data = try? JSONEncoder().encode(storedState) else { return }
         defaults.set(data, forKey: storageKey)
     }
 
-    private func pruneStaleValidationRecords() {
+    private func pruneStaleValidationRecords(_ state: inout State) {
         let current = now()
         state.validations = state.validations.filter { _, record in
             switch record.status {
@@ -203,6 +240,15 @@ actor SuggestionCacheStore {
                 return current.timeIntervalSince(record.checkedAt) <= validationFailureTTL
             }
         }
+    }
+
+    private func state(for language: SupportedLanguage) -> State {
+        storedState.states[language.rawValue] ?? .empty
+    }
+
+    private func updateState(_ state: State, for language: SupportedLanguage) {
+        storedState.states[language.rawValue] = state
+        persist()
     }
 
     private func normalizedChannelID(_ value: String?) -> String? {

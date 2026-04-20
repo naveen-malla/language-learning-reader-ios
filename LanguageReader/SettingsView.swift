@@ -7,6 +7,7 @@ struct SettingsView: View {
     private let translationSettings = TranslationSettingsStore()
     @Query(sort: \Document.updatedAt, order: .reverse) private var documents: [Document]
     @Query(sort: \VocabEntry.createdAt, order: .reverse) private var vocabEntries: [VocabEntry]
+    @AppStorage(StudyLanguageSettingsStore.studyLanguageKey) private var studyLanguageCode = SupportedLanguage.freshInstallDefault.rawValue
     @AppStorage(AppAppearanceMode.storageKey) private var appearanceModeRawValue = AppAppearanceMode.defaultValue.rawValue
     @AppStorage(FlashcardSettings.sessionWordLimitKey) private var sessionWordLimit = FlashcardDeck.defaultSessionWordLimit
     @AppStorage(AutoImportSettings.autoTopUpEnabledKey) private var autoTopUpEnabled = AutoImportSettings.defaultAutoTopUpEnabled
@@ -27,6 +28,10 @@ struct SettingsView: View {
     @State private var lastAutoTopUpAttemptAt: Date?
     @State private var lastAutoTopUpSuccessAt: Date?
 
+    private var selectedStudyLanguage: SupportedLanguage {
+        SupportedLanguage.resolve(studyLanguageCode) ?? .freshInstallDefault
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -34,6 +39,19 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        SectionCard("Study Language") {
+                            Picker("Study Language", selection: $studyLanguageCode) {
+                                ForEach(SupportedLanguage.allCases) { language in
+                                    Text(language.displayName).tag(language.rawValue)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            Text("New imports, discovery, vocab, flashcards, and dictionary quality checks follow this selection.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
                         SectionCard("Appearance") {
                             Text("Choose how the app should look.")
                                 .font(.footnote)
@@ -105,7 +123,7 @@ struct SettingsView: View {
                         }
 
                         SectionCard("Auto Content") {
-                            Toggle("Auto top-up Kannada lessons", isOn: $autoTopUpEnabled)
+                            Toggle("Auto top-up \(selectedStudyLanguage.displayName) lessons", isOn: $autoTopUpEnabled)
                                 .toggleStyle(.switch)
 
                             Toggle("Allow repeat imports when feed is dry", isOn: $allowRepeatImports)
@@ -119,7 +137,7 @@ struct SettingsView: View {
                                     }
                                 }
 
-                            Text("Defaults: each manual pull targets 3 lessons, duration window is 5-20 minutes, and auto trigger runs when unread imported lessons are below 3.")
+                            Text("Defaults: each manual pull targets 3 lessons, duration window is 5-20 minutes, and auto trigger runs when unread imported \(selectedStudyLanguage.displayName.lowercased()) lessons are below 3.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
 
@@ -160,7 +178,7 @@ struct SettingsView: View {
                                 .disabled(isEvaluatingQuality)
                             }
 
-                            Text("Based on your saved documents and saved vocab meanings. Refresh quality will also fill missing Kannada meanings from cloud fallback before scoring.")
+                            Text("Based on your saved \(selectedStudyLanguage.displayName.lowercased()) documents and saved vocab meanings. Refresh quality will also fill missing meanings from cloud fallback before scoring.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
 
@@ -286,6 +304,10 @@ struct SettingsView: View {
                 evaluateDictionaryQuality()
                 loadAutoImportStatus()
             }
+            .onChange(of: studyLanguageCode) { _, _ in
+                evaluateDictionaryQuality()
+                loadAutoImportStatus()
+            }
         }
     }
 
@@ -333,8 +355,12 @@ struct SettingsView: View {
 
     private func loadAutoImportStatus() {
         let defaults = UserDefaults.standard
-        lastAutoTopUpAttemptAt = defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey) as? Date
-        lastAutoTopUpSuccessAt = defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey) as? Date
+        lastAutoTopUpAttemptAt = defaults.object(
+            forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey(for: selectedStudyLanguage)
+        ) as? Date
+        lastAutoTopUpSuccessAt = defaults.object(
+            forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey(for: selectedStudyLanguage)
+        ) as? Date
     }
 
     private func runAutoImportPackNow() {
@@ -375,11 +401,14 @@ struct SettingsView: View {
 
     private func makeLibraryQualityFixture() -> DictionaryQualityFixture? {
         let corpusSentences = documents
+            .filter { $0.languageCode == selectedStudyLanguage }
             .map(\.body)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        let goldEntries = vocabEntries.compactMap { entry -> DictionaryQualityGoldEntry? in
+        let goldEntries = vocabEntries
+            .filter { $0.languageCode == selectedStudyLanguage }
+            .compactMap { entry -> DictionaryQualityGoldEntry? in
             let key = entry.normalizedKey.trimmingCharacters(in: .whitespacesAndNewlines)
             let meaning = entry.meaning.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !key.isEmpty, !meaning.isEmpty else { return nil }
@@ -403,7 +432,7 @@ struct SettingsView: View {
 
         return DictionaryQualityFixture(
             name: "Library Quality",
-            languageCode: normalizedSourceLanguageCode(),
+            languageCode: selectedStudyLanguage.rawValue,
             corpusSentences: corpusSentences,
             goldEntries: goldEntries,
             thresholds: DictionaryQualityThresholds(
@@ -436,6 +465,6 @@ struct SettingsView: View {
 
     private func normalizedSourceLanguageCode() -> String {
         let raw = sourceLanguageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return raw.isEmpty ? TranslationSettingsStore.defaultSourceLanguage : raw.lowercased()
+        return raw.isEmpty ? selectedStudyLanguage.rawValue : raw.lowercased()
     }
 }

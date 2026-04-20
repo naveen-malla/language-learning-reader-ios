@@ -14,7 +14,9 @@ struct LanguageReaderApp: App {
 
         do {
             sharedModelContainer = try ModelContainer(for: Document.self, VocabEntry.self)
+            LanguageSupportMigration.applyIfNeeded(container: sharedModelContainer)
             seedInitialDocumentsIfNeeded(container: sharedModelContainer)
+            ScreenshotLaunchConfiguration.seedDemoDataIfNeeded(container: sharedModelContainer)
             AutoImportBackgroundScheduler.registerIfNeeded(container: sharedModelContainer)
         } catch {
             fatalError("Failed to initialize model container: \(error)")
@@ -81,10 +83,12 @@ struct LanguageReaderApp: App {
         }
 
         let now = Date()
-        for seed in SampleDocuments.initial {
+        let selectedLanguage = StudyLanguageSettingsStore(defaults: defaults).studyLanguage
+        for seed in SampleDocuments.initial(for: selectedLanguage) {
             let document = Document(
                 title: seed.title,
                 body: seed.body,
+                languageCode: seed.language,
                 createdAt: now,
                 updatedAt: now,
                 sourceType: .sample
