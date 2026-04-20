@@ -55,6 +55,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testImportSmartPackDedupesAndPersistsBatchMetadata() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         defaults.set(false, forKey: AutoImportSettings.allowRepeatImportsKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
@@ -63,6 +64,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
         let existing = Document(
             title: "Existing",
             body: "Body",
+            languageCode: .kannada,
             createdAt: now,
             updatedAt: now,
             sourceType: .youtube,
@@ -148,6 +150,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testImportSmartPackUsesFixedThreeLessonTarget() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -181,6 +184,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testImportSmartPackFallsBackToRepeatCandidatesWhenEnabled() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         defaults.set(true, forKey: AutoImportSettings.allowRepeatImportsKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
@@ -189,6 +193,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
         let existing = Document(
             title: "Existing",
             body: "Body",
+            languageCode: .kannada,
             createdAt: now,
             updatedAt: now,
             sourceType: .youtube,
@@ -230,6 +235,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testAutoTopUpFallsBackToRepeatImportsWhenEnabled() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         defaults.set(true, forKey: AutoImportSettings.allowRepeatImportsKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
@@ -238,6 +244,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
         let existing = Document(
             title: "Existing",
             body: "Body",
+            languageCode: .kannada,
             createdAt: now,
             updatedAt: now,
             sourceType: .youtube,
@@ -283,6 +290,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testPerformAutoTopUpWritesRunMetadataWhenImportSucceeds() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -318,10 +326,10 @@ final class AutoImportCoordinatorTests: XCTestCase {
         XCTAssertEqual(summary?.mode, .autoTopUp)
         XCTAssertEqual(summary?.importedCount, 1)
 
-        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey) as? Date)
-        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey) as? Date)
+        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey(for: .kannada)) as? Date)
+        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey(for: .kannada)) as? Date)
         XCTAssertEqual(
-            defaults.string(forKey: AutoImportSettings.lastAutoTopUpBatchIDKey),
+            defaults.string(forKey: AutoImportSettings.lastAutoTopUpBatchIDKey(for: .kannada)),
             summary?.batchID
         )
 
@@ -333,6 +341,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testPerformAutoTopUpSkipsWhenUnreadThresholdReached() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -341,6 +350,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
             let doc = Document(
                 title: "Unread \(idx)",
                 body: "Body",
+                languageCode: .kannada,
                 createdAt: now,
                 updatedAt: now,
                 sourceType: .youtube,
@@ -388,6 +398,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testPerformAutoTopUpDoesNotWriteSuccessMetadataWhenImportsFail() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -423,9 +434,9 @@ final class AutoImportCoordinatorTests: XCTestCase {
         XCTAssertEqual(summary?.importedCount, 0)
         XCTAssertNil(summary?.batchID)
 
-        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey) as? Date)
-        XCTAssertNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey) as? Date)
-        XCTAssertNil(defaults.string(forKey: AutoImportSettings.lastAutoTopUpBatchIDKey))
+        XCTAssertNotNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey(for: .kannada)) as? Date)
+        XCTAssertNil(defaults.object(forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey(for: .kannada)) as? Date)
+        XCTAssertNil(defaults.string(forKey: AutoImportSettings.lastAutoTopUpBatchIDKey(for: .kannada)))
 
         let stored = try context.fetch(FetchDescriptor<Document>())
         XCTAssertTrue(stored.isEmpty)
@@ -433,6 +444,7 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testAutoTopUpForcesDiscoveryRefreshWhenLibraryIsEmpty() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -471,7 +483,8 @@ final class AutoImportCoordinatorTests: XCTestCase {
 
     func testImportSmartPackSkipsHistoricallyImportedVideoIDs() async throws {
         let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
-        defaults.set(["OLDOLDOLD01"], forKey: AutoImportSettings.historicalImportedVideoIDsKey)
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
+        defaults.set(["OLDOLDOLD01"], forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: .kannada))
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let container = try makeContainer()
         let context = ModelContext(container)
@@ -515,9 +528,111 @@ final class AutoImportCoordinatorTests: XCTestCase {
         let discoveryExistingIDs = await discovery.existingVideoIDArguments().first ?? []
         XCTAssertTrue(discoveryExistingIDs.contains("OLDOLDOLD01"))
 
-        let storedHistory = Set(defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? [])
+        let storedHistory = Set(
+            defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: .kannada)) ?? []
+        )
         XCTAssertTrue(storedHistory.contains("OLDOLDOLD01"))
         XCTAssertTrue(storedHistory.contains("NEWNEWNEW01"))
+    }
+
+    func testImportSmartPackTracksFirstImportedDocumentID() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: "FIRSTFIRST01",
+                title: "First Candidate",
+                channelTitle: "Channel One",
+                channelID: "UC-ONE",
+                category: "Basics",
+                durationSeconds: 180,
+                thumbnailURL: nil,
+                publishedAt: now
+            ),
+            .init(
+                videoID: "SECONDNEXT1",
+                title: "Second Candidate",
+                channelTitle: "Channel Two",
+                channelID: "UC-TWO",
+                category: "Grammar",
+                durationSeconds: 180,
+                thumbnailURL: nil,
+                publishedAt: now.addingTimeInterval(-60)
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            "FIRSTFIRST01": makeImportedContent(videoID: "FIRSTFIRST01", channelID: "UC-ONE"),
+            "SECONDNEXT1": makeImportedContent(videoID: "SECONDNEXT1", channelID: "UC-TWO")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.importSmartPack(modelContext: context)
+        let firstID = try XCTUnwrap(summary.firstImportedDocumentID)
+        let stored = try context.fetch(FetchDescriptor<Document>())
+        let firstDocument = try XCTUnwrap(stored.first(where: { $0.id == firstID }))
+
+        XCTAssertEqual(firstDocument.sourceVideoID, "FIRSTFIRST01")
+        XCTAssertEqual(summary.importedCount, 2)
+    }
+
+    func testImportSmartPackSkipsDuplicateVideoIDsWithinSameRun() async throws {
+        let defaults = UserDefaults(suiteName: "AutoImportCoordinatorTests.\(UUID().uuidString)")!
+        defaults.set(SupportedLanguage.kannada.rawValue, forKey: StudyLanguageSettingsStore.studyLanguageKey)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let container = try makeContainer()
+        let context = ModelContext(container)
+
+        let duplicateVideoID = "DUPEDUPE001"
+        let discovery = CoordinatorDiscoveryStub(suggestions: [
+            .init(
+                videoID: duplicateVideoID,
+                title: "Duplicate First Listing",
+                channelTitle: "Channel",
+                channelID: "UC-DUPE",
+                category: "Basics",
+                durationSeconds: 180,
+                thumbnailURL: nil,
+                publishedAt: now
+            ),
+            .init(
+                videoID: duplicateVideoID,
+                title: "Duplicate Second Listing",
+                channelTitle: "Channel",
+                channelID: "UC-DUPE",
+                category: "Basics",
+                durationSeconds: 180,
+                thumbnailURL: nil,
+                publishedAt: now.addingTimeInterval(-30)
+            )
+        ])
+        let importer = CoordinatorImporterStub(contentsByVideoID: [
+            duplicateVideoID: makeImportedContent(videoID: duplicateVideoID, channelID: "UC-DUPE")
+        ])
+
+        let coordinator = AutoImportCoordinator(
+            discoveryService: discovery,
+            importService: importer,
+            defaults: defaults,
+            now: { now }
+        )
+
+        let summary = await coordinator.importSmartPack(modelContext: context)
+        XCTAssertEqual(summary.importedCount, 1)
+        XCTAssertEqual(summary.attemptedCount, 1)
+        XCTAssertEqual(summary.skippedDuplicates, 1)
+
+        let importerCalls = await importer.importCallCount()
+        XCTAssertEqual(importerCalls, 1)
     }
 }
 
@@ -530,6 +645,7 @@ private extension AutoImportCoordinatorTests {
     func makeImportedContent(videoID: String, channelID: String) -> ImportedYouTubeContent {
         ImportedYouTubeContent(
             videoID: videoID,
+            language: .kannada,
             title: "Imported \(videoID)",
             channelTitle: "Channel \(videoID)",
             channelID: channelID,
@@ -555,7 +671,8 @@ private actor CoordinatorDiscoveryStub: AutoImportSuggesting {
 
     func loadSuggestions(
         existingVideoIDs: Set<String>,
-        forceRefresh: Bool
+        forceRefresh: Bool,
+        language: SupportedLanguage
     ) async -> [YouTubeSuggestedVideo] {
         calls += 1
         forceRefreshFlags.append(forceRefresh)
@@ -584,12 +701,22 @@ private actor CoordinatorImporterStub: AutoImportVideoImporting {
         self.contentsByVideoID = contentsByVideoID
     }
 
-    func importVideo(videoID: String) async throws -> ImportedYouTubeContent {
+    func importVideo(videoID: String, language: SupportedLanguage) async throws -> ImportedYouTubeContent {
         calls += 1
         guard let content = contentsByVideoID[videoID] else {
             throw YouTubeImportError.networkFailure
         }
-        return content
+        return ImportedYouTubeContent(
+            videoID: content.videoID,
+            language: language,
+            title: content.title,
+            channelTitle: content.channelTitle,
+            channelID: content.channelID,
+            transcript: content.transcript,
+            subtitleCues: content.subtitleCues,
+            durationSeconds: content.durationSeconds,
+            thumbnailURL: content.thumbnailURL
+        )
     }
 
     func importCallCount() -> Int {

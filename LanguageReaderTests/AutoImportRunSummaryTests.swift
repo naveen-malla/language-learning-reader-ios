@@ -74,6 +74,18 @@ final class AutoImportRunSummaryTests: XCTestCase {
             partialFreshImport.statusMessage,
             "Added 2 lessons (3 still missing)."
         )
+
+        let successfulFreshImport = makeSummary(
+            mode: .smartPack,
+            targetCount: 6,
+            attemptedCount: 4,
+            importedCount: 4,
+            repeatedImportCount: 0
+        )
+        XCTAssertEqual(
+            successfulFreshImport.statusMessage,
+            "Added 4 fresh lessons to your queue."
+        )
     }
 
     func testAutoTopUpAndManualStatusMessagesCoverCoreBranches() {
