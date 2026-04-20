@@ -780,6 +780,7 @@ struct FlashcardsView: View {
 
         hasAppliedScreenshotAutoStart = true
         startSession()
+        isRevealed = true
     }
 
     private func transliteration(for word: String) -> String? {
