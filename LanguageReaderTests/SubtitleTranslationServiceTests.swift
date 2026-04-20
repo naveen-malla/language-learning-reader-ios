@@ -52,7 +52,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
 
     func testUsesPublicFallbackWhenAzureConfigurationIsMissing() async {
         let defaults = testDefaults()
-        let publicTranslator = FakePublicSubtitleTranslator(results: [.success("First"), .success("Second")])
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["First", "Second"])])
         let service = SubtitleTranslationService(
             settingsStore: TranslationSettingsStore(defaults: defaults, keychain: InMemorySecretStore()),
             translator: FakeAzureSubtitleCueTranslator(results: [.success(["unused"])]),
@@ -65,7 +65,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
             return XCTFail("Expected public fallback translation")
         }
         XCTAssertEqual(translated.map(\.translatedText), ["First", "Second"])
-        XCTAssertEqual(publicTranslator.callCount, 2)
+        XCTAssertEqual(publicTranslator.callCount, 1)
     }
 
     func testReturnsUnavailableMessageWhenSourceCuesAreEmpty() async {
@@ -83,7 +83,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
     }
 
     func testFallsBackToPublicTranslationWhenAzureRequestFails() async throws {
-        let publicTranslator = FakePublicSubtitleTranslator(results: [.success("First"), .success("Second")])
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["First", "Second"])])
         let service = SubtitleTranslationService(
             settingsStore: configuredSettings(),
             translator: FakeAzureSubtitleCueTranslator(results: [
@@ -98,11 +98,11 @@ final class SubtitleTranslationServiceTests: XCTestCase {
             return XCTFail("Expected public fallback translation after Azure failure")
         }
         XCTAssertEqual(translated.map(\.translatedText), ["First", "Second"])
-        XCTAssertEqual(publicTranslator.callCount, 2)
+        XCTAssertEqual(publicTranslator.callCount, 1)
     }
 
     func testFallsBackToPublicTranslationWhenAzureReturnsUnreadableOutput() async throws {
-        let publicTranslator = FakePublicSubtitleTranslator(results: [.success("First"), .success("Second")])
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["First", "Second"])])
         let service = SubtitleTranslationService(
             settingsStore: configuredSettings(),
             translator: FakeAzureSubtitleCueTranslator(results: [
@@ -120,7 +120,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
             return XCTFail("Expected public fallback translation after unreadable Azure output")
         }
         XCTAssertEqual(translated.map(\.translatedText), ["First", "Second"])
-        XCTAssertEqual(publicTranslator.callCount, 2)
+        XCTAssertEqual(publicTranslator.callCount, 1)
     }
 
     func testCachedTranslationsAreStillReusedAfterTransientFailure() async throws {
@@ -136,9 +136,8 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         let service = SubtitleTranslationService(
             settingsStore: configuredSettings(),
             translator: translator,
-            publicTranslator: FakePublicSubtitleTranslator(results: [
-                .failure(FakePublicSubtitleTranslator.FakeError.failed),
-                .failure(FakePublicSubtitleTranslator.FakeError.failed)
+            publicTranslator: FakePublicSubtitleCueTranslator(results: [
+                .failure(FakePublicSubtitleCueTranslator.FakeError.failed)
             ])
         )
 
@@ -153,7 +152,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
     }
 
     func testFallsBackToPublicTranslationWhenAzureReturnsWrongCueCount() async throws {
-        let publicTranslator = FakePublicSubtitleTranslator(results: [.success("First"), .success("Second")])
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["First", "Second"])])
         let service = SubtitleTranslationService(
             settingsStore: configuredSettings(),
             translator: FakeAzureSubtitleCueTranslator(results: [
@@ -168,7 +167,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
             return XCTFail("Expected public fallback translation after wrong cue count")
         }
         XCTAssertEqual(translated.map(\.translatedText), ["First", "Second"])
-        XCTAssertEqual(publicTranslator.callCount, 2)
+        XCTAssertEqual(publicTranslator.callCount, 1)
     }
 
     func testIncompatibleCachedCuesDoNotBypassRetranslation() async throws {
@@ -200,7 +199,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
     }
 
     func testReturnsUnavailableWhenAzureAndPublicOutputsAreUnreadable() async throws {
-        let publicTranslator = FakePublicSubtitleTranslator(results: [.success("ಮೊದಲ ಸಾಲು"), .success("ಎರಡನೇ ಸಾಲು")])
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["ಮೊದಲ ಸಾಲು", "ಎರಡನೇ ಸಾಲು"])])
         let service = SubtitleTranslationService(
             settingsStore: configuredSettings(),
             translator: FakeAzureSubtitleCueTranslator(results: [
@@ -256,7 +255,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
     }
 
     func testFallsBackToPublicWhenGermanAzureOutputMatchesSource() async throws {
-        let publicTranslator = FakePublicSubtitleTranslator(results: [.success("This is a house.")])
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["This is a house."])])
         let service = SubtitleTranslationService(
             settingsStore: configuredSettings(),
             translator: FakeAzureSubtitleCueTranslator(results: [
@@ -283,7 +282,7 @@ final class SubtitleTranslationServiceTests: XCTestCase {
 
     func testAzureSubtitleCueTranslatorRetriesWithoutSourceLanguageOnServiceError() async throws {
         var callCount = 0
-        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { [self] request in
+        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { request in
             callCount += 1
             let response: HTTPURLResponse
             let data: Data
@@ -447,6 +446,81 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(requests[0].url?.queryValue(named: "from"), "es")
     }
 
+    func testPublicSubtitleCueTranslatorBatchesMultipleCuesIntoSingleRequest() async throws {
+        let translator = FakePublicSentenceTranslator { text, _, _ in
+            XCTAssertEqual(text, "ಮೊದಲ ಸಾಲು\n__LRSEP_1__\nಎರಡನೇ ಸಾಲು")
+            return "First line\n__LRSEP_1__\nSecond line"
+        }
+        let cueTranslator = PublicSubtitleCueTranslator(translator: translator)
+
+        let translated = try await cueTranslator.translate(
+            texts: ["ಮೊದಲ ಸಾಲು", "ಎರಡನೇ ಸಾಲು"],
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        XCTAssertEqual(translated, ["First line", "Second line"])
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 1)
+    }
+
+    func testPublicSubtitleCueTranslatorFallsBackToPerCueRequestsWhenMarkersAreLost() async throws {
+        let translator = FakePublicSentenceTranslator { text, _, _ in
+            if text.contains("__LRSEP_1__") {
+                return "First line Second line"
+            }
+
+            switch text {
+            case "ಮೊದಲ ಸಾಲು":
+                return "First line"
+            case "ಎರಡನೇ ಸಾಲು":
+                return "Second line"
+            default:
+                return text
+            }
+        }
+        let cueTranslator = PublicSubtitleCueTranslator(translator: translator)
+
+        let translated = try await cueTranslator.translate(
+            texts: ["ಮೊದಲ ಸಾಲು", "ಎರಡನೇ ಸಾಲು"],
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        XCTAssertEqual(translated, ["First line", "Second line"])
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 3)
+    }
+
+    func testPublicSubtitleCueTranslatorSplitsLargeCueSetsIntoMultipleBatchRequests() async throws {
+        let inputs = (0..<19).map { "ಸಾಲು \($0)" }
+        let translator = FakePublicSentenceTranslator { text, _, _ in
+            let parts = text.components(separatedBy: "\n")
+            guard parts.count > 1 else { return "EN: \(text)" }
+
+            return parts.map { segment in
+                if segment.hasPrefix("__LRSEP_") {
+                    return segment
+                }
+                return "EN: \(segment)"
+            }
+            .joined(separator: "\n")
+        }
+        let cueTranslator = PublicSubtitleCueTranslator(translator: translator)
+
+        let translated = try await cueTranslator.translate(
+            texts: inputs,
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        XCTAssertEqual(translated.count, 19)
+        XCTAssertEqual(translated.first, "EN: ಸಾಲು 0")
+        XCTAssertEqual(translated.last, "EN: ಸಾಲು 18")
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 2)
+    }
+
     private func configuredSettings() -> TranslationSettingsStore {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()
@@ -563,22 +637,40 @@ private actor FakeAzureSubtitleCueTranslator: AzureSubtitleCueTranslating {
     }
 }
 
-private final class FakePublicSubtitleTranslator: PublicSentenceTranslating {
+private final class FakePublicSubtitleCueTranslator: PublicSubtitleCueTranslating {
     enum FakeError: Error {
         case failed
     }
 
-    private let results: [Result<String, Error>]
+    private let results: [Result<[String], Error>]
     private(set) var callCount = 0
 
-    init(results: [Result<String, Error>]) {
+    init(results: [Result<[String], Error>]) {
         self.results = results.isEmpty ? [.failure(FakeError.failed)] : results
+    }
+
+    func translate(texts: [String], sourceLanguage: String, targetLanguage: String) async throws -> [String] {
+        callCount += 1
+        let index = min(callCount - 1, results.count - 1)
+        return try results[index].get()
+    }
+}
+
+private actor FakePublicSentenceTranslator: PublicSentenceTranslating {
+    private let handler: @Sendable (String, String, String) throws -> String
+    private var callCount = 0
+
+    init(handler: @escaping @Sendable (String, String, String) throws -> String) {
+        self.handler = handler
     }
 
     func translate(text: String, sourceLanguage: String, targetLanguage: String) async throws -> String {
         callCount += 1
-        let index = min(callCount - 1, results.count - 1)
-        return try results[index].get()
+        return try handler(text, sourceLanguage, targetLanguage)
+    }
+
+    func getCallCount() -> Int {
+        callCount
     }
 }
 

@@ -15,9 +15,9 @@ The UI remains in English. Language support here refers to the content language 
 
 ## Screenshots
 
-| Library | Reader |
+| Library | Watch |
 | --- | --- |
-| ![German Library](docs/screenshots/v2/library.png) | ![German Reader](docs/screenshots/v2/reader.png) |
+| ![German Library](docs/screenshots/v2/library.png) | ![German Watch](docs/screenshots/v2/watch.png) |
 
 | Vocab | Flashcards |
 | --- | --- |
@@ -84,6 +84,7 @@ python3 scripts/evaluate_dictionary.py --source-language kn --report-json /tmp/k
 - German requires real `de*` subtitle tracks.
 - Kannada keeps the existing direct-`kn` preference with translated fallback when direct tracks are missing.
 - Imported YouTube lessons persist flattened text, timed subtitle cues, and language metadata for later Reader/Watch use.
+- Older imported video lessons that cannot recover timed cues from YouTube synthesize a coarse subtitle timeline from the stored lesson body so `Watch` still has usable subtitle lines.
 - Watch mode starts English subtitle translation in the background as soon as you open a video lesson, then reuses cached English cues when available.
 
 ## Quick Start

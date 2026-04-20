@@ -4,6 +4,10 @@ protocol AzureSubtitleCueTranslating {
     func translate(texts: [String], configuration: AzureTranslatorConfiguration) async throws -> [String]
 }
 
+protocol PublicSubtitleCueTranslating {
+    func translate(texts: [String], sourceLanguage: String, targetLanguage: String) async throws -> [String]
+}
+
 enum SubtitleTranslationLoadResult: Equatable {
     case cached([TranslatedSubtitleCue])
     case translated([TranslatedSubtitleCue])
@@ -15,12 +19,12 @@ actor SubtitleTranslationService {
 
     private let settingsStore: TranslationSettingsStore
     private let translator: AzureSubtitleCueTranslating
-    private let publicTranslator: PublicSentenceTranslating
+    private let publicTranslator: PublicSubtitleCueTranslating
 
     init(
         settingsStore: TranslationSettingsStore = TranslationSettingsStore(),
         translator: AzureSubtitleCueTranslating = AzureSubtitleCueTranslator(),
-        publicTranslator: PublicSentenceTranslating = PublicWebTranslatorClient()
+        publicTranslator: PublicSubtitleCueTranslating = PublicSubtitleCueTranslator()
     ) {
         self.settingsStore = settingsStore
         self.translator = translator
@@ -155,27 +159,142 @@ actor SubtitleTranslationService {
         sourceLanguage: String,
         targetLanguage: String
     ) async -> [TranslatedSubtitleCue]? {
-        var translatedTexts: [String] = []
-        translatedTexts.reserveCapacity(sourceCues.count)
-
-        for cue in sourceCues {
-            do {
-                let translated = try await publicTranslator.translate(
-                    text: cue.sourceText,
-                    sourceLanguage: sourceLanguage,
-                    targetLanguage: targetLanguage
-                )
-                translatedTexts.append(translated)
-            } catch {
+        do {
+            let translatedTexts = try await publicTranslator.translate(
+                texts: sourceCues.map(\.sourceText),
+                sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage
+            )
+            guard translatedTexts.count == sourceCues.count else {
                 return nil
+            }
+
+            return makeTranslatedCues(
+                sourceCues: sourceCues,
+                translatedTexts: translatedTexts,
+                sourceLanguage: sourceLanguage
+            )
+        } catch {
+            return nil
+        }
+    }
+}
+
+struct PublicSubtitleCueTranslator: PublicSubtitleCueTranslating {
+    private static let maxBatchItems = 18
+    private static let maxBatchCharacters = 1_600
+
+    private let translator: PublicSentenceTranslating
+
+    init(translator: PublicSentenceTranslating = PublicWebTranslatorClient()) {
+        self.translator = translator
+    }
+
+    func translate(texts: [String], sourceLanguage: String, targetLanguage: String) async throws -> [String] {
+        let trimmedTexts = texts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !trimmedTexts.isEmpty else { return [] }
+
+        var translated: [String] = []
+        var startIndex = 0
+
+        while startIndex < trimmedTexts.count {
+            let chunk = nextChunk(from: trimmedTexts, startIndex: startIndex)
+            let translatedChunk = try await translateChunk(
+                Array(trimmedTexts[chunk]),
+                sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage
+            )
+            translated.append(contentsOf: translatedChunk)
+            startIndex = chunk.upperBound
+        }
+
+        return translated
+    }
+
+    private func nextChunk(from texts: [String], startIndex: Int) -> Range<Int> {
+        var endIndex = startIndex
+        var characterCount = 0
+
+        while endIndex < texts.count {
+            let nextCount = texts[endIndex].count
+            let proposed = characterCount + nextCount
+
+            if endIndex > startIndex,
+               (endIndex - startIndex) >= Self.maxBatchItems || proposed > Self.maxBatchCharacters {
+                break
+            }
+
+            characterCount = proposed
+            endIndex += 1
+        }
+
+        return startIndex..<endIndex
+    }
+
+    private func translateChunk(
+        _ texts: [String],
+        sourceLanguage: String,
+        targetLanguage: String
+    ) async throws -> [String] {
+        guard texts.count > 1 else {
+            let translated = try await translator.translate(
+                text: texts[0],
+                sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage
+            )
+            return [translated]
+        }
+
+        let joined = joinedChunk(texts)
+        let translated = try await translator.translate(
+            text: joined,
+            sourceLanguage: sourceLanguage,
+            targetLanguage: targetLanguage
+        )
+        let split = splitChunk(translated, expectedCount: texts.count)
+        if split.count == texts.count {
+            return split
+        }
+
+        var fallback: [String] = []
+        fallback.reserveCapacity(texts.count)
+        for text in texts {
+            let translatedText = try await translator.translate(
+                text: text,
+                sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage
+            )
+            fallback.append(translatedText)
+        }
+        return fallback
+    }
+
+    private func joinedChunk(_ texts: [String]) -> String {
+        texts.enumerated().map { index, text in
+            if index == 0 {
+                return text
+            }
+            return "\(separator(for: index))\n\(text)"
+        }
+        .joined(separator: "\n")
+    }
+
+    private func splitChunk(_ text: String, expectedCount: Int) -> [String] {
+        var parts: [String] = [text]
+        for index in 1..<expectedCount {
+            let marker = separator(for: index)
+            parts = parts.flatMap { segment in
+                segment.components(separatedBy: marker)
             }
         }
 
-        return makeTranslatedCues(
-            sourceCues: sourceCues,
-            translatedTexts: translatedTexts,
-            sourceLanguage: sourceLanguage
-        )
+        return parts.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    private func separator(for index: Int) -> String {
+        "__LRSEP_\(index)__"
     }
 }
 

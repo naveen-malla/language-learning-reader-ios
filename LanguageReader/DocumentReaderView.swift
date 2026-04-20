@@ -40,7 +40,13 @@ struct DocumentReaderView: View {
     private let subtitleTranslationService = SubtitleTranslationService()
     private let learningStateResolver = WordLearningStateResolver()
     private let ignoredWordsStore = IgnoredWordsStore()
+    private let startsInVideoMode: Bool
     private var documentLanguageCode: String { document.languageCode.rawValue }
+
+    init(document: Document, startsInVideoMode: Bool = false) {
+        self.document = document
+        self.startsInVideoMode = startsInVideoMode
+    }
 
     private var sentenceReaderModel: SentenceReaderModel {
         SentenceReaderModel(blocks: cachedSentenceBlocks)
@@ -184,6 +190,10 @@ struct DocumentReaderView: View {
             videoDuration = Double(document.sourceDurationSeconds ?? 0)
             loadLegacySubtitleCuesIfNeeded()
             prefetchEnglishSubtitlesIfNeeded()
+            if startsInVideoMode && hasVideoSource {
+                isVideoMode = true
+                videoPlaybackState = .paused
+            }
         }
         .onChange(of: document.body) { _, _ in
             refreshSentenceBlocks()
@@ -453,6 +463,16 @@ struct DocumentReaderView: View {
 
                 await MainActor.run {
                     guard !Task.isCancelled else { return }
+                    let fallbackCues = YouTubeImportService.synthesizeSubtitleCues(
+                        from: document.body,
+                        durationSeconds: document.sourceDurationSeconds
+                    )
+                    if !fallbackCues.isEmpty {
+                        document.subtitleCues = fallbackCues
+                        document.updatedAt = Date()
+                        try? modelContext.save()
+                        prefetchEnglishSubtitlesIfNeeded()
+                    }
                     isLoadingLegacySubtitleCues = false
                     legacySubtitleCueBackfillTask = nil
                 }

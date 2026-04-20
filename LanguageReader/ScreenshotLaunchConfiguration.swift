@@ -13,6 +13,7 @@ struct ScreenshotLaunchConfiguration {
         case tab(AppLaunchTab)
         case flashcardsSession
         case reader
+        case watch
     }
 
     static let routeArgumentPrefix = "--screenshot-route="
@@ -62,6 +63,33 @@ struct ScreenshotLaunchConfiguration {
             body: seed.body,
             languageCode: seed.language,
             sourceType: .sample
+        )
+    }
+
+    var watchDocument: Document {
+        let cues = [
+            TimedSubtitleCue(startTime: 0, duration: 3.5, sourceText: "Heute sprechen wir ueber kleine Alltagsroutinen."),
+            TimedSubtitleCue(startTime: 3.5, duration: 3.8, sourceText: "Ich mache Kaffee und oeffne danach das Fenster."),
+            TimedSubtitleCue(startTime: 7.3, duration: 4.0, sourceText: "So beginnt mein Morgen ganz ruhig und klar.")
+        ]
+        let translated = [
+            TranslatedSubtitleCue(startTime: 0, duration: 3.5, translatedText: "Today we are talking about small daily routines."),
+            TranslatedSubtitleCue(startTime: 3.5, duration: 3.8, translatedText: "I make coffee and then open the window."),
+            TranslatedSubtitleCue(startTime: 7.3, duration: 4.0, translatedText: "That is how my morning starts, calm and clear.")
+        ]
+
+        let body = cues.map(\.sourceText).joined(separator: "\n")
+
+        return Document(
+            title: "German Watch Sample",
+            body: body,
+            languageCode: .german,
+            sourceType: .youtube,
+            sourceURL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            sourceVideoID: "dQw4w9WgXcQ",
+            sourceDurationSeconds: 45,
+            subtitleCuesRaw: SubtitleCueCoder.encode(cues),
+            translatedSubtitleCuesRaw: SubtitleCueCoder.encode(translated)
         )
     }
 
@@ -170,6 +198,8 @@ struct ScreenshotLaunchConfiguration {
             return .tab(.settings)
         case "reader":
             return .reader
+        case "watch":
+            return .watch
         default:
             return nil
         }

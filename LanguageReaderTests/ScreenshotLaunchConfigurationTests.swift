@@ -8,6 +8,7 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("flashcards"), .tab(.flashcards))
         XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("settings"), .tab(.settings))
         XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("flashcards-session"), .flashcardsSession)
+        XCTAssertEqual(ScreenshotLaunchConfiguration.parseRoute("watch"), .watch)
     }
 
     func testParseRouteSupportsReaderAndIgnoresUnknownValues() {

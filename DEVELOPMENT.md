@@ -76,7 +76,8 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 - Screenshot capture routes are available for simulator-only documentation work:
   - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=library`
   - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=flashcards-session`
-  - supported routes: `library`, `vocab`, `flashcards`, `flashcards-session`, `settings`, `reader`
+  - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=watch`
+  - supported routes: `library`, `vocab`, `flashcards`, `flashcards-session`, `settings`, `reader`, `watch`
 - In sentence mode, swipe horizontally to move one sentence at a time.
 - Sentence mode now keeps details in-page: centered sentence -> translate action -> unresolved word list.
 - Bottom mode button copy is `Sentence View` in full text mode and `Text View` in sentence mode.
@@ -92,6 +93,7 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 - `Watch` mode uses an embedded YouTube player inside the reader, with the top progress slider acting as a video scrubber.
 - Timed subtitle cues are stored locally on the document and drive subtitle sync during playback.
 - Older imported YouTube lessons that do not have stored timed cues lazily backfill them on reader open and show a disabled `Preparing` top-bar state while that recovery is running.
+- If timed-cue backfill fails for an older lesson, the app synthesizes a coarse subtitle timeline from the stored transcript so `Watch` can still render subtitle lines and prefetch English subtitles.
 - Imported video lessons start subtitle translation prefetch on reader open, then reuse cached translated cues on later `Watch` opens.
 - When English subtitle cues are available, the reader renders English as the primary lyric line with Kannada beneath it and a stronger active-cue treatment.
 - Active subtitle selection advances on exact cue starts and preserves the previous cue through short gaps so the highlight stays stable during play/pause/seek.

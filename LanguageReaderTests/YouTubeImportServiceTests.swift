@@ -574,6 +574,21 @@ final class YouTubeImportServiceTests: XCTestCase {
         }
     }
 
+    func testSynthesizeSubtitleCuesFromTranscriptSpreadsAcrossDuration() throws {
+        let cues = YouTubeImportService.synthesizeSubtitleCues(
+            from: "Heute sprechen wir langsam.\nIch mache Kaffee.\nDann lese ich weiter.",
+            durationSeconds: 30
+        )
+
+        XCTAssertEqual(cues.count, 3)
+        let first = try XCTUnwrap(cues.first)
+        let last = try XCTUnwrap(cues.last)
+        XCTAssertEqual(first.startTime, 0, accuracy: 0.001)
+        XCTAssertEqual(first.duration, 10, accuracy: 0.001)
+        XCTAssertEqual(last.startTime, 20, accuracy: 0.001)
+        XCTAssertEqual(last.sourceText, "Dann lese ich weiter.")
+    }
+
     func testImportVideoUsesKannadaTranslationWhenOnlyTranslatableTrackExists() async throws {
         let videoID = "KaBYEZ6q2tY"
         let session = makeStubbedSession { request in

@@ -223,6 +223,47 @@ actor YouTubeImportService {
         return try await loadSubtitleCues(videoID: videoID, metadata: metadata, language: language)
     }
 
+    static func synthesizeSubtitleCues(
+        from transcript: String,
+        durationSeconds: Int?
+    ) -> [TimedSubtitleCue] {
+        let paragraphs = transcript
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+
+        var lines: [String] = []
+        let tokenizer = SentenceTokenizer()
+
+        for paragraph in paragraphs {
+            let trimmed = paragraph.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let sentences = tokenizer.sentences(in: trimmed)
+            if sentences.isEmpty {
+                lines.append(trimmed)
+            } else {
+                lines.append(contentsOf: sentences)
+            }
+        }
+
+        guard !lines.isEmpty else { return [] }
+
+        let totalDuration = max(
+            Double(durationSeconds ?? 0),
+            Double(lines.count) * 2.5,
+            12
+        )
+        let cueDuration = totalDuration / Double(lines.count)
+
+        return lines.enumerated().map { index, line in
+            TimedSubtitleCue(
+                startTime: Double(index) * cueDuration,
+                duration: cueDuration,
+                sourceText: line
+            )
+        }
+    }
+
     func validateCandidate(
         videoID: String,
         language: SupportedLanguage,

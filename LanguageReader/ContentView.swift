@@ -13,6 +13,13 @@ struct ContentView: View {
                 NavigationStack {
                     DocumentReaderView(document: screenshotLaunchConfiguration.readerDocument)
                 }
+            case .watch:
+                NavigationStack {
+                    DocumentReaderView(
+                        document: screenshotLaunchConfiguration.watchDocument,
+                        startsInVideoMode: true
+                    )
+                }
             case .tab, .flashcardsSession, .none:
                 tabShell
             }

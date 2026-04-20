@@ -41,6 +41,7 @@ This file records durable architecture and product decisions. Active checklist w
 - `Watch` mode uses a `WKWebView`-hosted YouTube iframe player to stay within YouTube embed requirements and keep playback controls inside the reader layout.
 - Reader chrome stays outside the player surface; the compact top slider doubles as a video scrubber while subtitles render below the player.
 - Legacy imported YouTube documents recover timed subtitle cues lazily from `sourceVideoID` on reader open instead of forcing a full re-import just to unlock `Watch`.
+- If that timed-cue recovery fails, the app synthesizes a coarse subtitle timeline from the stored lesson body so legacy lessons still expose usable `Watch` subtitles instead of failing closed.
 - Subtitle presentation now treats translated English as the primary lyric line and keeps source Kannada as a lighter supporting line to preserve study context without flattening the translation focus.
 - Sentence detail content is integrated directly into each sentence page (no extra overlay panel).
 - Sentence page layout favors screen usage over card chrome: reduced horizontal inset, compact top bar, and a capped/scrollable sentence header region.
