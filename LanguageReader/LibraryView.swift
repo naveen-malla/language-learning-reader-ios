@@ -12,7 +12,7 @@ struct LibraryView: View {
     @State private var isLoadingSuggestions = false
     @State private var importingVideoIDs: Set<String> = []
     @State private var isImportingSmartPack = false
-    @State private var hasAttemptedLibraryAutoTopUp = false
+    @State private var lastAutoTopUpLanguageCode: String?
     @State private var smartPackStatusMessage: String?
     @State private var lastDiscoveryRefreshAt: Date?
     @State private var nextDiscoveryRetryAt: Date?
@@ -25,6 +25,7 @@ struct LibraryView: View {
     @State private var readerDestination: ReaderDestination?
     @AppStorage("library.followed_channels.v1") private var followedChannelsRaw = ""
     @AppStorage(AutoImportSettings.allowRepeatImportsKey) private var allowRepeatImports = AutoImportSettings.defaultAllowRepeatImports
+    @AppStorage(StudyLanguageSettingsStore.studyLanguageKey) private var studyLanguageCode = SupportedLanguage.freshInstallDefault.rawValue
 
     static let dateFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
@@ -98,7 +99,9 @@ struct LibraryView: View {
     }
 
     private var knownImportedVideoIDs: Set<String> {
-        let historical = UserDefaults.standard.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? []
+        let historical = UserDefaults.standard.stringArray(
+            forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: selectedStudyLanguage)
+        ) ?? []
         return importedVideoIDs.union(historical)
     }
 
@@ -123,7 +126,7 @@ struct LibraryView: View {
     private var uniqueLibraryDocuments: [Document] {
         var seenVideoIDs: Set<String> = []
         var unique: [Document] = []
-        for document in documents.sorted(by: { $0.updatedAt > $1.updatedAt }) {
+        for document in selectedLanguageDocuments.sorted(by: { $0.updatedAt > $1.updatedAt }) {
             guard document.sourceType == .youtube,
                   let sourceVideoID = document.sourceVideoID else {
                 unique.append(document)
@@ -138,6 +141,14 @@ struct LibraryView: View {
         return unique
     }
 
+    private var selectedStudyLanguage: SupportedLanguage {
+        SupportedLanguage.resolve(studyLanguageCode) ?? .freshInstallDefault
+    }
+
+    private var selectedLanguageDocuments: [Document] {
+        documents.filter { $0.languageCode == selectedStudyLanguage }
+    }
+
     private var rankingContext: SuggestionRankingContext {
         let followed = Set(
             followedChannelsRaw
@@ -149,7 +160,7 @@ struct LibraryView: View {
         var categoryHistory: [String: Int] = [:]
         var channelHistory: [String: Int] = [:]
 
-        for document in documents where document.sourceType == .youtube {
+        for document in selectedLanguageDocuments where document.sourceType == .youtube {
             if let category = document.sourceCategory {
                 let key = SuggestionRanker.normalizeCategory(category)
                 if !key.isEmpty {
@@ -205,6 +216,9 @@ struct LibraryView: View {
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    StudyLanguageToolbarMenu(selection: $studyLanguageCode)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await refreshSuggestions(force: true) }
@@ -216,19 +230,21 @@ struct LibraryView: View {
                     .accessibilityLabel("Refresh discovery feed")
                 }
             }
-            .task {
+            .task(id: selectedStudyLanguage.rawValue) {
+                hasLoadedSuggestions = false
                 await refreshSuggestions(force: false)
-                if !hasAttemptedLibraryAutoTopUp {
-                    hasAttemptedLibraryAutoTopUp = true
+                if lastAutoTopUpLanguageCode != selectedStudyLanguage.rawValue {
+                    lastAutoTopUpLanguageCode = selectedStudyLanguage.rawValue
                     await runAutoTopUpIfNeeded()
                 }
             }
             .sheet(isPresented: $isShowingTextImport) {
-                TextImportSheet { title, body in
+                TextImportSheet(language: selectedStudyLanguage) { title, body in
                     let now = Date()
                     let document = Document(
                         title: title,
                         body: body,
+                        languageCode: selectedStudyLanguage,
                         createdAt: now,
                         updatedAt: now,
                         sourceType: .text
@@ -237,7 +253,7 @@ struct LibraryView: View {
                 }
             }
             .sheet(isPresented: $isShowingYouTubeImport) {
-                YouTubeURLImportSheet { urlText in
+                YouTubeURLImportSheet(language: selectedStudyLanguage) { urlText in
                     try await importYouTubeURL(urlText)
                 }
             }
@@ -270,7 +286,7 @@ struct LibraryView: View {
     private var importSection: some View {
         SectionCard("Lesson Intake") {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Press once to pull \(pullTargetCount) subtitle-ready Kannada lessons into your queue.")
+                Text("Press once to pull \(pullTargetCount) subtitle-ready \(selectedStudyLanguage.displayName) lessons into your queue.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -337,6 +353,13 @@ struct LibraryView: View {
                 .buttonStyle(.plain)
 
                 HStack(spacing: 8) {
+                    Text("Studying \(selectedStudyLanguage.displayName)")
+                        .subtleMetadataPillStyle()
+                        .foregroundStyle(.secondary)
+                    StudyLanguageBadge(language: selectedStudyLanguage)
+                }
+
+                HStack(spacing: 8) {
                     LibraryCountPill(label: "Queue", value: queueDocuments.count)
                     LibraryCountPill(label: "New Feed", value: newFeedSuggestions.count)
                     LibraryCountPill(label: "In Library", value: importedFeedSuggestions.count)
@@ -399,11 +422,11 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 10) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Kannada Learning Console")
+                        Text("\(selectedStudyLanguage.displayName) Learning Console")
                             .font(.system(.title3, design: .rounded).weight(.bold))
                             .foregroundStyle(.white)
 
-                        Text("Fresh subtitle-ready lessons, organized for daily momentum.")
+                        Text("Fresh subtitle-ready \(selectedStudyLanguage.displayName.lowercased()) lessons, organized for daily momentum.")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.92))
                     }
@@ -594,7 +617,7 @@ struct LibraryView: View {
     private var librarySection: some View {
         SectionCard("My Library") {
             if libraryDocuments.isEmpty {
-                Text("No lessons yet. Import your first text or YouTube lesson above.")
+                Text("No \(selectedStudyLanguage.displayName.lowercased()) lessons yet. Import your first text or YouTube lesson above.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
@@ -632,11 +655,12 @@ struct LibraryView: View {
         isLoadingSuggestions = true
         let loaded = await YouTubeDiscoveryService.shared.loadSuggestions(
             existingVideoIDs: [],
-            forceRefresh: force
+            forceRefresh: force,
+            language: selectedStudyLanguage
         )
         suggestions = SuggestionRanker.rank(loaded, context: rankingContext)
-        lastDiscoveryRefreshAt = await SuggestionCacheStore.shared.lastRefreshDate()
-        nextDiscoveryRetryAt = await SuggestionCacheStore.shared.nextRetryDate()
+        lastDiscoveryRefreshAt = await SuggestionCacheStore.shared.lastRefreshDate(language: selectedStudyLanguage)
+        nextDiscoveryRetryAt = await SuggestionCacheStore.shared.nextRetryDate(language: selectedStudyLanguage)
         hasLoadedSuggestions = true
         isLoadingSuggestions = false
     }
@@ -687,7 +711,10 @@ struct LibraryView: View {
 
         Task {
             do {
-                let imported = try await YouTubeImportService.shared.importVideo(videoID: suggestion.videoID)
+                let imported = try await YouTubeImportService.shared.importVideo(
+                    videoID: suggestion.videoID,
+                    language: selectedStudyLanguage
+                )
                 persistImported(
                     content: imported,
                     category: suggestion.category,
@@ -703,7 +730,10 @@ struct LibraryView: View {
     }
 
     private func importYouTubeURL(_ urlText: String) async throws {
-        let imported = try await YouTubeImportService.shared.importFromURL(urlText)
+        let imported = try await YouTubeImportService.shared.importFromURL(
+            urlText,
+            language: selectedStudyLanguage
+        )
         persistImported(
             content: imported,
             category: "Custom",
@@ -724,6 +754,7 @@ struct LibraryView: View {
         let document = Document(
             title: content.title,
             body: content.transcript,
+            languageCode: content.language,
             createdAt: now,
             updatedAt: now,
             sourceType: .youtube,
@@ -737,9 +768,10 @@ struct LibraryView: View {
             importMode: mode,
             autoBatchID: autoBatchID
         )
+        document.subtitleCues = content.subtitleCues
 
         modelContext.insert(document)
-        markVideoAsHistoricallyImported(content.videoID)
+        markVideoAsHistoricallyImported(content.videoID, language: content.language)
         updateFollowedChannelsFromImport(channelTitle: content.channelTitle)
         suggestions = SuggestionRanker.rank(suggestions, context: rankingContext)
 
@@ -771,6 +803,7 @@ struct LibraryView: View {
                 let document = Document(
                     title: imported.title,
                     body: imported.body,
+                    languageCode: selectedStudyLanguage,
                     createdAt: now,
                     updatedAt: now,
                     sourceType: .text,
@@ -828,11 +861,13 @@ struct LibraryView: View {
         followedChannelsRaw = channels.sorted().joined(separator: "|")
     }
 
-    private func markVideoAsHistoricallyImported(_ videoID: String) {
+    private func markVideoAsHistoricallyImported(_ videoID: String, language: SupportedLanguage) {
         guard YouTubeVideoIDParser.isValidVideoID(videoID) else { return }
 
         let defaults = UserDefaults.standard
-        var history = Set(defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? [])
+        var history = Set(
+            defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: language)) ?? []
+        )
         history.insert(videoID)
 
         if history.count > AutoImportSettings.maxHistoricalVideoIDs {
@@ -840,7 +875,7 @@ struct LibraryView: View {
             history = Set(sorted.suffix(AutoImportSettings.maxHistoricalVideoIDs))
         }
 
-        defaults.set(Array(history), forKey: AutoImportSettings.historicalImportedVideoIDsKey)
+        defaults.set(Array(history), forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: language))
     }
 
     private struct ReaderDestination: Identifiable {
@@ -887,6 +922,8 @@ private struct ContinueReadingCard: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.white.opacity(0.12), in: Capsule())
+
+                StudyLanguageBadge(language: document.languageCode)
 
                 Text(relativeOpenTime)
                     .font(.caption)
@@ -1145,6 +1182,8 @@ private struct LibraryDocumentRow: View {
                         .padding(.vertical, 4)
                         .background(Color.white.opacity(0.11), in: Capsule())
 
+                    StudyLanguageBadge(language: document.languageCode)
+
                     if let seconds = document.sourceDurationSeconds {
                         Text(formattedDuration(seconds: seconds))
                             .font(.caption2)
@@ -1229,6 +1268,7 @@ private struct TextImportSheet: View {
     @State private var titleText = ""
     @State private var bodyText = ""
 
+    let language: SupportedLanguage
     let onSave: (String, String) -> Void
 
     private var canSave: Bool {
@@ -1244,6 +1284,10 @@ private struct TextImportSheet: View {
                     VStack(spacing: 14) {
                         SectionCard("Import Text") {
                             VStack(alignment: .leading, spacing: 12) {
+                                Text("This import will be saved as \(language.displayName).")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+
                                 TextField("Title (optional)", text: $titleText)
                                     .glassInputFieldStyle()
 
@@ -1318,6 +1362,7 @@ private struct YouTubeURLImportSheet: View {
     @State private var isImporting = false
     @State private var errorMessage: String?
 
+    let language: SupportedLanguage
     let onImport: (String) async throws -> Void
 
     private var canImport: Bool {
@@ -1333,7 +1378,7 @@ private struct YouTubeURLImportSheet: View {
                     VStack(spacing: 14) {
                         SectionCard("Import YouTube Transcript") {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Paste a YouTube URL. Import requires Kannada subtitles and an extractable transcript.")
+                                Text("Paste a YouTube URL. Import requires \(language.displayName) subtitles and an extractable transcript.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 

@@ -7,6 +7,7 @@ enum YouTubeImportError: LocalizedError {
     case parsingFailure
     case captionsUnavailable
     case kannadaCaptionsUnavailable
+    case germanCaptionsUnavailable
     case transcriptUnavailable
     case unsupportedDuration
     case lowQualityTranscript
@@ -25,6 +26,8 @@ enum YouTubeImportError: LocalizedError {
             return "This video has no subtitles available."
         case .kannadaCaptionsUnavailable:
             return "This video does not have Kannada subtitles."
+        case .germanCaptionsUnavailable:
+            return "This video does not have German subtitles."
         case .transcriptUnavailable:
             return "Could not extract transcript text from subtitles."
         case .unsupportedDuration:
@@ -49,10 +52,12 @@ struct YouTubeSuggestedVideo: Identifiable, Sendable {
 
 struct ImportedYouTubeContent: Sendable {
     let videoID: String
+    let language: SupportedLanguage
     let title: String
     let channelTitle: String
     let channelID: String?
     let transcript: String
+    let subtitleCues: [TimedSubtitleCue]
     let durationSeconds: Int
     let thumbnailURL: URL?
 
@@ -128,11 +133,12 @@ actor YouTubeImportService {
     static let minimumReadableTranscriptLength = 60
     static let minimumKannadaCharacterCount = 24
     static let minimumKannadaWordCount = 6
+    static let minimumGermanWordCount = 10
     static let maxDigitRatio = 0.35
     static let maxNumericDominantLines = 12
 
     private var metadataCache: [String: VideoMetadata] = [:]
-    private var transcriptCache: [String: String] = [:]
+    private var transcriptCache: [String: [TimedSubtitleCue]] = [:]
     private let session: URLSession
     private let cacheStore: SuggestionCacheStore
     private lazy var discoveryService = YouTubeDiscoveryService(
@@ -151,59 +157,87 @@ actor YouTubeImportService {
 
     func loadBeginnerSuggestions(
         existingVideoIDs: Set<String> = [],
-        forceRefresh: Bool = false
+        forceRefresh: Bool = false,
+        language: SupportedLanguage = .kannada
     ) async -> [YouTubeSuggestedVideo] {
         await discoveryService.loadSuggestions(
             existingVideoIDs: existingVideoIDs,
-            forceRefresh: forceRefresh
+            forceRefresh: forceRefresh,
+            language: language
         )
     }
 
-    func importFromURL(_ input: String) async throws -> ImportedYouTubeContent {
+    func importFromURL(
+        _ input: String,
+        language: SupportedLanguage = .kannada
+    ) async throws -> ImportedYouTubeContent {
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw YouTubeImportError.invalidURL
         }
         guard let videoID = YouTubeVideoIDParser.parse(input) else {
             throw YouTubeImportError.invalidVideoID
         }
-        return try await importVideo(videoID: videoID)
+        return try await importVideo(videoID: videoID, language: language)
     }
 
-    func importVideo(videoID: String) async throws -> ImportedYouTubeContent {
-        let metadata = try await loadMetadata(videoID: videoID, requireKannada: true)
+    func importVideo(
+        videoID: String,
+        language: SupportedLanguage = .kannada
+    ) async throws -> ImportedYouTubeContent {
+        let metadata = try await loadMetadata(videoID: videoID, language: language)
         guard metadata.durationSeconds >= Self.minLessonDurationSeconds,
               metadata.durationSeconds <= Self.maxLessonDurationSeconds else {
             throw YouTubeImportError.unsupportedDuration
         }
-        let transcript = try await loadTranscript(videoID: videoID, metadata: metadata)
+        let subtitleCues = try await loadSubtitleCues(
+            videoID: videoID,
+            metadata: metadata,
+            language: language
+        )
+        let transcript = Self.flattenedTranscript(from: subtitleCues)
 
-        await cacheStore.addTrustedChannel(channelID: metadata.channelID, channelTitle: metadata.channelTitle)
+        await cacheStore.addTrustedChannel(
+            channelID: metadata.channelID,
+            channelTitle: metadata.channelTitle,
+            language: language
+        )
 
         return ImportedYouTubeContent(
             videoID: videoID,
+            language: language,
             title: metadata.title,
             channelTitle: metadata.channelTitle,
             channelID: metadata.channelID,
             transcript: transcript,
+            subtitleCues: subtitleCues,
             durationSeconds: metadata.durationSeconds,
             thumbnailURL: metadata.thumbnailURL
         )
     }
 
+    func loadSubtitleCuesForExistingVideo(
+        videoID: String,
+        language: SupportedLanguage = .kannada
+    ) async throws -> [TimedSubtitleCue] {
+        let metadata = try await loadMetadata(videoID: videoID, language: language)
+        return try await loadSubtitleCues(videoID: videoID, metadata: metadata, language: language)
+    }
+
     func validateCandidate(
         videoID: String,
+        language: SupportedLanguage,
         category: String,
         publishedAt: Date?,
         fallbackTitle: String?,
         fallbackChannelTitle: String?,
         fallbackChannelID: String?
     ) async throws -> YouTubeSuggestedVideo {
-        let metadata = try await loadMetadata(videoID: videoID, requireKannada: true)
+        let metadata = try await loadMetadata(videoID: videoID, language: language)
         guard metadata.durationSeconds >= Self.minLessonDurationSeconds,
               metadata.durationSeconds <= Self.maxLessonDurationSeconds else {
             throw YouTubeImportError.unsupportedDuration
         }
-        _ = try await loadTranscript(videoID: videoID, metadata: metadata)
+        _ = try await loadSubtitleCues(videoID: videoID, metadata: metadata, language: language)
 
         let resolvedTitle = metadata.title.isEmpty ? (fallbackTitle ?? "Untitled") : metadata.title
         let resolvedChannelTitle = metadata.channelTitle.isEmpty
@@ -223,20 +257,36 @@ actor YouTubeImportService {
         )
     }
 
-    private func loadTranscript(videoID: String, metadata: VideoMetadata) async throws -> String {
-        if let cached = transcriptCache[videoID], !cached.isEmpty {
+    private func loadSubtitleCues(
+        videoID: String,
+        metadata: VideoMetadata,
+        language: SupportedLanguage
+    ) async throws -> [TimedSubtitleCue] {
+        let key = cacheKey(videoID: videoID, language: language)
+        if let cached = transcriptCache[key], !cached.isEmpty {
             return cached
         }
 
         let transcript = try await fetchTranscript(from: metadata.captionTrackURL)
-        guard Self.isTranscriptReadableForStudy(transcript) else {
+        let flattenedTranscript = Self.flattenedTranscript(from: transcript)
+        guard Self.isTranscriptReadableForStudy(flattenedTranscript, language: language) else {
             throw YouTubeImportError.lowQualityTranscript
         }
-        transcriptCache[videoID] = transcript
+        transcriptCache[key] = transcript
         return transcript
     }
 
-    private static func isTranscriptReadableForStudy(_ transcript: String) -> Bool {
+    private static func flattenedTranscript(from cues: [TimedSubtitleCue]) -> String {
+        cues
+            .map(\.sourceText)
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isTranscriptReadableForStudy(
+        _ transcript: String,
+        language: SupportedLanguage
+    ) -> Bool {
         let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= minimumReadableTranscriptLength else { return false }
 
@@ -256,9 +306,8 @@ actor YouTubeImportService {
             }
         }
 
-        guard kannadaScalars >= minimumKannadaCharacterCount else { return false }
-
         let words = trimmed.components(separatedBy: .whitespacesAndNewlines)
+        var cleanedWords: [String] = []
         var kannadaWordCount = 0
         var uniqueKannadaWords: Set<String> = []
 
@@ -267,14 +316,12 @@ actor YouTubeImportService {
                 .lowercased()
                 .replacingOccurrences(of: #"[^\p{L}]+"#, with: "", options: .regularExpression)
             guard !cleaned.isEmpty else { continue }
+            cleanedWords.append(cleaned)
             if cleaned.unicodeScalars.contains(where: isKannadaScalar) {
                 kannadaWordCount += 1
                 uniqueKannadaWords.insert(cleaned)
             }
         }
-
-        guard kannadaWordCount >= minimumKannadaWordCount else { return false }
-        guard uniqueKannadaWords.count >= 4 else { return false }
 
         var numericDominantLines = 0
         for rawLine in trimmed.split(separator: "\n", omittingEmptySubsequences: true) {
@@ -313,17 +360,63 @@ actor YouTubeImportService {
             }
         }
 
+        switch language {
+        case .german:
+            guard LanguageTextHeuristics.containsLatinAlphabet(in: trimmed) else { return false }
+            guard cleanedWords.count >= minimumGermanWordCount else { return false }
+            guard Set(cleanedWords).count >= 4 else { return false }
+            guard cleanedWords.contains(where: isLikelyGermanToken) || LanguageTextHeuristics.looksLikeGerman(trimmed) else {
+                return false
+            }
+        case .kannada:
+            guard kannadaScalars >= minimumKannadaCharacterCount else { return false }
+            guard kannadaWordCount >= minimumKannadaWordCount else { return false }
+            guard uniqueKannadaWords.count >= 4 else { return false }
+        }
+
         return true
+    }
+
+    private static func isLikelyGermanToken(_ token: String) -> Bool {
+        let normalized = token.lowercased()
+        if normalized.contains("ä") || normalized.contains("ö") || normalized.contains("ü") || normalized.contains("ß") {
+            return true
+        }
+
+        return [
+            "der", "die", "das", "und", "ich", "nicht", "mit", "ein",
+            "eine", "ist", "wir", "sie", "zu", "für", "auf", "im"
+        ].contains(normalized)
     }
 
     private static func isKannadaScalar(_ scalar: UnicodeScalar) -> Bool {
         (0x0C80...0x0CFF).contains(scalar.value)
     }
 
-    private func loadMetadata(videoID: String, requireKannada: Bool) async throws -> VideoMetadata {
-        if let cached = metadataCache[videoID] {
-            if requireKannada, !cached.languageCode.lowercased().hasPrefix("kn") {
-                throw YouTubeImportError.kannadaCaptionsUnavailable
+    private func fetchTranscript(from captionTrackURL: URL) async throws -> [TimedSubtitleCue] {
+        var request = URLRequest(url: captionTrackURL)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await session.data(for: request)
+        guard isSuccessful(response: response) else {
+            throw YouTubeImportError.networkFailure
+        }
+
+        let text = YouTubeTranscriptXMLParser.parseTimedTranscript(data: data)
+        guard !text.isEmpty else {
+            throw YouTubeImportError.transcriptUnavailable
+        }
+        return text
+    }
+
+    private func loadMetadata(
+        videoID: String,
+        language: SupportedLanguage
+    ) async throws -> VideoMetadata {
+        let key = cacheKey(videoID: videoID, language: language)
+        if let cached = metadataCache[key] {
+            guard languageMatches(cached.languageCode, language: language) else {
+                throw captionsUnavailableError(for: language)
             }
             return cached
         }
@@ -338,17 +431,17 @@ actor YouTubeImportService {
         guard !tracks.isEmpty else {
             throw YouTubeImportError.captionsUnavailable
         }
-        guard let captionTrack = pickCaptionTrack(from: tracks, requireKannada: requireKannada) else {
-            throw YouTubeImportError.kannadaCaptionsUnavailable
+        guard let captionTrack = pickCaptionTrack(from: tracks, language: language) else {
+            throw captionsUnavailableError(for: language)
         }
         guard let metadata = buildVideoMetadata(videoID: videoID, payload: playerPayload, track: captionTrack) else {
             throw YouTubeImportError.parsingFailure
         }
 
-        metadataCache[videoID] = metadata
+        metadataCache[key] = metadata
 
-        if requireKannada, !metadata.languageCode.lowercased().hasPrefix("kn") {
-            throw YouTubeImportError.kannadaCaptionsUnavailable
+        if !languageMatches(metadata.languageCode, language: language) {
+            throw captionsUnavailableError(for: language)
         }
 
         return metadata
@@ -400,22 +493,6 @@ actor YouTubeImportService {
             throw YouTubeImportError.parsingFailure
         }
         return payload
-    }
-
-    private func fetchTranscript(from captionTrackURL: URL) async throws -> String {
-        var request = URLRequest(url: captionTrackURL)
-        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
-
-        let (data, response) = try await session.data(for: request)
-        guard isSuccessful(response: response) else {
-            throw YouTubeImportError.networkFailure
-        }
-
-        let text = YouTubeTranscriptXMLParser.parseTranscript(data: data)
-        guard !text.isEmpty else {
-            throw YouTubeImportError.transcriptUnavailable
-        }
-        return text
     }
 
     private func isSuccessful(response: URLResponse) -> Bool {
@@ -471,37 +548,46 @@ actor YouTubeImportService {
         )
     }
 
-    private func pickCaptionTrack(from tracks: [CaptionTrack], requireKannada: Bool) -> CaptionTrack? {
-        if let kannadaTrack = pickKannadaTrack(from: tracks) {
-            return kannadaTrack
+    private func pickCaptionTrack(
+        from tracks: [CaptionTrack],
+        language: SupportedLanguage
+    ) -> CaptionTrack? {
+        if let directTrack = pickDirectTrack(from: tracks, language: language) {
+            return directTrack
         }
 
-        guard requireKannada else {
-            return pickFallbackTrack(from: tracks)
-        }
-
-        guard let translatable = pickFallbackTrack(from: tracks),
+        guard language == .kannada,
+              let translatable = pickFallbackTrack(from: tracks, language: language),
               translatable.isTranslatable else {
             return nil
         }
-        return translatable.translated(to: "kn")
+        return translatable.translated(to: language.rawValue)
     }
 
-    private func pickKannadaTrack(from tracks: [CaptionTrack]) -> CaptionTrack? {
-        let kannadaTracks = tracks.filter { $0.languageCode.lowercased().hasPrefix("kn") }
-        guard !kannadaTracks.isEmpty else { return nil }
-        return prioritizedTracks(kannadaTracks).first
+    private func pickDirectTrack(
+        from tracks: [CaptionTrack],
+        language: SupportedLanguage
+    ) -> CaptionTrack? {
+        let directTracks = tracks.filter { languageMatches($0.languageCode, language: language) }
+        guard !directTracks.isEmpty else { return nil }
+        return prioritizedTracks(directTracks, language: language).first
     }
 
-    private func pickFallbackTrack(from tracks: [CaptionTrack]) -> CaptionTrack? {
+    private func pickFallbackTrack(
+        from tracks: [CaptionTrack],
+        language: SupportedLanguage
+    ) -> CaptionTrack? {
         guard !tracks.isEmpty else { return nil }
-        return prioritizedTracks(tracks).first
+        return prioritizedTracks(tracks, language: language).first
     }
 
-    private func prioritizedTracks(_ tracks: [CaptionTrack]) -> [CaptionTrack] {
+    private func prioritizedTracks(
+        _ tracks: [CaptionTrack],
+        language: SupportedLanguage
+    ) -> [CaptionTrack] {
         tracks.sorted { lhs, rhs in
-            let lhsScore = (lhs.isAutoGenerated ? 1 : 0) + languagePreferenceScore(lhs.languageCode)
-            let rhsScore = (rhs.isAutoGenerated ? 1 : 0) + languagePreferenceScore(rhs.languageCode)
+            let lhsScore = (lhs.isAutoGenerated ? 1 : 0) + languagePreferenceScore(lhs.languageCode, language: language)
+            let rhsScore = (rhs.isAutoGenerated ? 1 : 0) + languagePreferenceScore(rhs.languageCode, language: language)
             if lhsScore != rhsScore {
                 return lhsScore < rhsScore
             }
@@ -509,15 +595,44 @@ actor YouTubeImportService {
         }
     }
 
-    private func languagePreferenceScore(_ languageCode: String) -> Int {
-        let normalized = languageCode.lowercased()
-        if normalized == "kn" { return 0 }
-        if normalized.hasPrefix("kn-") { return 1 }
-        if normalized.hasPrefix("en") { return 2 }
-        if normalized.hasPrefix("hi") { return 3 }
-        if normalized.hasPrefix("te") { return 4 }
-        if normalized.hasPrefix("ta") { return 5 }
-        return 6
+    private func languagePreferenceScore(
+        _ languageCode: String,
+        language: SupportedLanguage
+    ) -> Int {
+        let normalized = LanguageTextHeuristics.canonicalLanguageCode(languageCode)
+        if normalized == language.rawValue { return 0 }
+        if languageCode.lowercased().hasPrefix("\(language.rawValue)-") { return 1 }
+        if normalized == "en" { return 2 }
+
+        switch language {
+        case .german:
+            if normalized == "de" { return 0 }
+            if normalized == "fr" { return 3 }
+            if normalized == "es" { return 4 }
+            return 5
+        case .kannada:
+            if normalized == "hi" { return 3 }
+            if normalized == "te" { return 4 }
+            if normalized == "ta" { return 5 }
+            return 6
+        }
+    }
+
+    private func languageMatches(_ languageCode: String, language: SupportedLanguage) -> Bool {
+        LanguageTextHeuristics.canonicalLanguageCode(languageCode) == language.rawValue
+    }
+
+    private func captionsUnavailableError(for language: SupportedLanguage) -> YouTubeImportError {
+        switch language {
+        case .german:
+            return .germanCaptionsUnavailable
+        case .kannada:
+            return .kannadaCaptionsUnavailable
+        }
+    }
+
+    private func cacheKey(videoID: String, language: SupportedLanguage) -> String {
+        "\(language.rawValue)|\(videoID)"
     }
 
     private func parseCaptionTracks(from payload: [String: Any]) -> [CaptionTrack] {
@@ -617,38 +732,120 @@ actor YouTubeImportService {
 extension YouTubeImportService: YouTubeCandidateValidating {}
 
 enum YouTubeTranscriptXMLParser {
-    static func parseTranscript(data: Data) -> String {
+    private static let mergeGapThreshold = 0.3
+    private static let maxMergedCueCharacterCount = 120
+    private static let microCueCharacterCount = 18
+    private static let microCueDurationThreshold = 0.8
+
+    static func parseTimedTranscript(data: Data) -> [TimedSubtitleCue] {
         let parserDelegate = TranscriptXMLDelegate()
         let parser = XMLParser(data: data)
         parser.delegate = parserDelegate
         _ = parser.parse()
-        return normalize(lines: parserDelegate.lines)
+        return normalize(cues: parserDelegate.cues)
     }
 
-    private static func normalize(lines: [String]) -> String {
-        var normalized: [String] = []
-        var previous = ""
+    static func parseTranscript(data: Data) -> String {
+        let cues = parseTimedTranscript(data: data)
+        return cues.map(\.sourceText).joined(separator: "\n")
+    }
 
-        for line in lines {
-            let cleaned = line
+    private static func normalize(cues: [ParsedTranscriptCue]) -> [TimedSubtitleCue] {
+        let normalized = cues.compactMap { cue -> TimedSubtitleCue? in
+            let cleaned = cue.text
                 .replacingOccurrences(of: "\n", with: " ")
                 .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-
-            guard !cleaned.isEmpty else { continue }
-            guard cleaned != previous else { continue }
-            normalized.append(cleaned)
-            previous = cleaned
+            guard !cleaned.isEmpty else { return nil }
+            return TimedSubtitleCue(
+                startTime: cue.startTime,
+                duration: cue.duration,
+                sourceText: cleaned
+            )
         }
 
-        return normalized.joined(separator: "\n")
+        return mergeConsecutiveDuplicates(in: normalized)
+            .reduce(into: []) { result, cue in
+                guard let previous = result.popLast() else {
+                    result.append(cue)
+                    return
+                }
+
+                if shouldMerge(previous, cue) {
+                    let mergedText = "\(previous.sourceText) \(cue.sourceText)"
+                        .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    let endTime = max(previous.endTime, cue.endTime)
+                    result.append(
+                        TimedSubtitleCue(
+                            startTime: previous.startTime,
+                            duration: endTime - previous.startTime,
+                            sourceText: mergedText
+                        )
+                    )
+                } else {
+                    result.append(previous)
+                    result.append(cue)
+                }
+            }
+    }
+
+    private static func mergeConsecutiveDuplicates(in cues: [TimedSubtitleCue]) -> [TimedSubtitleCue] {
+        var result: [TimedSubtitleCue] = []
+
+        for cue in cues {
+            guard let previous = result.popLast() else {
+                result.append(cue)
+                continue
+            }
+
+            let gap = cue.startTime - previous.endTime
+            if previous.sourceText == cue.sourceText, gap <= mergeGapThreshold {
+                let mergedEndTime = max(previous.endTime, cue.endTime)
+                result.append(
+                    TimedSubtitleCue(
+                        startTime: previous.startTime,
+                        duration: mergedEndTime - previous.startTime,
+                        sourceText: previous.sourceText
+                    )
+                )
+            } else {
+                result.append(previous)
+                result.append(cue)
+            }
+        }
+
+        return result
+    }
+
+    private static func shouldMerge(_ lhs: TimedSubtitleCue, _ rhs: TimedSubtitleCue) -> Bool {
+        let gap = rhs.startTime - lhs.endTime
+        guard gap >= 0, gap <= mergeGapThreshold else { return false }
+
+        let mergedCharacterCount = lhs.sourceText.count + 1 + rhs.sourceText.count
+        guard mergedCharacterCount <= maxMergedCueCharacterCount else { return false }
+
+        let lhsIsMicroCue = lhs.duration <= microCueDurationThreshold && lhs.sourceText.count <= microCueCharacterCount
+        let rhsIsMicroCue = rhs.duration <= microCueDurationThreshold && rhs.sourceText.count <= microCueCharacterCount
+        guard lhsIsMicroCue || rhsIsMicroCue else { return false }
+
+        return hasTerminalPunctuation(lhs.sourceText) == false
+    }
+
+    private static func hasTerminalPunctuation(_ text: String) -> Bool {
+        guard let last = text.trimmingCharacters(in: .whitespacesAndNewlines).last else {
+            return false
+        }
+        return ".?!;:।…".contains(last)
     }
 }
 
 private final class TranscriptXMLDelegate: NSObject, XMLParserDelegate {
-    private(set) var lines: [String] = []
+    private(set) var cues: [ParsedTranscriptCue] = []
     private var currentText = ""
     private var isTextElement = false
+    private var currentStartTime = 0.0
+    private var currentDuration = 0.0
 
     func parser(
         _ parser: XMLParser,
@@ -660,6 +857,8 @@ private final class TranscriptXMLDelegate: NSObject, XMLParserDelegate {
         if elementName == "text" {
             currentText = ""
             isTextElement = true
+            currentStartTime = Double(attributeDict["start"] ?? "") ?? 0
+            currentDuration = Double(attributeDict["dur"] ?? "") ?? 0
         }
     }
 
@@ -676,7 +875,21 @@ private final class TranscriptXMLDelegate: NSObject, XMLParserDelegate {
     ) {
         guard elementName == "text" else { return }
         isTextElement = false
-        lines.append(currentText)
+        cues.append(
+            ParsedTranscriptCue(
+                startTime: currentStartTime,
+                duration: currentDuration,
+                text: currentText
+            )
+        )
         currentText = ""
+        currentStartTime = 0
+        currentDuration = 0
     }
+}
+
+private struct ParsedTranscriptCue {
+    let startTime: Double
+    let duration: Double
+    let text: String
 }

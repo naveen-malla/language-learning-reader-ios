@@ -4,12 +4,13 @@ import SwiftData
 protocol AutoImportSuggesting: Sendable {
     func loadSuggestions(
         existingVideoIDs: Set<String>,
-        forceRefresh: Bool
+        forceRefresh: Bool,
+        language: SupportedLanguage
     ) async -> [YouTubeSuggestedVideo]
 }
 
 protocol AutoImportVideoImporting: Sendable {
-    func importVideo(videoID: String) async throws -> ImportedYouTubeContent
+    func importVideo(videoID: String, language: SupportedLanguage) async throws -> ImportedYouTubeContent
 }
 
 struct AutoImportRunSummary {
@@ -110,9 +111,12 @@ final class AutoImportCoordinator {
         trigger: AutoImportTrigger
     ) async -> AutoImportRunSummary? {
         let documents = fetchDocuments(modelContext: modelContext)
-        let unreadCount = unreadImportedLessonCount(documents: documents)
+        let studyLanguage = currentStudyLanguage
+        let unreadCount = unreadImportedLessonCount(documents: documents, language: studyLanguage)
 
-        let lastAttempt = defaults.object(forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey) as? Date
+        let lastAttempt = defaults.object(
+            forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey(for: studyLanguage)
+        ) as? Date
         guard Self.shouldRunAutoTopUp(
             enabled: effectiveAutoTopUpEnabled,
             now: now(),
@@ -124,7 +128,7 @@ final class AutoImportCoordinator {
             return nil
         }
 
-        defaults.set(now(), forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey)
+        defaults.set(now(), forKey: AutoImportSettings.lastAutoTopUpAttemptAtKey(for: studyLanguage))
 
         let targetCount = max(1, AutoImportSettings.smartPackTargetCount - unreadCount)
         let summary = await runImportBatch(
@@ -138,8 +142,8 @@ final class AutoImportCoordinator {
         )
 
         if summary.importedCount > 0 {
-            defaults.set(now(), forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey)
-            defaults.set(summary.batchID, forKey: AutoImportSettings.lastAutoTopUpBatchIDKey)
+            defaults.set(now(), forKey: AutoImportSettings.lastAutoTopUpSuccessAtKey(for: studyLanguage))
+            defaults.set(summary.batchID, forKey: AutoImportSettings.lastAutoTopUpBatchIDKey(for: studyLanguage))
         }
 
         return summary
@@ -184,6 +188,7 @@ final class AutoImportCoordinator {
         forceDiscoveryRefresh: Bool,
         allowRepeatImports: Bool
     ) async -> AutoImportRunSummary {
+        let studyLanguage = currentStudyLanguage
         guard targetCount > 0 else {
             return AutoImportRunSummary(
                 mode: mode,
@@ -199,15 +204,17 @@ final class AutoImportCoordinator {
         }
 
         let batchID = UUID().uuidString
-        let recentChannelKeys = Self.recentlyImportedChannelKeys(from: documents)
-        let libraryVideoIDs = Set(documents.compactMap(\.sourceVideoID))
+        let languageDocuments = documents.filter { $0.languageCode == studyLanguage }
+        let recentChannelKeys = Self.recentlyImportedChannelKeys(from: languageDocuments)
+        let libraryVideoIDs = Set(languageDocuments.compactMap(\.sourceVideoID))
         var existingVideoIDs = libraryVideoIDs
-        existingVideoIDs.formUnion(historicalImportedVideoIDs())
+        existingVideoIDs.formUnion(historicalImportedVideoIDs(language: studyLanguage))
         // Empty library should not trust old discovery cache; force a fresh pull.
         let shouldForceDiscoveryRefresh = forceDiscoveryRefresh || libraryVideoIDs.isEmpty
         let discoveredCandidates = await discoveryService.loadSuggestions(
             existingVideoIDs: allowRepeatImports ? [] : existingVideoIDs,
-            forceRefresh: shouldForceDiscoveryRefresh
+            forceRefresh: shouldForceDiscoveryRefresh,
+            language: studyLanguage
         )
         let freshCandidates = discoveredCandidates.filter { !existingVideoIDs.contains($0.videoID) }
         let repeatCandidates = discoveredCandidates.filter { existingVideoIDs.contains($0.videoID) }
@@ -284,10 +291,14 @@ final class AutoImportCoordinator {
             attemptedCount += 1
 
             do {
-                let content = try await importService.importVideo(videoID: candidate.videoID)
+                let content = try await importService.importVideo(
+                    videoID: candidate.videoID,
+                    language: studyLanguage
+                )
                 let document = Document(
                     title: content.title,
                     body: content.transcript,
+                    languageCode: content.language,
                     createdAt: now(),
                     updatedAt: now(),
                     sourceType: .youtube,
@@ -301,6 +312,7 @@ final class AutoImportCoordinator {
                     importMode: mode,
                     autoBatchID: mode == .manual ? nil : batchID
                 )
+                document.subtitleCues = content.subtitleCues
 
                 modelContext.insert(document)
                 existingVideoIDs.insert(candidate.videoID)
@@ -319,7 +331,7 @@ final class AutoImportCoordinator {
 
         if importedCount > 0 {
             try? modelContext.save()
-            persistHistoricalImportedVideoIDs(importedVideoIDsThisRun)
+            persistHistoricalImportedVideoIDs(importedVideoIDsThisRun, language: studyLanguage)
         }
 
         return AutoImportRunSummary(
@@ -433,26 +445,41 @@ final class AutoImportCoordinator {
         return (try? modelContext.fetch(descriptor)) ?? []
     }
 
-    private func historicalImportedVideoIDs() -> Set<String> {
-        let stored = defaults.stringArray(forKey: AutoImportSettings.historicalImportedVideoIDsKey) ?? []
+    private var currentStudyLanguage: SupportedLanguage {
+        StudyLanguageSettingsStore(defaults: defaults).studyLanguage
+    }
+
+    private func historicalImportedVideoIDs(language: SupportedLanguage) -> Set<String> {
+        let stored = defaults.stringArray(
+            forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: language)
+        ) ?? []
         return Set(stored.filter(YouTubeVideoIDParser.isValidVideoID))
     }
 
-    private func persistHistoricalImportedVideoIDs(_ newIDs: Set<String>) {
+    private func persistHistoricalImportedVideoIDs(
+        _ newIDs: Set<String>,
+        language: SupportedLanguage
+    ) {
         guard !newIDs.isEmpty else { return }
-        var merged = historicalImportedVideoIDs()
+        var merged = historicalImportedVideoIDs(language: language)
         merged.formUnion(newIDs.filter(YouTubeVideoIDParser.isValidVideoID))
         if merged.count > AutoImportSettings.maxHistoricalVideoIDs {
             let sorted = Array(merged).sorted()
             let keep = sorted.suffix(AutoImportSettings.maxHistoricalVideoIDs)
             merged = Set(keep)
         }
-        defaults.set(Array(merged), forKey: AutoImportSettings.historicalImportedVideoIDsKey)
+        defaults.set(
+            Array(merged),
+            forKey: AutoImportSettings.historicalImportedVideoIDsKey(for: language)
+        )
     }
 
-    private func unreadImportedLessonCount(documents: [Document]) -> Int {
+    private func unreadImportedLessonCount(
+        documents: [Document],
+        language: SupportedLanguage
+    ) -> Int {
         documents.filter { document in
-            document.sourceType == .youtube && document.isOpened == false
+            document.sourceType == .youtube && document.isOpened == false && document.languageCode == language
         }.count
     }
 }
