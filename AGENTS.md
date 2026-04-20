@@ -63,6 +63,8 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Build bundled dictionary: `./scripts/build_dictionary.py`
 - Evaluate dictionary quality (coverage/meaning fixtures): `./scripts/evaluate_dictionary.py`
 - Evaluate dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --report-json /tmp/dictionary_eval_report.json`
+- Evaluate German dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --source-language de --report-json /tmp/german_dictionary_eval.json`
+- Evaluate Kannada dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --source-language kn --report-json /tmp/kannada_dictionary_eval.json`
 - Evaluate without failing thresholds: `python3 scripts/evaluate_dictionary.py --no-fail-on-thresholds`
 - Dictionary evaluation tests: `./scripts/test_evaluate_dictionary.py`
 - Summarize missing words by frequency: `python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20`
@@ -79,8 +81,10 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - If source files are added or removed, run `xcodegen generate`.
 
 ## Dictionary Data Paths
-- Overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).
-- Missing list: `Documents/dictionary_missing.tsv`.
+- Kannada overrides: `Documents/dictionary_overrides.tsv` (normalized_key<TAB>meaning).
+- Kannada missing list: `Documents/dictionary_missing.tsv`.
+- German overrides: `Documents/dictionary_overrides_de.tsv` (normalized_key<TAB>meaning).
+- German missing list: `Documents/dictionary_missing_de.tsv`.
 - Cloud fallback cache: `Documents/dictionary_cloud_cache.tsv`.
 
 ## Data & Secrets
