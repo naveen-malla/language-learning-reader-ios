@@ -478,11 +478,15 @@ def print_report(report: dict[str, Any]) -> None:
             )
 
 
-def resolve_fixture_paths(explicit_paths: list[str]) -> list[str]:
+def resolve_fixture_paths(explicit_paths: list[str], source_language: str) -> list[str]:
     if explicit_paths:
         return explicit_paths
 
-    default_glob = os.path.join("scripts", "eval_fixtures", "*.json")
+    normalized_language = normalize(source_language)
+    if normalized_language == "de":
+        default_glob = os.path.join("scripts", "eval_fixtures", "german_*.json")
+    else:
+        default_glob = os.path.join("scripts", "eval_fixtures", "kannada_*.json")
     return sorted(glob.glob(default_glob))
 
 
@@ -490,7 +494,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate dictionary coverage and meaning accuracy.")
     parser.add_argument(
         "--dictionary",
-        default=os.path.join("LanguageReader", "Resources", "dictionary.sqlite"),
         help="Path to dictionary sqlite file.",
     )
     parser.add_argument(
@@ -518,16 +521,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    fixture_paths = resolve_fixture_paths(args.fixture)
+    fixture_paths = resolve_fixture_paths(args.fixture, args.source_language)
+    dictionary_path = args.dictionary or default_dictionary_path(args.source_language)
 
-    if not os.path.exists(args.dictionary):
-        print(f"Dictionary not found at: {args.dictionary}", file=sys.stderr)
+    if not os.path.exists(dictionary_path):
+        print(f"Dictionary not found at: {dictionary_path}", file=sys.stderr)
         return 2
     if not fixture_paths:
         print("No fixtures found. Add JSON fixtures under scripts/eval_fixtures/.", file=sys.stderr)
         return 2
 
-    engine = DictionaryLookupEngine(args.dictionary, args.source_language)
+    engine = DictionaryLookupEngine(dictionary_path, args.source_language)
     try:
         reports = [evaluate_fixture(engine, fixture_path) for fixture_path in fixture_paths]
     finally:
@@ -538,7 +542,7 @@ def main() -> int:
         print_report(report)
 
     overall = {
-        "dictionary": os.path.abspath(args.dictionary),
+        "dictionary": os.path.abspath(dictionary_path),
         "source_language": normalize(args.source_language),
         "fixture_count": len(reports),
         "thresholds_passed": overall_passed,
@@ -559,6 +563,11 @@ def main() -> int:
     return 0
 
 
+def default_dictionary_path(source_language: str) -> str:
+    if source_language.strip().lower() == "de":
+        return os.path.join("LanguageReader", "Resources", "dictionary_de.sqlite")
+    return os.path.join("LanguageReader", "Resources", "dictionary.sqlite")
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
-

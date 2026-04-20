@@ -199,9 +199,53 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(configurations.first?.sourceLanguage, "kn")
     }
 
+    func testTranslatorReceivesExplicitGermanSourceLanguage() async throws {
+        let translator = FakeAzureSubtitleCueTranslator(results: [
+            .success(["This is a house."])
+        ])
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(),
+            translator: translator
+        )
+
+        _ = await service.translateIfNeeded(
+            sourceCues: [
+                TimedSubtitleCue(startTime: 0, duration: 1.2, sourceText: "Das ist ein Haus.")
+            ],
+            cachedCues: nil,
+            sourceLanguage: "de-DE",
+            targetLanguage: "en-US"
+        )
+
+        let configurations = await translator.getReceivedConfigurations()
+        XCTAssertEqual(configurations.count, 1)
+        XCTAssertEqual(configurations.first?.sourceLanguage, "de")
+        XCTAssertEqual(configurations.first?.targetLanguage, "en")
+    }
+
+    func testRejectsGermanOutputWhenEnglishTranslationIsRequested() async throws {
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(),
+            translator: FakeAzureSubtitleCueTranslator(results: [
+                .success(["Das ist ein Haus."])
+            ])
+        )
+
+        let result = await service.translateIfNeeded(
+            sourceCues: [
+                TimedSubtitleCue(startTime: 0, duration: 1.2, sourceText: "Das ist ein Haus.")
+            ],
+            cachedCues: nil,
+            sourceLanguage: "de",
+            targetLanguage: "en"
+        )
+
+        XCTAssertEqual(result, .unavailable(SubtitleTranslationService.rejectedOutputMessage))
+    }
+
     func testAzureSubtitleCueTranslatorRetriesWithoutSourceLanguageOnServiceError() async throws {
         var callCount = 0
-        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { request in
+        let translator = AzureSubtitleCueTranslator(session: makeSubtitleTranslatorStubbedSession { [self] request in
             callCount += 1
             let response: HTTPURLResponse
             let data: Data
@@ -274,15 +318,12 @@ final class SubtitleTranslationServiceTests: XCTestCase {
                 )
             )
 
-            let body = try XCTUnwrap(request.httpBody)
-            let payload = try XCTUnwrap(
-                JSONSerialization.jsonObject(with: body) as? [[String: String]]
-            )
+            let payload = try self.translatorRequestPayload(request)
             let translatedPayload = payload.map { item -> String in
                 let text = item["Text"] ?? ""
                 return "EN: \(text)"
             }
-            let data = Data(makeTranslatorResponseJSON(texts: translatedPayload).utf8)
+            let data = Data(self.makeTranslatorResponseJSON(texts: translatedPayload).utf8)
             return (response, data)
         })
 
@@ -418,11 +459,40 @@ final class SubtitleTranslationServiceTests: XCTestCase {
     }
 
     private func translatorRequestBodyCount(_ request: URLRequest) throws -> Int {
-        let body = try XCTUnwrap(request.httpBody)
-        let payload = try XCTUnwrap(
+        try translatorRequestPayload(request).count
+    }
+
+    private func translatorRequestPayload(_ request: URLRequest) throws -> [[String: String]] {
+        let body = try requestBodyData(from: request)
+        return try XCTUnwrap(
             JSONSerialization.jsonObject(with: body) as? [[String: String]]
         )
-        return payload.count
+    }
+
+    private func requestBodyData(from request: URLRequest) throws -> Data {
+        if let body = request.httpBody {
+            return body
+        }
+
+        let stream = try XCTUnwrap(request.httpBodyStream)
+        stream.open()
+        defer { stream.close() }
+
+        var buffer = Array(repeating: UInt8(0), count: 4096)
+        var data = Data()
+
+        while stream.hasBytesAvailable {
+            let readCount = stream.read(&buffer, maxLength: buffer.count)
+            if readCount < 0 {
+                throw try XCTUnwrap(stream.streamError)
+            }
+            if readCount == 0 {
+                break
+            }
+            data.append(buffer, count: readCount)
+        }
+
+        return data
     }
 }
 

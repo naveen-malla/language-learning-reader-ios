@@ -9,11 +9,13 @@ struct DocumentReaderView: View {
 
     @State private var selection: WordSelection?
     @State private var readerMode: ReaderMode = .word
+    @State private var isVideoMode = false
     @State private var sentenceIndex = 0
     @State private var sentenceInsights: SentenceInsights?
     @State private var translatedSentence: String?
     @State private var isTranslatingSentence = false
     @State private var translationTask: Task<Void, Never>?
+    @State private var subtitleTranslationTask: Task<Void, Never>?
     @State private var wordLookupTask: Task<Void, Never>?
     @State private var sentenceMeaningPrefetchTask: Task<Void, Never>?
     @State private var scrollOffset: CGFloat = 0
@@ -22,12 +24,23 @@ struct DocumentReaderView: View {
     @State private var statusByKey: [String: VocabStatus] = [:]
     @State private var cachedSentenceBlocks: [SentenceBlock] = []
     @State private var ignoredKeys: Set<String> = []
+    @State private var videoCurrentTime = 0.0
+    @State private var videoDuration = 0.0
+    @State private var requestedVideoSeekTime: Double?
+    @State private var videoPlaybackState: YouTubePlayerPlaybackState = .idle
+    @State private var translatedSubtitleCues: [TranslatedSubtitleCue]?
+    @State private var isLoadingSubtitleTranslation = false
+    @State private var subtitleTranslationMessage: String?
+    @State private var legacySubtitleCueBackfillTask: Task<Void, Never>?
+    @State private var isLoadingLegacySubtitleCues = false
 
     private let normalizer = TextNormalizer()
     private let sentenceInsightsBuilder = SentenceInsightsBuilder()
     private let sentenceTranslator = SentenceTranslationService()
+    private let subtitleTranslationService = SubtitleTranslationService()
     private let learningStateResolver = WordLearningStateResolver()
     private let ignoredWordsStore = IgnoredWordsStore()
+    private var documentLanguageCode: String { document.languageCode.rawValue }
 
     private var sentenceReaderModel: SentenceReaderModel {
         SentenceReaderModel(blocks: cachedSentenceBlocks)
@@ -37,7 +50,67 @@ struct DocumentReaderView: View {
         sentenceReaderModel.sentence(at: sentenceIndex)
     }
 
-    private var progress: Double {
+    private var subtitleCues: [TimedSubtitleCue] {
+        document.subtitleCues
+    }
+
+    private var hasVideoSource: Bool {
+        document.sourceType == .youtube && document.sourceVideoID != nil
+    }
+
+    private var activeSubtitleCueIndex: Int? {
+        SubtitleCueTimeline.activeIndex(for: subtitleCues, at: videoCurrentTime)
+    }
+
+    private var supportsVideoMode: Bool {
+        hasVideoSource && subtitleCues.isEmpty == false
+    }
+
+    private var legacyVideoToggle: ReaderTopBarToggle? {
+        guard hasVideoSource else { return nil }
+
+        if isVideoMode {
+            return ReaderTopBarToggle(
+                label: "Read",
+                systemImage: "book.closed",
+                accessibilityLabel: "Switch back to reading mode",
+                isEnabled: true,
+                showsProgress: false,
+                action: { toggleVideoMode() }
+            )
+        }
+
+        if supportsVideoMode {
+            return ReaderTopBarToggle(
+                label: "Watch",
+                systemImage: "play.rectangle",
+                accessibilityLabel: "Switch to video mode",
+                isEnabled: true,
+                showsProgress: false,
+                action: { toggleVideoMode() }
+            )
+        }
+
+        guard isLoadingLegacySubtitleCues, document.sourceVideoID != nil else {
+            return nil
+        }
+
+        return ReaderTopBarToggle(
+            label: "Preparing",
+            systemImage: "hourglass",
+            accessibilityLabel: "Preparing video subtitles",
+            isEnabled: false,
+            showsProgress: true,
+            action: {}
+        )
+    }
+
+    private var topBarProgress: Double {
+        if isVideoMode {
+            let totalDuration = max(videoDuration, Double(document.sourceDurationSeconds ?? 0), 1)
+            return min(max(videoCurrentTime / totalDuration, 0), 1)
+        }
+
         if readerMode == .sentence {
             return sentenceReaderModel.progress(for: sentenceIndex)
         }
@@ -45,6 +118,16 @@ struct DocumentReaderView: View {
         let maxOffset = max(contentHeight - viewportHeight, 1)
         let value = Double(-scrollOffset / maxOffset)
         return min(max(value, 0), 1)
+    }
+
+    private var topBarSeekHandler: ((Double) -> Void)? {
+        if isVideoMode {
+            return { seekVideo(to: $0) }
+        }
+        if readerMode == .sentence {
+            return { seekSentence(to: $0) }
+        }
+        return nil
     }
 
     private var scrollBottomPadding: CGFloat { 120 }
@@ -55,7 +138,9 @@ struct DocumentReaderView: View {
                 ReaderBackground()
 
                 Group {
-                    if readerMode == .word {
+                    if isVideoMode {
+                        videoModeContent(for: proxy)
+                    } else if readerMode == .word {
                         wordModeContent(for: proxy)
                     } else {
                         sentenceModeContent(for: proxy)
@@ -63,21 +148,25 @@ struct DocumentReaderView: View {
                 }
                 .transition(.slide.combined(with: .opacity))
                 .animation(.easeInOut(duration: 0.22), value: readerMode)
+                .animation(.easeInOut(duration: 0.22), value: isVideoMode)
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 ReaderTopBar(
-                    progress: progress,
+                    progress: topBarProgress,
                     onClose: { dismiss() },
-                    onSeek: readerMode == .sentence ? { seekSentence(to: $0) } : nil
+                    onSeek: topBarSeekHandler,
+                    videoToggle: legacyVideoToggle
                 )
             }
             .overlay(alignment: .bottom) {
-                ReaderModeDockButton(
-                    mode: readerMode,
-                    safeBottom: proxy.safeAreaInsets.bottom,
-                    onToggleMode: { toggleReaderMode() }
-                )
-                .padding(.horizontal, 16)
+                if !isVideoMode {
+                    ReaderModeDockButton(
+                        mode: readerMode,
+                        safeBottom: proxy.safeAreaInsets.bottom,
+                        onToggleMode: { toggleReaderMode() }
+                    )
+                    .padding(.horizontal, 16)
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -88,6 +177,12 @@ struct DocumentReaderView: View {
             refreshSentenceBlocks()
             refreshStatusMap()
             refreshIgnoredKeys()
+            translatedSubtitleCues = SubtitleCueTimeline.compatibleTranslatedCues(
+                from: document.translatedSubtitleCues,
+                with: subtitleCues
+            )
+            videoDuration = Double(document.sourceDurationSeconds ?? 0)
+            loadLegacySubtitleCuesIfNeeded()
         }
         .onChange(of: document.body) { _, _ in
             refreshSentenceBlocks()
@@ -106,8 +201,12 @@ struct DocumentReaderView: View {
         }
         .onDisappear {
             translationTask?.cancel()
+            subtitleTranslationTask?.cancel()
             wordLookupTask?.cancel()
             sentenceMeaningPrefetchTask?.cancel()
+            legacySubtitleCueBackfillTask?.cancel()
+            legacySubtitleCueBackfillTask = nil
+            isLoadingLegacySubtitleCues = false
         }
         .sheet(item: $selection) { selected in
             WordDetailSheet(
@@ -120,11 +219,21 @@ struct DocumentReaderView: View {
                     selection = nil
                 },
                 onReportMissing: {
-                    DictionaryManager.shared.reportMissing(word: selected.text)
+                    DictionaryManager.shared.reportMissing(
+                        word: selected.text,
+                        languageCode: documentLanguageCode
+                    )
                 },
                 onSaveOverride: { overrideMeaning in
-                    DictionaryManager.shared.setOverride(word: selected.text, meaning: overrideMeaning)
-                    let refreshed = DictionaryManager.shared.lookupDetailed(selected.text)
+                    DictionaryManager.shared.setOverride(
+                        word: selected.text,
+                        meaning: overrideMeaning,
+                        languageCode: documentLanguageCode
+                    )
+                    let refreshed = DictionaryManager.shared.lookupDetailed(
+                        selected.text,
+                        languageCode: documentLanguageCode
+                    )
                     selection = WordSelection(text: selected.text, lookup: refreshed, isMeaningLoading: false)
                     refreshSentenceInsightsIfNeeded()
                 }
@@ -210,7 +319,66 @@ struct DocumentReaderView: View {
         )
     }
 
+    @ViewBuilder
+    private func videoModeContent(for proxy: GeometryProxy) -> some View {
+        if let videoID = document.sourceVideoID, subtitleCues.isEmpty == false {
+            let playerHeight = min(proxy.size.width * 9 / 16, proxy.size.height * 0.38)
+
+            VStack(spacing: 0) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.black.opacity(0.88))
+
+                    YouTubePlayerView(
+                        videoID: videoID,
+                        requestedSeekTime: requestedVideoSeekTime,
+                        onReady: { duration in
+                            videoDuration = max(duration, Double(document.sourceDurationSeconds ?? 0))
+                        },
+                        onPlaybackStateChange: { state in
+                            videoPlaybackState = state
+                        },
+                        onTimeUpdate: { currentTime, duration in
+                            videoCurrentTime = currentTime
+                            if duration > 0 {
+                                videoDuration = duration
+                            }
+                            requestedVideoSeekTime = nil
+                        }
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .frame(height: playerHeight)
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
+                .padding(.bottom, 14)
+
+                VideoSubtitlePanel(
+                    sourceCues: subtitleCues,
+                    translatedCues: translatedSubtitleCues,
+                    sourceLanguage: document.languageCode,
+                    activeCueIndex: activeSubtitleCueIndex,
+                    isLoadingTranslation: isLoadingSubtitleTranslation,
+                    translationMessage: subtitleTranslationMessage,
+                    playbackState: videoPlaybackState,
+                    onRetryTranslation: { loadEnglishSubtitlesIfNeeded(force: true) }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 10)
+                .padding(.bottom, max(proxy.safeAreaInsets.bottom, 10))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        } else {
+            ContentUnavailableView {
+                Label("Video unavailable", systemImage: "play.slash")
+            } description: {
+                Text("This lesson does not have timed subtitle cues yet.")
+            }
+        }
+    }
+
     private func toggleReaderMode() {
+        guard !isVideoMode else { return }
         let nextMode: ReaderMode = (readerMode == .word) ? .sentence : .word
         withAnimation(.easeInOut(duration: 0.22)) {
             readerMode = nextMode
@@ -226,6 +394,70 @@ struct DocumentReaderView: View {
         }
     }
 
+    private func toggleVideoMode() {
+        guard supportsVideoMode else { return }
+
+        withAnimation(.easeInOut(duration: 0.22)) {
+            isVideoMode.toggle()
+        }
+
+        if isVideoMode {
+            translationTask?.cancel()
+            sentenceMeaningPrefetchTask?.cancel()
+            isTranslatingSentence = false
+            translatedSentence = nil
+            videoDuration = max(videoDuration, Double(document.sourceDurationSeconds ?? 0))
+            translatedSubtitleCues = SubtitleCueTimeline.compatibleTranslatedCues(
+                from: document.translatedSubtitleCues,
+                with: subtitleCues
+            )
+            loadEnglishSubtitlesIfNeeded()
+        } else {
+            subtitleTranslationTask?.cancel()
+            isLoadingSubtitleTranslation = false
+            subtitleTranslationMessage = nil
+            requestedVideoSeekTime = nil
+        }
+    }
+
+    private func loadLegacySubtitleCuesIfNeeded() {
+        guard hasVideoSource, subtitleCues.isEmpty else { return }
+        guard legacySubtitleCueBackfillTask == nil else { return }
+        guard let videoID = document.sourceVideoID else { return }
+
+        isLoadingLegacySubtitleCues = true
+
+        legacySubtitleCueBackfillTask = Task {
+            do {
+                let loadedCues = try await YouTubeImportService.shared.loadSubtitleCuesForExistingVideo(
+                    videoID: videoID,
+                    language: document.languageCode
+                )
+                guard !Task.isCancelled else { return }
+
+                await MainActor.run {
+                    guard !Task.isCancelled else { return }
+                    if !loadedCues.isEmpty {
+                        document.subtitleCues = loadedCues
+                        document.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+
+                    isLoadingLegacySubtitleCues = false
+                    legacySubtitleCueBackfillTask = nil
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                await MainActor.run {
+                    guard !Task.isCancelled else { return }
+                    isLoadingLegacySubtitleCues = false
+                    legacySubtitleCueBackfillTask = nil
+                }
+            }
+        }
+    }
+
     private func translateCurrentSentence() {
         guard let selectedSentenceBlock else { return }
         translationTask?.cancel()
@@ -235,7 +467,11 @@ struct DocumentReaderView: View {
         isTranslatingSentence = true
 
         translationTask = Task {
-            let translated = await sentenceTranslator.translate(sentence: sentence)
+            let translated = await sentenceTranslator.translate(
+                sentence: sentence,
+                sourceLanguage: documentLanguageCode,
+                targetLanguage: document.languageCode.englishTargetLanguageCode
+            )
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
@@ -293,6 +529,58 @@ struct DocumentReaderView: View {
         sentenceIndex = targetIndex
     }
 
+    private func seekVideo(to progress: Double) {
+        let totalDuration = max(videoDuration, Double(document.sourceDurationSeconds ?? 0), 0)
+        guard totalDuration > 0 else { return }
+
+        let targetTime = max(0, min(totalDuration, totalDuration * progress))
+        videoCurrentTime = targetTime
+        requestedVideoSeekTime = targetTime
+    }
+
+    private func loadEnglishSubtitlesIfNeeded(force: Bool = false) {
+        guard supportsVideoMode else { return }
+
+        subtitleTranslationTask?.cancel()
+        isLoadingSubtitleTranslation = true
+        subtitleTranslationMessage = nil
+
+        let sourceCues = subtitleCues
+        let cachedCues = force ? nil : document.translatedSubtitleCues
+
+        subtitleTranslationTask = Task {
+            let result = await subtitleTranslationService.translateIfNeeded(
+                sourceCues: sourceCues,
+                cachedCues: cachedCues,
+                sourceLanguage: documentLanguageCode,
+                targetLanguage: document.languageCode.englishTargetLanguageCode
+            )
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                switch result {
+                case .cached(let cues):
+                    translatedSubtitleCues = cues
+                    subtitleTranslationMessage = nil
+                case .translated(let cues):
+                    translatedSubtitleCues = cues
+                    subtitleTranslationMessage = nil
+                    document.translatedSubtitleCues = cues
+                    document.updatedAt = Date()
+                    try? modelContext.save()
+                case .unavailable(let message):
+                    subtitleTranslationMessage = message
+                    translatedSubtitleCues = SubtitleCueTimeline.compatibleTranslatedCues(
+                        from: document.translatedSubtitleCues,
+                        with: sourceCues
+                    )
+                }
+
+                isLoadingSubtitleTranslation = false
+            }
+        }
+    }
+
     private func learningState(for word: String) -> WordLearningVisualState {
         learningStateResolver.state(for: word, statusByKey: statusByKey, ignoredKeys: ignoredKeys)
     }
@@ -312,7 +600,7 @@ struct DocumentReaderView: View {
     private func openWordSheet(for word: String) {
         wordLookupTask?.cancel()
 
-        let lookup = DictionaryManager.shared.lookupDetailed(word)
+        let lookup = DictionaryManager.shared.lookupDetailed(word, languageCode: documentLanguageCode)
         let shouldLoadRemoteMeaning = lookup.meaning == nil && DictionaryManager.shared.isCloudFallbackEnabled
 
         selection = WordSelection(
@@ -326,7 +614,11 @@ struct DocumentReaderView: View {
         }
 
         wordLookupTask = Task {
-            let refreshed = await DictionaryManager.shared.lookupDetailedWithRemoteFallback(word)
+            let refreshed = await DictionaryManager.shared.lookupDetailedWithRemoteFallback(
+                word,
+                languageCode: documentLanguageCode,
+                targetLanguage: document.languageCode.englishTargetLanguageCode
+            )
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
@@ -357,7 +649,11 @@ struct DocumentReaderView: View {
 
         sentenceMeaningPrefetchTask?.cancel()
         sentenceMeaningPrefetchTask = Task {
-            await DictionaryManager.shared.prefetchRemoteMeanings(for: missingWords)
+            await DictionaryManager.shared.prefetchRemoteMeanings(
+                for: missingWords,
+                languageCode: documentLanguageCode,
+                targetLanguage: document.languageCode.englishTargetLanguageCode
+            )
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
@@ -375,7 +671,7 @@ struct DocumentReaderView: View {
         removeIgnored(normalizedKey: normalized)
 
         let descriptor = FetchDescriptor<VocabEntry>(predicate: #Predicate { entry in
-            entry.normalizedKey == normalized
+            entry.normalizedKey == normalized && entry.languageCodeRaw == documentLanguageCode
         })
 
         if let existing = try? modelContext.fetch(descriptor).first {
@@ -389,6 +685,7 @@ struct DocumentReaderView: View {
             let entry = VocabEntry(
                 word: word,
                 normalizedKey: normalized,
+                languageCode: document.languageCode,
                 meaning: meaning ?? "",
                 status: status
             )
@@ -400,13 +697,13 @@ struct DocumentReaderView: View {
     }
 
     private func ignoreWord(normalizedKey: String) {
-        ignoredWordsStore.add(normalizedKey: normalizedKey)
+        ignoredWordsStore.add(normalizedKey: normalizedKey, languageCode: documentLanguageCode)
         ignoredKeys.insert(normalizedKey)
         refreshSentenceInsightsIfNeeded()
     }
 
     private func removeIgnored(normalizedKey: String) {
-        ignoredWordsStore.remove(normalizedKey: normalizedKey)
+        ignoredWordsStore.remove(normalizedKey: normalizedKey, languageCode: documentLanguageCode)
         ignoredKeys.remove(normalizedKey)
     }
 
@@ -416,11 +713,12 @@ struct DocumentReaderView: View {
     }
 
     private func refreshStatusMap() {
-        statusByKey = Dictionary(uniqueKeysWithValues: vocabEntries.map { ($0.normalizedKey, $0.status) })
+        let currentLanguageEntries = vocabEntries.filter { $0.languageCode.rawValue == documentLanguageCode }
+        statusByKey = Dictionary(uniqueKeysWithValues: currentLanguageEntries.map { ($0.normalizedKey, $0.status) })
     }
 
     private func refreshIgnoredKeys() {
-        ignoredKeys = ignoredWordsStore.allKeys()
+        ignoredKeys = ignoredWordsStore.allKeys(languageCode: documentLanguageCode)
     }
 
     private func markDocumentOpened() {
@@ -750,10 +1048,316 @@ private struct SentenceTokenizedHeader: View {
     }
 }
 
+private struct ReaderTopBarToggle {
+    let label: String
+    let systemImage: String
+    let accessibilityLabel: String
+    let isEnabled: Bool
+    let showsProgress: Bool
+    let action: () -> Void
+}
+
+private struct VideoSubtitlePanel: View {
+    let sourceCues: [TimedSubtitleCue]
+    let translatedCues: [TranslatedSubtitleCue]?
+    let sourceLanguage: SupportedLanguage
+    let activeCueIndex: Int?
+    let isLoadingTranslation: Bool
+    let translationMessage: String?
+    let playbackState: YouTubePlayerPlaybackState
+    let onRetryTranslation: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Text(playbackLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.08), in: Capsule())
+
+                if translatedCues != nil {
+                    Text("English subtitles")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Theme.learningHighlight.opacity(0.95),
+                                    Theme.learningHighlight.opacity(0.72)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            in: Capsule()
+                        )
+                } else {
+                    Text("\(sourceLanguage.displayName) only")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.06), in: Capsule())
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            if isLoadingTranslation {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .tint(Theme.learningHighlight)
+                    Text("Generating English subtitles...")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.78))
+                }
+            } else if let translationStatusText {
+                HStack(alignment: .center, spacing: 10) {
+                    Image(systemName: translationStatusSystemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(translationStatusColor)
+
+                    Text(translationStatusText)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.76))
+
+                    Spacer(minLength: 8)
+
+                    if showsRetryButton {
+                        Button("Retry") {
+                            onRetryTranslation()
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.learningHighlight)
+                    }
+                }
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 12) {
+                        ForEach(Array(sourceCues.enumerated()), id: \.element.id) { index, cue in
+                            VideoSubtitleCueRow(
+                                sourceCue: cue,
+                                translatedCue: translatedCue(at: index),
+                                isActive: index == activeCueIndex,
+                                distanceFromActive: cueDistance(for: index)
+                            )
+                            .id(index)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 2)
+                }
+                .onAppear {
+                    if let activeCueIndex {
+                        proxy.scrollTo(activeCueIndex, anchor: .center)
+                    }
+                }
+                .onChange(of: activeCueIndex) { _, newValue in
+                    guard let newValue else { return }
+                    withAnimation(.easeInOut(duration: 0.24)) {
+                        proxy.scrollTo(newValue, anchor: .center)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.18),
+                            Color.black.opacity(0.28)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .blendMode(.multiply)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var playbackLabel: String {
+        switch playbackState {
+        case .playing:
+            return "Playing"
+        case .paused:
+            return "Paused"
+        case .buffering:
+            return "Buffering"
+        case .ended:
+            return "Ended"
+        case .ready, .cued:
+            return "Ready"
+        case .idle:
+            return "Loading"
+        }
+    }
+
+    private var translationStatusText: String? {
+        guard let translationMessage else { return nil }
+
+        if translatedCues != nil, translationMessage != SubtitleTranslationService.needsConfigurationMessage {
+            return "Using cached English subtitles."
+        }
+
+        return translationMessage
+    }
+
+    private var translationStatusSystemImage: String {
+        guard let translationMessage else { return "info.circle" }
+
+        if translationMessage == SubtitleTranslationService.needsConfigurationMessage {
+            return "gearshape"
+        }
+
+        if translatedCues != nil {
+            return "arrow.triangle.2.circlepath"
+        }
+
+        return "exclamationmark.triangle"
+    }
+
+    private var translationStatusColor: Color {
+        guard let translationMessage else { return Theme.learningHighlight }
+
+        if translationMessage == SubtitleTranslationService.needsConfigurationMessage {
+            return Color.orange.opacity(0.9)
+        }
+
+        if translatedCues != nil {
+            return Theme.learningHighlight
+        }
+
+        return Color.orange.opacity(0.9)
+    }
+
+    private var showsRetryButton: Bool {
+        guard let translationMessage else { return false }
+        return translationMessage != SubtitleTranslationService.needsConfigurationMessage
+    }
+
+    private func translatedCue(at index: Int) -> TranslatedSubtitleCue? {
+        guard let translatedCues, translatedCues.indices.contains(index) else {
+            return nil
+        }
+        return translatedCues[index]
+    }
+
+    private func cueDistance(for index: Int) -> Int {
+        guard let activeCueIndex else { return 4 }
+        return abs(index - activeCueIndex)
+    }
+}
+
+private struct VideoSubtitleCueRow: View {
+    let sourceCue: TimedSubtitleCue
+    let translatedCue: TranslatedSubtitleCue?
+    let isActive: Bool
+    let distanceFromActive: Int
+
+    private var translatedText: String? {
+        guard let translatedCue else { return nil }
+        let trimmed = translatedCue.translatedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private var opacity: Double {
+        if isActive { return 1 }
+        switch distanceFromActive {
+        case 0: return 1
+        case 1: return 0.84
+        case 2: return 0.62
+        case 3: return 0.42
+        default: return 0.24
+        }
+    }
+
+    private var cardFill: some ShapeStyle {
+        if isActive {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Theme.learningHighlight.opacity(0.26),
+                        Color.white.opacity(0.08)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+        }
+
+        return AnyShapeStyle(Color.white.opacity(0.03))
+    }
+
+    private var cardStrokeColor: Color {
+        isActive ? Theme.learningHighlight.opacity(0.42) : Color.white.opacity(0.06)
+    }
+
+    private var accentColor: Color {
+        isActive ? Theme.learningHighlight : Color.white.opacity(0.22)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Capsule(style: .continuous)
+                .fill(accentColor)
+                .frame(width: isActive ? 4 : 3, height: translatedText == nil ? 32 : 48)
+                .opacity(isActive ? 1 : 0.5)
+                .padding(.top, 4)
+
+            VStack(alignment: .leading, spacing: translatedText == nil ? 0 : 6) {
+                if let translatedText {
+                    Text(translatedText)
+                        .font(.system(size: isActive ? 25 : 21, weight: isActive ? .semibold : .medium, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineSpacing(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(sourceCue.sourceText)
+                        .font(.system(size: isActive ? 16 : 15, weight: .regular, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(isActive ? 0.66 : 0.56))
+                        .lineSpacing(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text(sourceCue.sourceText)
+                        .font(.system(size: isActive ? 25 : 21, weight: isActive ? .semibold : .medium, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineSpacing(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(cardFill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(cardStrokeColor, lineWidth: isActive ? 1.1 : 0.8)
+        )
+        .shadow(color: isActive ? Theme.learningHighlight.opacity(0.16) : .clear, radius: 10, y: 4)
+        .opacity(opacity)
+        .scaleEffect(isActive ? 1.0 : 0.975, anchor: .center)
+        .animation(.easeInOut(duration: 0.18), value: isActive)
+    }
+}
+
 private struct ReaderTopBar: View {
     let progress: Double
     let onClose: () -> Void
     let onSeek: ((Double) -> Void)?
+    let videoToggle: ReaderTopBarToggle?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -783,11 +1387,28 @@ private struct ReaderTopBar: View {
                         .accessibilityHidden(true)
                 }
 
-                Image(systemName: "ellipsis")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .frame(width: 36, height: 36)
-                    .accessibilityHidden(true)
+                if let videoToggle {
+                    Button(action: videoToggle.action) {
+                        VStack(spacing: 2) {
+                            if videoToggle.showsProgress {
+                                ProgressView()
+                                    .tint(.white)
+                                    .scaleEffect(0.72)
+                                    .frame(height: 16)
+                            } else {
+                                Image(systemName: videoToggle.systemImage)
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            Text(videoToggle.label)
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(width: 52, height: 36)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                    }
+                    .disabled(!videoToggle.isEnabled)
+                    .accessibilityLabel(videoToggle.accessibilityLabel)
+                }
             }
             .padding(.horizontal, 10)
             .padding(.top, ReaderLayoutMetrics.topBarTopOffset)

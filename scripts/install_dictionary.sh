@@ -7,9 +7,10 @@ if [[ -z "$SIM_ID" ]]; then
   exit 1
 fi
 
-RESOURCE_DB="LanguageReader/Resources/dictionary.sqlite"
+RESOURCE_DB_KN="LanguageReader/Resources/dictionary.sqlite"
+RESOURCE_DB_DE="LanguageReader/Resources/dictionary_de.sqlite"
 
-if [[ ! -f "$RESOURCE_DB" ]]; then
+if [[ ! -f "$RESOURCE_DB_KN" || ! -f "$RESOURCE_DB_DE" ]]; then
   ./scripts/build_dictionary.py
 fi
 
@@ -24,6 +25,9 @@ if [[ -z "$CONTAINER" ]]; then
 fi
 
 mkdir -p "$CONTAINER/Documents"
-cp "$RESOURCE_DB" "$CONTAINER/Documents/dictionary.sqlite"
+cp "$RESOURCE_DB_KN" "$CONTAINER/Documents/dictionary.sqlite"
+if [[ -f "$RESOURCE_DB_DE" ]]; then
+  cp "$RESOURCE_DB_DE" "$CONTAINER/Documents/dictionary_de.sqlite"
+fi
 
-echo "Installed dictionary to: $CONTAINER/Documents/dictionary.sqlite"
+echo "Installed dictionaries to: $CONTAINER/Documents"

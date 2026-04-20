@@ -14,6 +14,8 @@ struct DictionaryLanguageProfile {
 
     static func resolve(for languageCode: String) -> DictionaryLanguageProfile {
         switch languageCode.lowercased() {
+        case "de":
+            return .german
         case "kn":
             return .kannada
         default:
@@ -75,6 +77,23 @@ struct DictionaryLanguageProfile {
         ],
         linkedCharacter: "ಯ",
         minimumVerbStemLength: 2
+    )
+
+    static let german = DictionaryLanguageProfile(
+        languageCode: "de",
+        suffixRules: [
+            .init(suffix: "ern", minimumStemLength: 3),
+            .init(suffix: "en", minimumStemLength: 3),
+            .init(suffix: "er", minimumStemLength: 3),
+            .init(suffix: "es", minimumStemLength: 3),
+            .init(suffix: "em", minimumStemLength: 3),
+            .init(suffix: "e", minimumStemLength: 3),
+            .init(suffix: "n", minimumStemLength: 3),
+            .init(suffix: "s", minimumStemLength: 3)
+        ],
+        progressiveVerbEndings: [],
+        linkedCharacter: nil,
+        minimumVerbStemLength: 3
     )
 }
 

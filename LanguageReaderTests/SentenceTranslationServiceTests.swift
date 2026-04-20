@@ -284,6 +284,30 @@ final class SentenceTranslationServiceTests: XCTestCase {
         XCTAssertEqual(publicTranslator.callCount, 1)
     }
 
+    func testRejectsUnchangedGermanCloudOutputAndFallsBackToPublic() async throws {
+        let defaults = testDefaults()
+        let keychain = InMemorySecretStore()
+        let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
+        settings.regionText = "germanywestcentral"
+        try settings.saveAPIKey("secret")
+
+        let publicTranslator = FakePublicTranslator(result: .success("This is my house."))
+        let service = SentenceTranslationService(
+            settingsStore: settings,
+            cloudTranslator: FakeAzureTranslatorClient(result: .success("Das ist mein Haus.")),
+            publicTranslator: publicTranslator
+        )
+
+        let translated = await service.translate(
+            sentence: "Das ist mein Haus.",
+            sourceLanguage: "de-DE",
+            targetLanguage: "en-US"
+        )
+
+        XCTAssertEqual(translated, "This is my house.")
+        XCTAssertEqual(publicTranslator.callCount, 1)
+    }
+
     func testRejectsUnreadableCloudPublicAndFallbackOutput() async throws {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()
