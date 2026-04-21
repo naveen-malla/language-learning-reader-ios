@@ -46,6 +46,10 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Build/run from CLI with `xcodebuild` after each milestone.
 - Simulator acceptance per change: run `./scripts/run.sh` and manually verify the affected in-app flow before sign-off.
 - List simulators: `xcrun simctl list`
+- Launch screenshot demo routes:
+  - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=library`
+  - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=flashcards-session`
+  - `xcrun simctl launch --terminate-running-process booted com.local.LanguageReader --screenshot-demo --screenshot-route=watch`
 - Boot simulator: `open -a Simulator`
 - Build (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' build`
 - Test (xcodebuild): `xcodebuild -scheme LanguageReader -destination 'platform=iOS Simulator,name=iPhone 14 Pro' test`
