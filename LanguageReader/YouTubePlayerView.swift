@@ -11,6 +11,41 @@ enum YouTubePlayerPlaybackState: Equatable {
     case cued
 }
 
+struct YouTubePlayerSeekGate {
+    private(set) var lastSeekTime: Double?
+    private(set) var pendingSeekTime: Double?
+    private(set) var isPlayerReady = false
+
+    mutating func resetForNewVideo() {
+        lastSeekTime = nil
+        pendingSeekTime = nil
+        isPlayerReady = false
+    }
+
+    mutating func queueOrEmitSeek(_ seconds: Double) -> Double? {
+        let clampedSeconds = max(0, seconds)
+        if let lastSeekTime, abs(lastSeekTime - clampedSeconds) < 0.2 {
+            return nil
+        }
+
+        guard isPlayerReady else {
+            pendingSeekTime = clampedSeconds
+            return nil
+        }
+
+        lastSeekTime = clampedSeconds
+        return clampedSeconds
+    }
+
+    mutating func markReadyAndFlushPendingSeek() -> Double? {
+        isPlayerReady = true
+        guard let pendingSeekTime else { return nil }
+        self.pendingSeekTime = nil
+        lastSeekTime = pendingSeekTime
+        return pendingSeekTime
+    }
+}
+
 struct YouTubePlayerView: UIViewRepresentable {
     let videoID: String
     let requestedSeekTime: Double?
@@ -63,9 +98,7 @@ extension YouTubePlayerView {
         var parent: YouTubePlayerView
         private weak var webView: WKWebView?
         private var loadedVideoID: String?
-        private var lastSeekTime: Double?
-        private var pendingSeekTime: Double?
-        private var isPlayerReady = false
+        private var seekGate = YouTubePlayerSeekGate()
 
         init(parent: YouTubePlayerView) {
             self.parent = parent
@@ -78,9 +111,7 @@ extension YouTubePlayerView {
         func load(videoID: String) {
             guard loadedVideoID != videoID, let webView else { return }
             loadedVideoID = videoID
-            lastSeekTime = nil
-            pendingSeekTime = nil
-            isPlayerReady = false
+            seekGate.resetForNewVideo()
             webView.loadHTMLString(
                 html(for: videoID),
                 baseURL: refererURL()
@@ -90,18 +121,13 @@ extension YouTubePlayerView {
         func seek(to seconds: Double) {
             guard let webView else { return }
             guard let loadedVideoID else { return }
-            let clampedSeconds = max(0, seconds)
-            if let lastSeekTime, abs(lastSeekTime - clampedSeconds) < 0.2 {
-                return
-            }
             self.loadedVideoID = loadedVideoID
 
-            guard isPlayerReady else {
-                pendingSeekTime = clampedSeconds
+            guard let seekTime = seekGate.queueOrEmitSeek(seconds) else {
                 return
             }
 
-            performSeek(clampedSeconds, in: webView)
+            performSeek(seekTime, in: webView)
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -113,7 +139,6 @@ extension YouTubePlayerView {
 
             switch type {
             case "ready":
-                isPlayerReady = true
                 let duration = body["duration"] as? Double ?? 0
                 parent.onReady(duration)
                 parent.onPlaybackStateChange(.ready)
@@ -131,13 +156,11 @@ extension YouTubePlayerView {
         }
 
         private func flushPendingSeekIfNeeded() {
-            guard isPlayerReady, let pendingSeekTime, let webView else { return }
-            self.pendingSeekTime = nil
+            guard let pendingSeekTime = seekGate.markReadyAndFlushPendingSeek(), let webView else { return }
             performSeek(pendingSeekTime, in: webView)
         }
 
         private func performSeek(_ seconds: Double, in webView: WKWebView) {
-            lastSeekTime = seconds
             let script = "window.languageReaderPlayerBridge && window.languageReaderPlayerBridge.seekTo(\(seconds));"
             webView.evaluateJavaScript(script, completionHandler: nil)
         }

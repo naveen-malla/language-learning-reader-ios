@@ -77,4 +77,35 @@ final class LanguageReaderTests: XCTestCase {
         XCTAssertEqual(entry.srsDifficulty, 6.2)
         XCTAssertEqual(entry.srsAlgorithm, "fsrs")
     }
+
+    func testYouTubeSeekGateQueuesLatestSeekUntilReady() {
+        var gate = YouTubePlayerSeekGate()
+
+        XCTAssertNil(gate.queueOrEmitSeek(2.0))
+        XCTAssertNil(gate.queueOrEmitSeek(7.25))
+
+        XCTAssertEqual(gate.markReadyAndFlushPendingSeek(), 7.25)
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+    }
+
+    func testYouTubeSeekGateDeduplicatesNearDuplicateSeeks() {
+        var gate = YouTubePlayerSeekGate()
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+
+        XCTAssertEqual(gate.queueOrEmitSeek(10.0), 10.0)
+        XCTAssertNil(gate.queueOrEmitSeek(10.1))
+        XCTAssertEqual(gate.queueOrEmitSeek(10.3), 10.3)
+    }
+
+    func testYouTubeSeekGateClampsAndResetsForNewVideo() {
+        var gate = YouTubePlayerSeekGate()
+
+        XCTAssertNil(gate.queueOrEmitSeek(-3.0))
+        XCTAssertEqual(gate.markReadyAndFlushPendingSeek(), 0.0)
+        XCTAssertNil(gate.queueOrEmitSeek(0.05))
+
+        gate.resetForNewVideo()
+        XCTAssertNil(gate.queueOrEmitSeek(0.05))
+        XCTAssertEqual(gate.markReadyAndFlushPendingSeek(), 0.05)
+    }
 }
