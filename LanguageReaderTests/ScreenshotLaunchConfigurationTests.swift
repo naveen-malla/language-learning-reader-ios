@@ -53,6 +53,50 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.shouldSeedDemoData)
         XCTAssertFalse(configuration.shouldRunAutoTopUp)
     }
+
+    func testRouteArgumentOverridesEnvironmentRoute() {
+        let processInfo = ProcessInfoStub(
+            environment: [
+                ScreenshotLaunchConfiguration.routeEnvironmentKey: "vocab"
+            ],
+            arguments: [
+                "\(ScreenshotLaunchConfiguration.routeArgumentPrefix)reader"
+            ]
+        )
+
+        let configuration = ScreenshotLaunchConfiguration(processInfo: processInfo)
+
+        XCTAssertEqual(configuration.route, .reader)
+    }
+
+    func testEnvironmentRouteIsTrimmedAndCaseInsensitive() {
+        let processInfo = ProcessInfoStub(
+            environment: [
+                ScreenshotLaunchConfiguration.routeEnvironmentKey: "  WaTcH "
+            ],
+            arguments: []
+        )
+
+        let configuration = ScreenshotLaunchConfiguration(processInfo: processInfo)
+
+        XCTAssertEqual(configuration.route, .watch)
+        XCTAssertEqual(configuration.initialTab, .library)
+        XCTAssertFalse(configuration.shouldRunAutoTopUp)
+    }
+
+    func testEnvironmentSeedFlagEnablesDemoModeWithoutRoute() {
+        let processInfo = ProcessInfoStub(
+            environment: [
+                ScreenshotLaunchConfiguration.seedDemoDataEnvironmentKey: "YES"
+            ],
+            arguments: []
+        )
+
+        let configuration = ScreenshotLaunchConfiguration(processInfo: processInfo)
+
+        XCTAssertTrue(configuration.shouldSeedDemoData)
+        XCTAssertFalse(configuration.shouldRunAutoTopUp)
+    }
 }
 
 private final class ProcessInfoStub: ProcessInfo, @unchecked Sendable {
