@@ -521,6 +521,36 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(callCount, 2)
     }
 
+    func testPublicSubtitleCueTranslatorSplitsByCharacterLimit() async throws {
+        let longFirstCue = String(repeating: "ಅ", count: 1_550)
+        let secondCue = String(repeating: "ಬ", count: 90)
+        let translator = FakePublicSentenceTranslator { text, _, _ in
+            let parts = text.components(separatedBy: "\n")
+            guard parts.count > 1 else { return "EN: \(text)" }
+
+            return parts.map { segment in
+                if segment.hasPrefix("__LRSEP_") {
+                    return segment
+                }
+                return "EN: \(segment)"
+            }
+            .joined(separator: "\n")
+        }
+        let cueTranslator = PublicSubtitleCueTranslator(translator: translator)
+
+        let translated = try await cueTranslator.translate(
+            texts: [longFirstCue, secondCue],
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        XCTAssertEqual(translated.count, 2)
+        XCTAssertTrue(translated[0].hasPrefix("EN: "))
+        XCTAssertTrue(translated[1].hasPrefix("EN: "))
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 2)
+    }
+
     private func configuredSettings() -> TranslationSettingsStore {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()

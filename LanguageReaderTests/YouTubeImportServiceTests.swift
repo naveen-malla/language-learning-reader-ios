@@ -589,6 +589,28 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(last.sourceText, "Dann lese ich weiter.")
     }
 
+    func testSynthesizeSubtitleCuesSplitsSentencesAndSkipsBlankLines() {
+        let cues = YouTubeImportService.synthesizeSubtitleCues(
+            from: "  Erste Zeile. Zweite Zeile!  \n\n   Dritte Zeile?   ",
+            durationSeconds: 0
+        )
+
+        XCTAssertEqual(cues.count, 3)
+        XCTAssertEqual(cues.map(\.sourceText), ["Erste Zeile.", "Zweite Zeile!", "Dritte Zeile?"])
+        XCTAssertEqual(cues.first?.startTime, 0, accuracy: 0.001)
+        XCTAssertEqual(cues.first?.duration, 4, accuracy: 0.001)
+        XCTAssertEqual(cues.last?.startTime, 8, accuracy: 0.001)
+    }
+
+    func testSynthesizeSubtitleCuesReturnsEmptyForWhitespaceOnlyTranscript() {
+        let cues = YouTubeImportService.synthesizeSubtitleCues(
+            from: "  \n\n   ",
+            durationSeconds: 120
+        )
+
+        XCTAssertTrue(cues.isEmpty)
+    }
+
     func testImportVideoUsesKannadaTranslationWhenOnlyTranslatableTrackExists() async throws {
         let videoID = "KaBYEZ6q2tY"
         let session = makeStubbedSession { request in
