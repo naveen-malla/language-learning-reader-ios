@@ -270,3 +270,43 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertEqual(nextDue, now.addingTimeInterval(200))
     }
 }
+
+extension FlashcardDeckTests {
+    func testDueDeckSortsByCreatedAtWhenDueAndLastSeenMatch() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let earlyCreated = VocabEntry(
+            word: "early",
+            normalizedKey: "early",
+            meaning: "",
+            status: .level2,
+            createdAt: now.addingTimeInterval(-20),
+            lastSeenAt: now.addingTimeInterval(-10),
+            dueAt: now.addingTimeInterval(-5)
+        )
+        let lateCreated = VocabEntry(
+            word: "late",
+            normalizedKey: "late",
+            meaning: "",
+            status: .level2,
+            createdAt: now.addingTimeInterval(-5),
+            lastSeenAt: now.addingTimeInterval(-10),
+            dueAt: now.addingTimeInterval(-5)
+        )
+
+        let due = FlashcardDeck.dueEntries(from: [lateCreated, earlyCreated], now: now)
+
+        XCTAssertEqual(due.map(\.normalizedKey), ["early", "late"])
+    }
+
+    func testRoundEvaluatorDemotesKnownOnFailedRound() {
+        let outcome = FlashcardRoundEvaluator.evaluate(
+            status: .known,
+            consecutiveSuccessRounds: 0,
+            answers: [.wrong, .wrong]
+        )
+
+        XCTAssertEqual(outcome.status, .level4)
+        XCTAssertEqual(outcome.nextConsecutiveSuccessRounds, 0)
+        XCTAssertTrue(outcome.shouldRequeue)
+    }
+}
