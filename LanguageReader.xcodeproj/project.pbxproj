@@ -37,6 +37,7 @@
 		31F32FE7509786D2390B02A3 /* PublicWebTranslatorClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CADFB52DF34EFE47BF9E5B /* PublicWebTranslatorClientTests.swift */; };
 		3476E97A30C6221BF1C6C5B7 /* SuggestionRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CB2C6EF0E3F897254CDB247 /* SuggestionRanker.swift */; };
 		3921A4DD9D81909E30E66C15 /* ScreenshotLaunchConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C43551D19FA88671DA7EFF /* ScreenshotLaunchConfigurationTests.swift */; };
+		3B57C60404C33C6A524C2BB0 /* YouTubePlayerViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DF4470F439C37AAD3FA23C /* YouTubePlayerViewTests.swift */; };
 		3CE6B7AAC74E646310BD7A6C /* SubtitleCueTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B8F979B2CEFA863E190B2A /* SubtitleCueTimeline.swift */; };
 		430357B20E9A42393820F59D /* SampleDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CEA19E87BDCA7B44E079C07 /* SampleDocuments.swift */; };
 		431EBFDF410EAFF2A31F7DDD /* DictionaryCloudMeaningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD941941B72FDC8DDDBAEB04 /* DictionaryCloudMeaningStore.swift */; };
@@ -209,6 +210,7 @@
 		9ECD8710F43532A758A1CEFE /* AutoImportCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoImportCoordinatorTests.swift; sourceTree = "<group>"; };
 		9F22AE9E06ABE570A1417576 /* AppAppearanceModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearanceModeTests.swift; sourceTree = "<group>"; };
 		A134B699E002722BE189ECA3 /* DocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentTests.swift; sourceTree = "<group>"; };
+		A5DF4470F439C37AAD3FA23C /* YouTubePlayerViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubePlayerViewTests.swift; sourceTree = "<group>"; };
 		A5F502FA5D4D2015539FFB81 /* TokenizerEdgeCasesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenizerEdgeCasesTests.swift; sourceTree = "<group>"; };
 		A941E9D128F013645480702D /* LanguageReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageReaderTests.swift; sourceTree = "<group>"; };
 		AB45A09C3910F09CDDCD3868 /* FlashcardStatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardStatsStore.swift; sourceTree = "<group>"; };
@@ -326,6 +328,7 @@
 				AF51C5F563980B0D0414E21A /* WordLearningStateResolverTests.swift */,
 				66AFB01DC7AE4B2F60FAD12A /* YouTubeDiscoveryServiceTests.swift */,
 				571623CE454DAC176A46138D /* YouTubeImportServiceTests.swift */,
+				A5DF4470F439C37AAD3FA23C /* YouTubePlayerViewTests.swift */,
 				270CA76F2417221B6D4F6749 /* Fixtures */,
 			);
 			path = LanguageReaderTests;
@@ -636,6 +639,7 @@
 				45E0532A82E1D26DEF08428F /* WordLearningStateResolverTests.swift in Sources */,
 				F2C04D161E2CA0F6092ABBC7 /* YouTubeDiscoveryServiceTests.swift in Sources */,
 				81FBCF38F48503E1686AF46D /* YouTubeImportServiceTests.swift in Sources */,
+				3B57C60404C33C6A524C2BB0 /* YouTubePlayerViewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

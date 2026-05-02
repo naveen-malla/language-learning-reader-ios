@@ -41,6 +41,7 @@ This file owns environment setup, scripts, build/test/run workflow, and verifica
 - Subtitle cue timeline selection and translation-cache compatibility are covered in `LanguageReaderTests/SubtitleCueTimelineTests.swift`.
 - Subtitle translation cache, Azure-failure fallback, missing-config fallback, and unreadable-output rejection are covered in `LanguageReaderTests/SubtitleTranslationServiceTests.swift`.
 - Screenshot launch-route parsing is covered in `LanguageReaderTests/ScreenshotLaunchConfigurationTests.swift`.
+- YouTube iframe seek-gate queueing, dedupe, and reset behavior is covered in `LanguageReaderTests/YouTubePlayerViewTests.swift`.
 
 ## Verification Touchpoints
 - `README.md` is the source of truth for intended product behavior.
