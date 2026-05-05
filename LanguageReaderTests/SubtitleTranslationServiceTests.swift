@@ -254,6 +254,74 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(configurations.first?.targetLanguage, "en")
     }
 
+    func testRequestedSourceLanguageOverridesConfiguredSourceLanguage() async throws {
+        let translator = FakeAzureSubtitleCueTranslator(results: [
+            .success(["This is a house."])
+        ])
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(sourceLanguage: "kn-IN"),
+            translator: translator
+        )
+
+        _ = await service.translateIfNeeded(
+            sourceCues: [
+                TimedSubtitleCue(startTime: 0, duration: 1.2, sourceText: "Das ist ein Haus.")
+            ],
+            cachedCues: nil,
+            sourceLanguage: "de-DE",
+            targetLanguage: "en-US"
+        )
+
+        let configurations = await translator.getReceivedConfigurations()
+        XCTAssertEqual(configurations.count, 1)
+        XCTAssertEqual(configurations.first?.sourceLanguage, "de")
+        XCTAssertEqual(configurations.first?.targetLanguage, "en")
+    }
+
+    func testBlankRequestedSourceLanguageFallsBackToConfiguredSourceLanguage() async throws {
+        let translator = FakeAzureSubtitleCueTranslator(results: [
+            .success(["First", "Second"])
+        ])
+        let service = SubtitleTranslationService(
+            settingsStore: configuredSettings(sourceLanguage: "kn-IN"),
+            translator: translator
+        )
+
+        _ = await service.translateIfNeeded(
+            sourceCues: makeSourceCues(),
+            cachedCues: nil,
+            sourceLanguage: "   ",
+            targetLanguage: "en"
+        )
+
+        let configurations = await translator.getReceivedConfigurations()
+        XCTAssertEqual(configurations.count, 1)
+        XCTAssertEqual(configurations.first?.sourceLanguage, "kn")
+    }
+
+    func testBlankTargetLanguageDefaultsToEnglishForPublicFallback() async throws {
+        let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["First", "Second"])])
+        let service = SubtitleTranslationService(
+            settingsStore: TranslationSettingsStore(defaults: testDefaults(), keychain: InMemorySecretStore()),
+            translator: FakeAzureSubtitleCueTranslator(results: [.success(["unused"])]),
+            publicTranslator: publicTranslator
+        )
+
+        let result = await service.translateIfNeeded(
+            sourceCues: makeSourceCues(),
+            cachedCues: nil,
+            sourceLanguage: "kn-IN",
+            targetLanguage: "   "
+        )
+
+        guard case .translated = result else {
+            return XCTFail("Expected public fallback translation")
+        }
+        XCTAssertEqual(publicTranslator.callCount, 1)
+        XCTAssertEqual(publicTranslator.receivedSourceLanguages, ["kn"])
+        XCTAssertEqual(publicTranslator.receivedTargetLanguages, ["en"])
+    }
+
     func testFallsBackToPublicWhenGermanAzureOutputMatchesSource() async throws {
         let publicTranslator = FakePublicSubtitleCueTranslator(results: [.success(["This is a house."])])
         let service = SubtitleTranslationService(
@@ -551,11 +619,12 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(callCount, 2)
     }
 
-    private func configuredSettings() -> TranslationSettingsStore {
+    private func configuredSettings(sourceLanguage: String = "kn") -> TranslationSettingsStore {
         let defaults = testDefaults()
         let keychain = InMemorySecretStore()
         let settings = TranslationSettingsStore(defaults: defaults, keychain: keychain)
         settings.regionText = "eastus"
+        settings.sourceLanguage = sourceLanguage
         try! settings.saveAPIKey("secret")
         return settings
     }
@@ -674,6 +743,8 @@ private final class FakePublicSubtitleCueTranslator: PublicSubtitleCueTranslatin
 
     private let results: [Result<[String], Error>]
     private(set) var callCount = 0
+    private(set) var receivedSourceLanguages: [String] = []
+    private(set) var receivedTargetLanguages: [String] = []
 
     init(results: [Result<[String], Error>]) {
         self.results = results.isEmpty ? [.failure(FakeError.failed)] : results
@@ -681,6 +752,8 @@ private final class FakePublicSubtitleCueTranslator: PublicSubtitleCueTranslatin
 
     func translate(texts: [String], sourceLanguage: String, targetLanguage: String) async throws -> [String] {
         callCount += 1
+        receivedSourceLanguages.append(sourceLanguage)
+        receivedTargetLanguages.append(targetLanguage)
         let index = min(callCount - 1, results.count - 1)
         return try results[index].get()
     }
