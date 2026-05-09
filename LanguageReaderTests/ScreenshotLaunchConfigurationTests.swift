@@ -97,6 +97,27 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.shouldSeedDemoData)
         XCTAssertFalse(configuration.shouldRunAutoTopUp)
     }
+
+    func testWatchDocumentContainsExpectedVideoAndCuePayloads() throws {
+        let configuration = ScreenshotLaunchConfiguration(
+            processInfo: ProcessInfoStub(environment: [:], arguments: [])
+        )
+
+        let document = configuration.watchDocument
+
+        XCTAssertEqual(document.languageCode, .german)
+        XCTAssertEqual(document.sourceType, .youtube)
+        XCTAssertEqual(document.sourceVideoID, "dQw4w9WgXcQ")
+        XCTAssertEqual(document.sourceDurationSeconds, 45)
+        XCTAssertTrue(document.body.contains("Heute sprechen wir ueber kleine Alltagsroutinen."))
+
+        let sourceCues = document.subtitleCues
+        let translatedCues = document.translatedSubtitleCues
+        XCTAssertEqual(sourceCues.count, 3)
+        XCTAssertEqual(translatedCues.count, 3)
+        XCTAssertEqual(sourceCues.first?.startTime, 0, accuracy: 0.001)
+        XCTAssertEqual(translatedCues.last?.translatedText, "That is how my morning starts, calm and clear.")
+    }
 }
 
 private final class ProcessInfoStub: ProcessInfo, @unchecked Sendable {

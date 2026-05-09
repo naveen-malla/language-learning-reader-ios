@@ -560,6 +560,52 @@ final class SubtitleTranslationServiceTests: XCTestCase {
         XCTAssertEqual(callCount, 3)
     }
 
+    func testPublicSubtitleCueTranslatorFallsBackToPerCueRequestsWhenSplitCountIsWrong() async throws {
+        let translator = FakePublicSentenceTranslator { text, _, _ in
+            if text.contains("__LRSEP_1__") {
+                return "First line\n__LRSEP_1__\nSecond line\n__LRSEP_1__\nThird line"
+            }
+
+            switch text {
+            case "ಮೊದಲ ಸಾಲು":
+                return "First line"
+            case "ಎರಡನೇ ಸಾಲು":
+                return "Second line"
+            default:
+                return text
+            }
+        }
+        let cueTranslator = PublicSubtitleCueTranslator(translator: translator)
+
+        let translated = try await cueTranslator.translate(
+            texts: ["ಮೊದಲ ಸಾಲು", "ಎರಡನೇ ಸಾಲು"],
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        XCTAssertEqual(translated, ["First line", "Second line"])
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 3)
+    }
+
+    func testPublicSubtitleCueTranslatorReturnsEmptyForNoInputWithoutNetworkCalls() async throws {
+        let translator = FakePublicSentenceTranslator { _, _, _ in
+            XCTFail("Translator should not be called for empty input")
+            return "unused"
+        }
+        let cueTranslator = PublicSubtitleCueTranslator(translator: translator)
+
+        let translated = try await cueTranslator.translate(
+            texts: [],
+            sourceLanguage: "kn",
+            targetLanguage: "en"
+        )
+
+        XCTAssertTrue(translated.isEmpty)
+        let callCount = await translator.getCallCount()
+        XCTAssertEqual(callCount, 0)
+    }
+
     func testPublicSubtitleCueTranslatorSplitsLargeCueSetsIntoMultipleBatchRequests() async throws {
         let inputs = (0..<19).map { "ಸಾಲು \($0)" }
         let translator = FakePublicSentenceTranslator { text, _, _ in
