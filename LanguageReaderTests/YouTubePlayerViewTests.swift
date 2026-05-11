@@ -41,4 +41,25 @@ final class YouTubePlayerViewTests: XCTestCase {
         XCTAssertNil(gate.queueOrEmitSeek(0.05))
         XCTAssertEqual(gate.markReadyAndFlushPendingSeek(), 0.05)
     }
+
+    func testSeekGateResetDropsPendingSeekBeforeReadyFlush() {
+        var gate = YouTubePlayerSeekGate()
+
+        XCTAssertNil(gate.queueOrEmitSeek(42.0))
+        gate.resetForNewVideo()
+
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+        XCTAssertTrue(gate.isPlayerReady)
+        XCTAssertNil(gate.pendingSeekTime)
+        XCTAssertNil(gate.lastSeekTime)
+    }
+
+    func testSeekGateClampsNegativeSeekWhenAlreadyReady() {
+        var gate = YouTubePlayerSeekGate()
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+
+        XCTAssertEqual(gate.queueOrEmitSeek(-7.0), 0.0)
+        XCTAssertNil(gate.queueOrEmitSeek(0.1))
+        XCTAssertEqual(gate.queueOrEmitSeek(0.25), 0.25)
+    }
 }
