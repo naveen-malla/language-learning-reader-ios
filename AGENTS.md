@@ -74,6 +74,7 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - Evaluate dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --report-json /tmp/dictionary_eval_report.json`
 - Evaluate German dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --source-language de --report-json /tmp/german_dictionary_eval.json`
 - Evaluate Kannada dictionary with JSON report: `python3 scripts/evaluate_dictionary.py --source-language kn --report-json /tmp/kannada_dictionary_eval.json`
+- Evaluate with explicit fixture(s): `python3 scripts/evaluate_dictionary.py --fixture scripts/eval_fixtures/german_core_v1.json --report-json /tmp/dictionary_eval_report.json`
 - Evaluate without failing thresholds: `python3 scripts/evaluate_dictionary.py --no-fail-on-thresholds`
 - Dictionary evaluation tests: `./scripts/test_evaluate_dictionary.py`
 - Summarize missing words by frequency: `python3 scripts/summarize_missing_words.py --input Documents/dictionary_missing.tsv --top 20`
