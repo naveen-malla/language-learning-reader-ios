@@ -27,11 +27,16 @@ struct ScreenshotLaunchConfiguration {
     let shouldSeedDemoData: Bool
 
     init(processInfo: ProcessInfo = .processInfo) {
+        let routeArgument = Self.argumentValue(
+            matching: Self.routeArgumentPrefix,
+            in: processInfo.arguments
+        ).flatMap { value in
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : value
+        }
+
         route = Self.parseRoute(
-            Self.argumentValue(
-                matching: Self.routeArgumentPrefix,
-                in: processInfo.arguments
-            ) ?? processInfo.environment[Self.routeEnvironmentKey]
+            routeArgument ?? processInfo.environment[Self.routeEnvironmentKey]
         )
         shouldSeedDemoData = processInfo.arguments.contains(Self.seedDemoDataArgument) ||
             Self.parseBoolean(processInfo.environment[Self.seedDemoDataEnvironmentKey])

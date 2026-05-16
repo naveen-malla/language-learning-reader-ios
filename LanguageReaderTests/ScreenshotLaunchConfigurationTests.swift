@@ -69,6 +69,21 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.route, .reader)
     }
 
+    func testBlankRouteArgumentFallsBackToEnvironmentRoute() {
+        let processInfo = ProcessInfoStub(
+            environment: [
+                ScreenshotLaunchConfiguration.routeEnvironmentKey: "watch"
+            ],
+            arguments: [
+                "\(ScreenshotLaunchConfiguration.routeArgumentPrefix)   "
+            ]
+        )
+
+        let configuration = ScreenshotLaunchConfiguration(processInfo: processInfo)
+
+        XCTAssertEqual(configuration.route, .watch)
+    }
+
     func testEnvironmentRouteIsTrimmedAndCaseInsensitive() {
         let processInfo = ProcessInfoStub(
             environment: [
