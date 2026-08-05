@@ -2,6 +2,29 @@ import XCTest
 @testable import LanguageReader
 
 final class LanguageReaderTests: XCTestCase {
+    func testCanonicalLanguageCodeNormalizesRegionalTags() {
+        XCTAssertEqual(LanguageTextHeuristics.canonicalLanguageCode(" DE_de "), "de")
+        XCTAssertEqual(LanguageTextHeuristics.canonicalLanguageCode("kn-IN"), "kn")
+    }
+
+    func testReadableEnglishRejectsSourceScriptAndGermanEchoes() {
+        XCTAssertFalse(LanguageTextHeuristics.isReadableEnglishTranslation(
+            "house ಮನೆ", source: "ಮನೆ", sourceLanguage: "kn-IN"
+        ))
+        XCTAssertFalse(LanguageTextHeuristics.isReadableEnglishTranslation(
+            "das ist gut", source: "das Haus", sourceLanguage: "de-DE"
+        ))
+    }
+
+    func testReadableEnglishAcceptsTranslatedOutput() {
+        XCTAssertTrue(LanguageTextHeuristics.isReadableEnglishTranslation(
+            "This is a house", source: "ಮನೆ", sourceLanguage: "kn"
+        ))
+        XCTAssertTrue(LanguageTextHeuristics.isReadableEnglishTranslation(
+            "die ist the house is good", source: "das Haus", sourceLanguage: "de"
+        ))
+    }
+
     func testDocumentInitialization() {
         let date = Date()
         let document = Document(title: "Title", body: "Body", createdAt: date, updatedAt: date)
