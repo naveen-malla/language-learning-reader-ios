@@ -113,6 +113,7 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertFalse(configuration.shouldRunAutoTopUp)
     }
 
+    /// Verifies that the watch demo includes its expected video and timed cue payloads.
     func testWatchDocumentContainsExpectedVideoAndCuePayloads() throws {
         let configuration = ScreenshotLaunchConfiguration(
             processInfo: ProcessInfoStub(environment: [:], arguments: [])
@@ -127,10 +128,11 @@ final class ScreenshotLaunchConfigurationTests: XCTestCase {
         XCTAssertTrue(document.body.contains("Heute sprechen wir ueber kleine Alltagsroutinen."))
 
         let sourceCues = document.subtitleCues
-        let translatedCues = document.translatedSubtitleCues
+        let translatedCues = try XCTUnwrap(document.translatedSubtitleCues)
         XCTAssertEqual(sourceCues.count, 3)
         XCTAssertEqual(translatedCues.count, 3)
-        XCTAssertEqual(sourceCues.first?.startTime, 0, accuracy: 0.001)
+        let firstSourceCue = try XCTUnwrap(sourceCues.first)
+        XCTAssertEqual(firstSourceCue.startTime, 0, accuracy: 0.001)
         XCTAssertEqual(translatedCues.last?.translatedText, "That is how my morning starts, calm and clear.")
     }
 }

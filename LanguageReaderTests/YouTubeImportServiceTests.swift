@@ -589,7 +589,8 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(last.sourceText, "Dann lese ich weiter.")
     }
 
-    func testSynthesizeSubtitleCuesSplitsSentencesAndSkipsBlankLines() {
+    /// Verifies sentence splitting and fallback cue timing for a transcript with blank lines.
+    func testSynthesizeSubtitleCuesSplitsSentencesAndSkipsBlankLines() throws {
         let cues = YouTubeImportService.synthesizeSubtitleCues(
             from: "  Erste Zeile. Zweite Zeile!  \n\n   Dritte Zeile?   ",
             durationSeconds: 0
@@ -597,9 +598,11 @@ final class YouTubeImportServiceTests: XCTestCase {
 
         XCTAssertEqual(cues.count, 3)
         XCTAssertEqual(cues.map(\.sourceText), ["Erste Zeile.", "Zweite Zeile!", "Dritte Zeile?"])
-        XCTAssertEqual(cues.first?.startTime, 0, accuracy: 0.001)
-        XCTAssertEqual(cues.first?.duration, 4, accuracy: 0.001)
-        XCTAssertEqual(cues.last?.startTime, 8, accuracy: 0.001)
+        let first = try XCTUnwrap(cues.first)
+        let last = try XCTUnwrap(cues.last)
+        XCTAssertEqual(first.startTime, 0, accuracy: 0.001)
+        XCTAssertEqual(first.duration, 4, accuracy: 0.001)
+        XCTAssertEqual(last.startTime, 8, accuracy: 0.001)
     }
 
     func testSynthesizeSubtitleCuesReturnsEmptyForWhitespaceOnlyTranscript() {
