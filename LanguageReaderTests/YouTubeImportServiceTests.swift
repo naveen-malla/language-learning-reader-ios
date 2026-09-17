@@ -605,6 +605,31 @@ final class YouTubeImportServiceTests: XCTestCase {
         XCTAssertEqual(last.startTime, 8, accuracy: 0.001)
     }
 
+    /// Verifies minimum readable cue timing when video duration is absent or too short.
+    func testSynthesizeSubtitleCuesPreservesMinimumTimingForLongerTranscripts() {
+        let sentences = ["Heute lerne ich.", "Dann lese ich.", "Jetzt schreibe ich.",
+                         "Später übe ich.", "Morgen lerne ich weiter."]
+        let cases: [(duration: Int?, expectedCueDuration: Double)] = [
+            (nil, 2.5), (-1, 2.5), (0, 2.5), (5, 2.5), (12, 2.5), (13, 2.6)
+        ]
+
+        for testCase in cases {
+            let context = "Video duration: \(String(describing: testCase.duration))"
+            let cues = YouTubeImportService.synthesizeSubtitleCues(
+                from: sentences.joined(separator: "\n"),
+                durationSeconds: testCase.duration
+            )
+
+            XCTAssertEqual(cues.map(\.sourceText), sentences, context)
+            for (index, cue) in cues.enumerated() {
+                XCTAssertEqual(cue.startTime, Double(index) * testCase.expectedCueDuration,
+                               accuracy: 0.001, context)
+                XCTAssertEqual(cue.duration, testCase.expectedCueDuration,
+                               accuracy: 0.001, context)
+            }
+        }
+    }
+
     func testSynthesizeSubtitleCuesReturnsEmptyForWhitespaceOnlyTranscript() {
         let cues = YouTubeImportService.synthesizeSubtitleCues(
             from: "  \n\n   ",
