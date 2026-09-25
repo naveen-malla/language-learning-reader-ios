@@ -30,6 +30,32 @@ final class YouTubePlayerViewTests: XCTestCase {
         XCTAssertEqual(gate.queueOrEmitSeek(10.3), 10.3)
     }
 
+    /// Verifies backward seeks use the same distance threshold as forward seeks.
+    func testSeekGateAllowsBackwardSeeksBeyondThreshold() {
+        var gate = YouTubePlayerSeekGate()
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+        XCTAssertEqual(gate.queueOrEmitSeek(10.0), 10.0)
+        XCTAssertNil(gate.queueOrEmitSeek(9.9))
+        XCTAssertEqual(gate.queueOrEmitSeek(9.5), 9.5)
+    }
+
+    /// Verifies ignored requests do not move the last emitted seek baseline.
+    func testSeekGatePreservesBaselineAfterSuppressedSeek() {
+        var gate = YouTubePlayerSeekGate()
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+        XCTAssertEqual(gate.queueOrEmitSeek(10.0), 10.0)
+        XCTAssertNil(gate.queueOrEmitSeek(10.15))
+        XCTAssertEqual(gate.queueOrEmitSeek(10.25), 10.25)
+    }
+
+    /// Verifies a seek exactly at the deduplication threshold is emitted.
+    func testSeekGateAllowsSeekAtThreshold() {
+        var gate = YouTubePlayerSeekGate()
+        XCTAssertNil(gate.markReadyAndFlushPendingSeek())
+        XCTAssertEqual(gate.queueOrEmitSeek(0.0), 0.0)
+        XCTAssertEqual(gate.queueOrEmitSeek(0.2), 0.2)
+    }
+
     func testSeekGateClampsAndResetsForNewVideo() {
         var gate = YouTubePlayerSeekGate()
 
