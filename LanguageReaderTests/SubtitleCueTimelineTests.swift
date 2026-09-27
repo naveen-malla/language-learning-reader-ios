@@ -2,6 +2,26 @@ import XCTest
 @testable import LanguageReader
 
 final class SubtitleCueTimelineTests: XCTestCase {
+    /// Handles unavailable subtitles and playback positions before the first cue.
+    func testActiveIndexHandlesEmptyTimelineAndNegativePlayback() {
+        XCTAssertNil(SubtitleCueTimeline.activeIndex(for: [], at: -1))
+        XCTAssertNil(SubtitleCueTimeline.activeIndex(for: [], at: 10))
+        let cues = [TimedSubtitleCue(startTime: 0, duration: 1, sourceText: "ಒಂದು")]
+        XCTAssertEqual(SubtitleCueTimeline.activeIndex(for: cues, at: -1), 0)
+    }
+
+    /// Rejects missing caches and extra translations even when shared timing matches.
+    func testCompatibleTranslatedCuesRejectsMissingAndOversizedCaches() {
+        let sourceCues = [TimedSubtitleCue(startTime: 0, duration: 1, sourceText: "ಒಂದು")]
+        let cachedCues = [
+            TranslatedSubtitleCue(startTime: 0, duration: 1, translatedText: "One"),
+            TranslatedSubtitleCue(startTime: 2, duration: 1, translatedText: "Two")
+        ]
+        XCTAssertNil(SubtitleCueTimeline.compatibleTranslatedCues(from: nil, with: sourceCues))
+        XCTAssertNil(SubtitleCueTimeline.compatibleTranslatedCues(from: [], with: sourceCues))
+        XCTAssertNil(SubtitleCueTimeline.compatibleTranslatedCues(from: cachedCues, with: sourceCues))
+    }
+
     func testActiveIndexTracksCueBoundariesAndGaps() {
         let cues = [
             TimedSubtitleCue(startTime: 0.5, duration: 1.0, sourceText: "ಒಂದು"),
