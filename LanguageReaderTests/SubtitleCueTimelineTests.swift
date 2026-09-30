@@ -49,6 +49,18 @@ final class SubtitleCueTimelineTests: XCTestCase {
         XCTAssertEqual(SubtitleCueTimeline.activeIndex(for: cues, at: 1.01), 1)
     }
 
+    /// Switches to the newer cue even while the previous cue still overlaps it.
+    func testActiveIndexSwitchesAtStartOfOverlappingCue() {
+        let cues = [
+            TimedSubtitleCue(startTime: 0, duration: 5, sourceText: "ಒಂದು"),
+            TimedSubtitleCue(startTime: 2, duration: 1, sourceText: "ಎರಡು")
+        ]
+
+        XCTAssertEqual(SubtitleCueTimeline.activeIndex(for: cues, at: 1.99), 0)
+        XCTAssertEqual(SubtitleCueTimeline.activeIndex(for: cues, at: 2), 1)
+        XCTAssertEqual(SubtitleCueTimeline.activeIndex(for: cues, at: 2.5), 1)
+    }
+
     func testActiveIndexKeepsPreviousCueAcrossShortGaps() {
         let cues = [
             TimedSubtitleCue(startTime: 0.0, duration: 0.7, sourceText: "ಒಂದು"),
