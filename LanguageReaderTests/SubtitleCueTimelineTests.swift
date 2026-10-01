@@ -133,6 +133,28 @@ final class SubtitleCueTimelineTests: XCTestCase {
         }
     }
 
+    /// Checks start drift independently of durations, including later cached cues.
+    func testCompatibleTranslatedCuesValidatesStartDriftInBothDirections() {
+        let sourceCues = [
+            TimedSubtitleCue(startTime: 0, duration: 1.0, sourceText: "ಒಂದು"),
+            TimedSubtitleCue(startTime: 2.0, duration: 1.0, sourceText: "ಎರಡು")
+        ]
+
+        for (start, shouldReuse) in [(1.96, true), (2.04, true), (1.94, false), (2.06, false)] {
+            let cachedCues = [
+                TranslatedSubtitleCue(startTime: 0, duration: 1.0, translatedText: "One"),
+                TranslatedSubtitleCue(startTime: start, duration: 1.0, translatedText: "Two")
+            ]
+            let result = SubtitleCueTimeline.compatibleTranslatedCues(from: cachedCues, with: sourceCues)
+
+            if shouldReuse {
+                XCTAssertEqual(result, cachedCues, "Expected reuse for start \(start)")
+            } else {
+                XCTAssertNil(result, "Expected invalidation for start \(start)")
+            }
+        }
+    }
+
     func testCompatibleTranslatedCuesRejectsCountMismatch() {
         let sourceCues = [
             TimedSubtitleCue(startTime: 0, duration: 1.0, sourceText: "ಒಂದು"),
