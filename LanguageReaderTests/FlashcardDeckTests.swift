@@ -107,6 +107,7 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertEqual(prompts[3], FlashcardPrompt(entryID: second.id, direction: .meaningToWord))
     }
 
+    /// Selects the oldest due words before limiting, with both review directions preserved.
     func testSessionPromptsRespectWordLimitAndStillEmitTwoCardsPerWord() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let entries: [VocabEntry] = (0..<8).map { index in
@@ -124,7 +125,9 @@ final class FlashcardDeckTests: XCTestCase {
         let prompts = FlashcardDeck.sessionPrompts(from: entries, now: now, limit: 5)
 
         XCTAssertEqual(prompts.count, 10)
-        XCTAssertEqual(Set(prompts.map(\.entryID)).count, 5)
+        let expectedEntryIDs = [entries[7].id, entries[6].id, entries[5].id, entries[4].id, entries[3].id]
+        XCTAssertEqual(Set(prompts.map(\.entryID)), Set(expectedEntryIDs))
+        XCTAssertEqual(prompts.prefix(5).map(\.entryID), expectedEntryIDs)
         let grouped = Dictionary(grouping: prompts, by: \.entryID)
         XCTAssertTrue(grouped.values.allSatisfy { promptsForWord in
             Set(promptsForWord.map(\.direction)) == Set(FlashcardDirection.allCases)
