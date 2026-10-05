@@ -259,10 +259,28 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertNil(SimpleLevelScheduler.dueDate(for: .known, baseDate: base))
     }
 
+    /// Reports only the earliest strictly future date, excluding cards already due.
+    func testNextDueDateExcludesMissingPastAndCurrentDates() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        var entries = [
+            VocabEntry(word: "missing", normalizedKey: "missing", meaning: "", status: .level1, dueAt: nil),
+            VocabEntry(word: "past", normalizedKey: "past", meaning: "", status: .level2, dueAt: now.addingTimeInterval(-60)),
+            VocabEntry(word: "current", normalizedKey: "current", meaning: "", status: .level3, dueAt: now)
+        ]
+
+        XCTAssertNil(FlashcardDeck.nextDueDate(from: [], now: now))
+        XCTAssertNil(FlashcardDeck.nextDueDate(from: entries, now: now))
+
+        entries.append(VocabEntry(word: "later", normalizedKey: "later", meaning: "", status: .level1, dueAt: now.addingTimeInterval(120)))
+        entries.append(VocabEntry(word: "earlier", normalizedKey: "earlier", meaning: "", status: .level2, dueAt: now.addingTimeInterval(60)))
+
+        XCTAssertEqual(FlashcardDeck.nextDueDate(from: entries, now: now), now.addingTimeInterval(60))
+    }
+
     func testNextDueDateIgnoresKnownAndSuspendedCards() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let entries = [
-            VocabEntry(word: "known", normalizedKey: "known", meaning: "", status: .known, dueAt: now.addingTimeInterval(300)),
+            VocabEntry(word: "known", normalizedKey: "known", meaning: "", status: .known, dueAt: now.addingTimeInterval(50)),
             VocabEntry(word: "s1", normalizedKey: "s1", meaning: "", status: .level1, dueAt: now.addingTimeInterval(100), isSuspended: true),
             VocabEntry(word: "l1", normalizedKey: "l1", meaning: "", status: .level2, dueAt: now.addingTimeInterval(200)),
             VocabEntry(word: "l2", normalizedKey: "l2", meaning: "", status: .level3, dueAt: now.addingTimeInterval(400))
