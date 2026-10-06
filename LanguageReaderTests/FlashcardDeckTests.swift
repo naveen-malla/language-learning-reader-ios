@@ -208,16 +208,20 @@ final class FlashcardDeckTests: XCTestCase {
         XCTAssertFalse(secondRound.shouldRequeue)
     }
 
+    /// Either missed direction resets progress and requeues the word, regardless of answer order.
     func testRoundEvaluatorOneWrongKeepsLevelAndResetsStreak() {
-        let outcome = FlashcardRoundEvaluator.evaluate(
-            status: .level3,
-            consecutiveSuccessRounds: 1,
-            answers: [.correct, .wrong]
-        )
+        let answerOrders: [[FlashcardBinaryAnswer]] = [[.correct, .wrong], [.wrong, .correct]]
+        for answers in answerOrders {
+            let outcome = FlashcardRoundEvaluator.evaluate(
+                status: .level3,
+                consecutiveSuccessRounds: 1,
+                answers: answers
+            )
 
-        XCTAssertEqual(outcome.status, .level3)
-        XCTAssertEqual(outcome.nextConsecutiveSuccessRounds, 0)
-        XCTAssertTrue(outcome.shouldRequeue)
+            XCTAssertEqual(outcome.status, .level3, "Answer order: \(answers)")
+            XCTAssertEqual(outcome.nextConsecutiveSuccessRounds, 0, "Answer order: \(answers)")
+            XCTAssertTrue(outcome.shouldRequeue, "Answer order: \(answers)")
+        }
     }
 
     func testRoundEvaluatorBothWrongDemotesByOneLevel() {
