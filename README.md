@@ -115,6 +115,10 @@ Run tests:
 - Simulator verification remains mandatory for touched flows.
 - German dictionary evaluation fixture is available under `scripts/eval_fixtures/german_core_v1.json`.
 
+## Web App (iPhone home screen + any browser)
+
+`web/` is a synced PWA version of this app (Library, Reader, Vocab, Flashcards) and `backend/` is its FastAPI + Postgres API. See `web/README.md`, `backend/README.md` and `docs/ENGINEERING_ROADMAP.md`. LingQ vocabulary import: `docs/LINGQ_EXPORT.md`.
+
 ## Documentation Map
 
 - Active roadmap: `PLAN.md`
@@ -128,4 +132,4 @@ Run tests:
 - English UI only; this is source-language support, not interface localization.
 - YouTube import still depends on public subtitle availability and transcript quality.
 - Flashcard scheduling remains fixed-bucket rather than fully adaptive.
-- No cloud sync in V1.
+- No cloud sync in the iOS app (the web app syncs through `backend/`).
