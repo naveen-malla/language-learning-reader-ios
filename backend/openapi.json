@@ -1,0 +1,1060 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Language Reader API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/push": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Push",
+        "operationId": "push_api_v1_sync_push_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Changes"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/pull": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Pull",
+        "operationId": "pull_api_v1_sync_pull_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Since"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PullResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/translate": {
+      "get": {
+        "tags": [
+          "translate"
+        ],
+        "summary": "Translate",
+        "operationId": "translate_api_v1_translate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "sl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 8,
+              "default": "de",
+              "title": "Sl"
+            }
+          },
+          {
+            "name": "tl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 8,
+              "default": "en",
+              "title": "Tl"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Changes": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentRow"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Documents"
+          },
+          "vocab": {
+            "items": {
+              "$ref": "#/components/schemas/VocabRow"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Vocab"
+          },
+          "ignored": {
+            "items": {
+              "$ref": "#/components/schemas/IgnoredRow"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Ignored"
+          },
+          "stats": {
+            "items": {
+              "$ref": "#/components/schemas/StatsRow"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Stats"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Changes"
+      },
+      "Credentials": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "Credentials"
+      },
+      "DocumentRow": {
+        "properties": {
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Updatedat"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2000000,
+            "title": "Body"
+          },
+          "languageCodeRaw": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Languagecoderaw"
+          },
+          "createdAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Createdat"
+          },
+          "sourceTypeRaw": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "youtube",
+                  "sample"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcetyperaw"
+          },
+          "sourceURL": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "sourceVideoID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcevideoid"
+          },
+          "sourceChannel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcechannel"
+          },
+          "sourceChannelID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcechannelid"
+          },
+          "sourceCategory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcecategory"
+          },
+          "sourceDurationSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcedurationseconds"
+          },
+          "thumbnailURL": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnailurl"
+          },
+          "subtitleCuesRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitlecuesraw"
+          },
+          "translatedSubtitleCuesRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translatedsubtitlecuesraw"
+          },
+          "importModeRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Importmoderaw"
+          },
+          "autoBatchID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autobatchid"
+          },
+          "firstOpenedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstopenedat"
+          },
+          "lastOpenedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastopenedat"
+          },
+          "readingProgress": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readingprogress"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "updatedAt",
+          "id",
+          "title",
+          "body",
+          "createdAt"
+        ],
+        "title": "DocumentRow"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IgnoredRow": {
+        "properties": {
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Updatedat"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "scopedKey": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Scopedkey"
+          },
+          "languageCodeRaw": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 2,
+            "title": "Languagecoderaw"
+          },
+          "normalizedKey": {
+            "type": "string",
+            "title": "Normalizedkey"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "updatedAt",
+          "scopedKey",
+          "languageCodeRaw",
+          "normalizedKey"
+        ],
+        "title": "IgnoredRow"
+      },
+      "Me": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email"
+        ],
+        "title": "Me"
+      },
+      "PullResponse": {
+        "properties": {
+          "changes": {
+            "$ref": "#/components/schemas/Changes"
+          },
+          "cursor": {
+            "type": "integer",
+            "title": "Cursor"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "title": "Hasmore"
+          }
+        },
+        "type": "object",
+        "required": [
+          "changes",
+          "cursor",
+          "hasMore"
+        ],
+        "title": "PullResponse"
+      },
+      "PushResponse": {
+        "properties": {
+          "applied": {
+            "type": "integer",
+            "title": "Applied"
+          },
+          "stale": {
+            "type": "integer",
+            "title": "Stale"
+          },
+          "cursor": {
+            "type": "integer",
+            "title": "Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied",
+          "stale",
+          "cursor"
+        ],
+        "title": "PushResponse"
+      },
+      "StatsRow": {
+        "properties": {
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Updatedat"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "scopedKey": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "title": "Scopedkey"
+          },
+          "languageCodeRaw": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 2,
+            "title": "Languagecoderaw"
+          },
+          "day": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Day"
+          },
+          "reviewed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Reviewed"
+          },
+          "correct": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Correct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "updatedAt",
+          "scopedKey",
+          "languageCodeRaw",
+          "day",
+          "reviewed",
+          "correct"
+        ],
+        "title": "StatsRow"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token"
+        ],
+        "title": "TokenResponse"
+      },
+      "TranslateResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TranslateResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VocabRow": {
+        "properties": {
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Updatedat"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "scopedKey": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Scopedkey"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "normalizedKey": {
+            "type": "string",
+            "maxLength": 290,
+            "minLength": 1,
+            "title": "Normalizedkey"
+          },
+          "languageCodeRaw": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Languagecoderaw"
+          },
+          "word": {
+            "type": "string",
+            "title": "Word"
+          },
+          "meaning": {
+            "type": "string",
+            "title": "Meaning"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "level1",
+              "level2",
+              "level3",
+              "level4",
+              "known"
+            ],
+            "title": "Status"
+          },
+          "createdAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Createdat"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "title": "Lastseenat"
+          },
+          "encounterCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Encountercount"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "srsIntervalDays": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srsintervaldays"
+          },
+          "srsEaseFactor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srseasefactor"
+          },
+          "srsRepetition": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srsrepetition"
+          },
+          "srsLapseCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srslapsecount"
+          },
+          "isSuspended": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuspended"
+          },
+          "srsStability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srsstability"
+          },
+          "srsDifficulty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srsdifficulty"
+          },
+          "srsAlgorithm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srsalgorithm"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "updatedAt",
+          "scopedKey",
+          "id",
+          "normalizedKey",
+          "word",
+          "meaning",
+          "status",
+          "createdAt",
+          "lastSeenAt",
+          "encounterCount"
+        ],
+        "title": "VocabRow"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
