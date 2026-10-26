@@ -153,3 +153,15 @@ This file records durable architecture and product decisions. Active checklist w
 - Every user-reported bug should add a corresponding automated test before closure.
 - Simulator-first acceptance: every change must be run in the simulator and the touched flow must be verified in the actual app UI before completion.
 - Reliability-first tradeoff policy: if iPhone 14 Pro can run the solution comfortably, prefer robustness/coverage over storage or cost optimizations.
+
+## Web App + Backend (2026-10-25)
+- Web app is a PWA (`web/`), not a native wrapper: works on iPhone home screen and any browser, no App Store.
+- Own FastAPI backend + Postgres instead of a BaaS (Supabase): chosen to learn REST, auth and OpenAPI, and to match the AI Dev Tools Zoomcamp final-project shape.
+- Offline-first: IndexedDB is the client source of truth; sync is push (dirty rows) + pull (`serverVersion > cursor`).
+- Conflict resolution: last-write-wins per row by client `updatedAt`; deletes are tombstones (`deletedAt`) so they sync.
+- `serverVersion` is a per-user counter bumped under a row lock on the user, not a timestamp, to avoid clock-skew gaps.
+- A sync API (push/pull pair) instead of one CRUD endpoint per resource: an offline client needs batched writes and "changes since".
+- Field names match Swift exactly (camelCase) across TS, JSON and Postgres; timestamps stored as client ISO strings so comparisons agree byte for byte.
+- Dictionary on the web: iOS SQLite split into 256 static JSON shards (FNV-1a hash), served from the CDN and cached by the service worker; lookup heuristics ported 1:1.
+- Auth: Argon2id password hashes + HS256 JWT bearer tokens (60 days); registration can be closed with `ALLOW_REGISTRATION=false`.
+- Translation goes through the backend (`/api/v1/translate`) to avoid CORS and keep future API keys server-side.

@@ -4,7 +4,7 @@
 Build a language reader iOS app (initial scope: Kannada) with fast, offline-friendly word lookup, vocabulary tracking, and flashcards. Keep the UX clean and focused on reading.
 
 ## Non-Goals
-- No cloud sync in V1.
+- No cloud sync in the iOS V1 (sync lives in the web app + backend, see below).
 - No hard dependency on online translation APIs.
 - No reliance on Apple Translation framework for core functionality.
 
@@ -119,3 +119,13 @@ Build a language reader iOS app (initial scope: Kannada) with fast, offline-frie
 - `README.md`: repo entrypoint, scope, quick start, user-visible behavior, and current limits.
 - `DEVELOPMENT.md`: environment, scripts, build/test workflow, and verification steps.
 - `DECISIONS.md`: durable architectural and product decisions.
+
+## Web App and Backend
+- Repo layout: iOS app at the root, `web/` (React + Vite PWA), `backend/` (FastAPI + Postgres). One repo, one CI.
+- Read `docs/ENGINEERING_ROADMAP.md` before architectural changes; log learning in `docs/LEARNING_LOG.md`.
+- Field names are shared across Swift, TypeScript, JSON and Postgres columns. Never rename one without asking.
+- Web: `cd web && npm install && npm test && npm run build`; dev server `npm run dev`.
+- Backend: `cd backend && pip install -r requirements-dev.txt && pytest -q`; Postgres: `TEST_DATABASE_URL=... pytest -q`; stack: `docker compose up --build`.
+- After changing `backend/app/schemas.py`, regenerate `backend/openapi.json` and update `web/src/lib/api.ts` / `sync.ts` types.
+- Every sync or auth change needs a test in `web/src/lib/sync.test.ts` or `backend/tests/`.
+- Secrets only via env (`.env`, host secret store). `VITE_*` variables are public.
